@@ -18,11 +18,6 @@ namespace ObservableCollections
         // IGroupedSynchronizedView<T, TKey, TView> CreateGroupedView<TKey, TView>(Func<T, TKey> keySelector, Func<T, TView> transform);
     }
 
-    internal interface INotifyCollectionChanged<T>
-    {
-        internal event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
-    }
-
     public interface IFreezedCollection<T>
     {
         ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
