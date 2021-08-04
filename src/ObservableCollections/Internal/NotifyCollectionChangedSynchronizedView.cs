@@ -2,12 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 
 namespace ObservableCollections.Internal
 {
     internal class NotifyCollectionChangedSynchronizedView<T, TView> : INotifyCollectionChangedSynchronizedView<T, TView>
     {
         readonly ISynchronizedView<T, TView> parent;
+        static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new PropertyChangedEventArgs("Count");
 
         public NotifyCollectionChangedSynchronizedView(ISynchronizedView<T, TView> parent)
         {
@@ -18,6 +20,20 @@ namespace ObservableCollections.Internal
         private void Parent_RoutingCollectionChanged(in NotifyCollectionChangedEventArgs<T> e)
         {
             CollectionChanged?.Invoke(this, e.ToStandardEventArgs());
+
+            switch (e.Action)
+            {
+                // add, remove, reset will change the count.
+                case NotifyCollectionChangedAction.Add:
+                case NotifyCollectionChangedAction.Remove:
+                case NotifyCollectionChangedAction.Reset:
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                case NotifyCollectionChangedAction.Move:
+                default:
+                    break;
+            }
         }
 
         public object SyncRoot => parent.SyncRoot;
@@ -25,6 +41,7 @@ namespace ObservableCollections.Internal
         public int Count => parent.Count;
 
         public event NotifyCollectionChangedEventHandler? CollectionChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public event Action<NotifyCollectionChangedAction>? CollectionStateChanged
         {

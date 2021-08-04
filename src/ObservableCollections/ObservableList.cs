@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -12,6 +11,16 @@ namespace ObservableCollections
     {
         readonly List<T> list;
         public readonly object SyncRoot = new object();
+
+        public ObservableList()
+        {
+            list = new List<T>();
+        }
+
+        public ObservableList(IEnumerable<T> source)
+        {
+            list = source.ToList();
+        }
 
         public T this[int index]
         {
@@ -48,16 +57,6 @@ namespace ObservableCollections
 
         public event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
 
-
-        public ObservableList()
-        {
-            list = new List<T>();
-        }
-
-        public ObservableList(IEnumerable<T> source)
-        {
-            list = source.ToList();
-        }
 
         public void Add(T item)
         {
@@ -136,7 +135,7 @@ namespace ObservableCollections
 
         public IEnumerator<T> GetEnumerator()
         {
-            return list.GetEnumerator();
+            return new SynchronizedEnumerator<T>(SyncRoot, list.GetEnumerator());
         }
 
         IEnumerator IEnumerable.GetEnumerator()

@@ -8,7 +8,8 @@ namespace ObservableCollections.Tests
         [Fact]
         public void Test1()
         {
-
+            
         }
+
     }
 }

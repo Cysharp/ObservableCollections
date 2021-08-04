@@ -8,8 +8,7 @@ namespace ObservableCollections.Internal
     internal class SynchronizedViewEnumerator<T, TView> : IEnumerator<(T, TView)>, IDisposable
     {
         bool isDisposed;
-        bool startEnumerate;
-        bool lockTaken;
+        readonly bool lockTaken;
         readonly object gate;
         readonly IEnumerator<(T, TView)> enumerator;
         readonly ISynchronizedViewFilter<T, TView> filter;
@@ -22,8 +21,7 @@ namespace ObservableCollections.Internal
             this.filter = filter;
             this.current = default;
             this.isDisposed = false;
-            this.startEnumerate = false;
-            this.lockTaken = false;
+            Monitor.Enter(gate, ref lockTaken);
         }
 
         public (T, TView) Current => current;
@@ -31,12 +29,6 @@ namespace ObservableCollections.Internal
 
         public bool MoveNext()
         {
-            if (!startEnumerate) // TODO: check is this work correctly?
-            {
-                startEnumerate = true;
-                Monitor.Enter(gate, ref lockTaken);
-            }
-
             while (enumerator.MoveNext())
             {
                 current = enumerator.Current;
@@ -51,7 +43,7 @@ namespace ObservableCollections.Internal
 
         public void Dispose()
         {
-            if (isDisposed)
+            if (!isDisposed)
             {
                 isDisposed = true;
                 try

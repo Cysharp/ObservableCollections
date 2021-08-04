@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 
 namespace ObservableCollections
 {
@@ -13,9 +14,6 @@ namespace ObservableCollections
         ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
         ISynchronizedView<T, TView> CreateSortedView<TView>(Func<T, TView> transform, IComparer<T> comparer);
         ISynchronizedView<T, TView> CreateSortedView<TView>(Func<T, TView> transform, IComparer<TView> viewComparer);
-
-        // TODO:Grouping
-        // IGroupedSynchronizedView<T, TKey, TView> CreateGroupedView<TKey, TView>(Func<T, TKey> keySelector, Func<T, TView> transform);
     }
 
     public interface IFreezedCollection<T>
@@ -42,7 +40,7 @@ namespace ObservableCollections
         void Sort(IComparer<TView> viewComparer);
     }
 
-    public interface INotifyCollectionChangedSynchronizedView<T, TView> : ISynchronizedView<T, TView>, INotifyCollectionChanged
+    public interface INotifyCollectionChangedSynchronizedView<T, TView> : ISynchronizedView<T, TView>, INotifyCollectionChanged, INotifyPropertyChanged
     {
     }
 }

@@ -36,7 +36,7 @@ namespace ObservableCollections
             public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
-            public object SyncRoot { get; } = new object();
+            public object SyncRoot { get; }
 
             public View(ObservableList<T> source, Func<T, TView> selector, bool reverse)
             {
@@ -47,7 +47,7 @@ namespace ObservableCollections
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
-                    this.list = source.Select(x => (x, selector(x))).ToList();
+                    this.list = source.list.Select(x => (x, selector(x))).ToList();
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
             }
