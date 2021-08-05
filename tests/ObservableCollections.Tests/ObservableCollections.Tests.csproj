@@ -15,4 +15,8 @@
         </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\ObservableCollections\ObservableCollections.csproj" />
+    </ItemGroup>
+
 </Project>

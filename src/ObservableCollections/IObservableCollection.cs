@@ -22,7 +22,7 @@ namespace ObservableCollections
         ISortableSynchronizedView<T, TView> CreateSortableView<TView>(Func<T, TView> transform);
     }
 
-    public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T, TView)>, IDisposable
+    public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
     {
         object SyncRoot { get; }
         event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
