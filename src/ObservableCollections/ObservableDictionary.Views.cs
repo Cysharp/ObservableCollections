@@ -4,27 +4,25 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ObservableCollections
 {
     public sealed partial class ObservableDictionary<TKey, TValue>
     {
-        public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, bool reverse = false)
+        public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, bool _ = false)
         {
             // reverse is no used.
-            throw new NotImplementedException();
+            return new View<TView>(this, transform);
         }
 
         public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateSortedView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<KeyValuePair<TKey, TValue>> comparer)
         {
-            throw new NotImplementedException();
+            return new SortedView<TView>(this, transform, comparer);
         }
 
         public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateSortedView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<TView> viewComparer)
         {
-            throw new NotImplementedException();
+            return new ViewComparerSortedView<TView>(this, transform, viewComparer);
         }
 
         class View<TView> : ISynchronizedView<KeyValuePair<TKey, TValue>, TView>
@@ -293,5 +291,152 @@ namespace ObservableCollections
                 }
             }
         }
+
+#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+
+        class ViewComparerSortedView<TView> : ISynchronizedView<KeyValuePair<TKey, TValue>, TView>
+        {
+            readonly ObservableDictionary<TKey, TValue> source;
+            readonly Func<KeyValuePair<TKey, TValue>, TView> selector;
+            readonly Dictionary<TKey, TView> viewMap;
+            readonly SortedDictionary<TView, KeyValuePair<TKey, TValue>> dict;
+            ISynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView> filter;
+
+            public ViewComparerSortedView(ObservableDictionary<TKey, TValue> source, Func<KeyValuePair<TKey, TValue>, TView> selector, IComparer<TView> viewComparer)
+            {
+                this.source = source;
+                this.selector = selector;
+                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                this.SyncRoot = new object();
+                lock (source.SyncRoot)
+                {
+                    this.viewMap = new Dictionary<TKey, TView>(source.Count);
+                    this.dict = new SortedDictionary<TView, KeyValuePair<TKey, TValue>>(viewComparer);
+                    foreach (var item in source.dictionary)
+                    {
+                        var v = selector(item);
+                        dict.Add(v, item);
+                        viewMap.Add(item.Key, v);
+                    }
+                    this.source.CollectionChanged += SourceCollectionChanged;
+                }
+            }
+
+            public object SyncRoot { get; }
+            public event NotifyCollectionChangedEventHandler<KeyValuePair<TKey, TValue>>? RoutingCollectionChanged;
+            public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
+
+            public int Count
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        return dict.Count;
+                    }
+                }
+            }
+
+            public void Dispose()
+            {
+                this.source.CollectionChanged -= SourceCollectionChanged;
+            }
+
+            public void AttachFilter(ISynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView> filter)
+            {
+                lock (SyncRoot)
+                {
+                    this.filter = filter;
+                    foreach (var v in dict)
+                    {
+                        filter.Invoke(v.Value, v.Key);
+                    }
+                }
+            }
+
+            public void ResetFilter(Action<KeyValuePair<TKey, TValue>, TView>? resetAction)
+            {
+                lock (SyncRoot)
+                {
+                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                    if (resetAction != null)
+                    {
+                        foreach (var v in dict)
+                        {
+                            resetAction(v.Value, v.Key);
+                        }
+                    }
+                }
+            }
+
+            public INotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView> WithINotifyCollectionChanged()
+            {
+                lock (SyncRoot)
+                {
+                    return new NotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView>(this);
+                }
+            }
+
+            public IEnumerator<(KeyValuePair<TKey, TValue>, TView)> GetEnumerator()
+            {
+                return new SynchronizedViewEnumerator<KeyValuePair<TKey, TValue>, TView>(SyncRoot,
+                    dict.Select(x => (x.Value, x.Key)).GetEnumerator(),
+                    filter);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+
+            private void SourceCollectionChanged(in NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>> e)
+            {
+                // ObservableDictionary only provides single item operation and does not use int index.
+                lock (SyncRoot)
+                {
+                    switch (e.Action)
+                    {
+                        case NotifyCollectionChangedAction.Add:
+                            {
+                                var v = selector(e.NewItem);
+                                var k = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
+                                dict.Add(v, k);
+                                viewMap.Add(e.NewItem.Key, v);
+                                filter.Invoke(k, v);
+                            }
+                            break;
+                        case NotifyCollectionChangedAction.Remove:
+                            {
+                                if (viewMap.Remove(e.OldItem.Key, out var view))
+                                {
+                                    dict.Remove(view);
+                                }
+                            }
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                        case NotifyCollectionChangedAction.Replace:
+                            {
+                                if (viewMap.Remove(e.OldItem.Key, out var view))
+                                {
+                                    dict.Remove(view);
+                                }
+                                goto case NotifyCollectionChangedAction.Add;
+                            }
+                        case NotifyCollectionChangedAction.Reset:
+                            {
+                                dict.Clear();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+
+                    RoutingCollectionChanged?.Invoke(e);
+                    CollectionStateChanged?.Invoke(e.Action);
+                }
+            }
+        }
+
+#pragma warning restore CS8714
     }
 }
