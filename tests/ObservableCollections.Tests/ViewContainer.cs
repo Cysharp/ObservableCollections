@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ObservableCollections.Tests
 {
-    public struct ViewContainer<T> : IEquatable<T>
+    public struct ViewContainer<T> : IEquatable<ViewContainer<T>>, IComparable<ViewContainer<T>>
     {
         public ViewContainer(T value)
         {
@@ -19,9 +19,14 @@ namespace ObservableCollections.Tests
             return Value.GetHashCode();
         }
 
-        public bool Equals(T other)
+        public int CompareTo(ViewContainer<T> other)
         {
-            return EqualityComparer<T>.Default.Equals(Value, other);
+            return Comparer<T>.Default.Compare(Value, other.Value);
+        }
+
+        public bool Equals(ViewContainer<T> other)
+        {
+            return EqualityComparer<T>.Default.Equals(Value, other.Value);
         }
     }
 }

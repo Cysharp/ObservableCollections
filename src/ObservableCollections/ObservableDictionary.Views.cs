@@ -25,6 +25,17 @@ namespace ObservableCollections
             return new ViewComparerSortedView<TView>(this, transform, viewComparer);
         }
 
+        // identity selector is ignored
+        ISynchronizedView<KeyValuePair<TKey, TValue>, TView> IObservableCollection<KeyValuePair<TKey, TValue>>.CreateSortedView<TKey1, TView>(Func<KeyValuePair<TKey, TValue>, TKey1> identitySelector, Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<KeyValuePair<TKey, TValue>> comparer)
+        {
+            return new SortedView<TView>(this, transform, comparer);
+        }
+
+        ISynchronizedView<KeyValuePair<TKey, TValue>, TView> IObservableCollection<KeyValuePair<TKey, TValue>>.CreateSortedView<TKey1, TView>(Func<KeyValuePair<TKey, TValue>, TKey1> identitySelector, Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<TView> viewComparer)
+        {
+            return new ViewComparerSortedView<TView>(this, transform, viewComparer);
+        }
+
         class View<TView> : ISynchronizedView<KeyValuePair<TKey, TValue>, TView>
         {
             readonly ObservableDictionary<TKey, TValue> source;
@@ -136,7 +147,7 @@ namespace ObservableCollections
                             {
                                 dict.Remove(e.OldItem.Key);
                                 var v = selector(e.NewItem);
-                                dict.Add(e.NewItem.Key, (e.NewItem.Value, v));
+                                dict[e.NewItem.Key] = (e.NewItem.Value, v);
                                 filter.Invoke(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
                             }
                             break;
@@ -273,7 +284,7 @@ namespace ObservableCollections
                                 dict.Remove(k);
                                 var v = selector(e.NewItem);
                                 var nk = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
-                                dict.Add(nk, v);
+                                dict[nk] = v;
                                 filter.Invoke(nk, v);
                             }
                             break;
@@ -419,8 +430,14 @@ namespace ObservableCollections
                                 if (viewMap.Remove(e.OldItem.Key, out var view))
                                 {
                                     dict.Remove(view);
+
+                                    var v = selector(e.NewItem);
+                                    var k = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
+                                    dict[v] = k;
+                                    viewMap[e.NewItem.Key] = v;
+                                    filter.Invoke(k, v);
                                 }
-                                goto case NotifyCollectionChangedAction.Add;
+                                break;
                             }
                         case NotifyCollectionChangedAction.Reset:
                             {

@@ -38,12 +38,18 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    var oldValue = dictionary[key];
-                    dictionary[key] = value;
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>.Replace(
-                        new KeyValuePair<TKey, TValue>(key, value),
-                        new KeyValuePair<TKey, TValue>(key, oldValue),
-                        -1));
+                    if (dictionary.TryGetValue(key, out var oldValue))
+                    {
+                        dictionary[key] = value;
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>.Replace(
+                            new KeyValuePair<TKey, TValue>(key, value),
+                            new KeyValuePair<TKey, TValue>(key, oldValue),
+                            -1));
+                    }
+                    else
+                    {
+                        Add(key, value);
+                    }
                 }
             }
         }

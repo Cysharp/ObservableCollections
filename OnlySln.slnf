@@ -1,0 +1,8 @@
+{
+  "solution": {
+    "path": "ObservableCollections.sln",
+    "projects": [
+      "src\\ObservableCollections\\ObservableCollections.csproj"
+    ]
+  }
+}
