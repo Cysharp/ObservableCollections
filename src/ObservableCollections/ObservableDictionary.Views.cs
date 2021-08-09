@@ -47,7 +47,7 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -83,7 +83,7 @@ namespace ObservableCollections
                     this.filter = filter;
                     foreach (var v in dict)
                     {
-                        filter.Invoke(new KeyValuePair<TKey, TValue>(v.Key, v.Value.Item1), v.Value.Item2);
+                        filter.InvokeOnAttach(new KeyValuePair<TKey, TValue>(v.Key, v.Value.Item1), v.Value.Item2);
                     }
                 }
             }
@@ -92,7 +92,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.Null;
                     if (resetAction != null)
                     {
                         foreach (var v in dict)
@@ -134,25 +134,40 @@ namespace ObservableCollections
                             {
                                 var v = selector(e.NewItem);
                                 dict.Add(e.NewItem.Key, (e.NewItem.Value, v));
-                                filter.Invoke(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
+                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
                             {
-                                dict.Remove(e.OldItem.Key);
+                                if (dict.Remove(e.OldItem.Key, out var v))
+                                {
+                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, v.Item1), v.Item2));
+                                }
                             }
                             break;
                         case NotifyCollectionChangedAction.Move:
                         case NotifyCollectionChangedAction.Replace:
                             {
-                                dict.Remove(e.OldItem.Key);
+                                if (dict.Remove(e.OldItem.Key, out var oldView))
+                                {
+                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, oldView.Item1), oldView.Item2));
+                                }
+
                                 var v = selector(e.NewItem);
                                 dict[e.NewItem.Key] = (e.NewItem.Value, v);
-                                filter.Invoke(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
+                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             {
+                                if (!filter.IsNullFilter())
+                                {
+                                    foreach (var item in dict)
+                                    {
+                                        filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2));
+                                    }
+                                }
+
                                 dict.Clear();
                             }
                             break;
@@ -177,7 +192,7 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -217,7 +232,7 @@ namespace ObservableCollections
                     this.filter = filter;
                     foreach (var v in dict)
                     {
-                        filter.Invoke(new KeyValuePair<TKey, TValue>(v.Key.Key, v.Key.Value), v.Value);
+                        filter.InvokeOnAttach(new KeyValuePair<TKey, TValue>(v.Key.Key, v.Key.Value), v.Value);
                     }
                 }
             }
@@ -226,7 +241,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.Null;
                     if (resetAction != null)
                     {
                         foreach (var v in dict)
@@ -269,27 +284,41 @@ namespace ObservableCollections
                                 var v = selector(e.NewItem);
                                 var k = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
                                 dict.Add(k, v);
-                                filter.Invoke(k, v);
+                                filter.InvokeOnAdd(k, v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
                             {
-                                dict.Remove(e.OldItem);
+                                if (dict.Remove(e.OldItem, out var value))
+                                {
+                                    filter.InvokeOnRemove(e.OldItem, value);
+                                }
                             }
                             break;
                         case NotifyCollectionChangedAction.Move:
                         case NotifyCollectionChangedAction.Replace:
                             {
                                 var k = new KeyValuePair<TKey, TValue>(e.OldItem.Key, e.OldItem.Value);
-                                dict.Remove(k);
+                                if (dict.Remove(k, out var oldValue))
+                                {
+                                    filter.InvokeOnRemove(k, oldValue);
+                                }
+
                                 var v = selector(e.NewItem);
                                 var nk = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
                                 dict[nk] = v;
-                                filter.Invoke(nk, v);
+                                filter.InvokeOnAdd(nk, v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             {
+                                if (!filter.IsNullFilter())
+                                {
+                                    foreach (var item in dict)
+                                    {
+                                        filter.InvokeOnRemove(item.Key, item.Value);
+                                    }
+                                }
                                 dict.Clear();
                             }
                             break;
@@ -317,7 +346,7 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -360,7 +389,7 @@ namespace ObservableCollections
                     this.filter = filter;
                     foreach (var v in dict)
                     {
-                        filter.Invoke(v.Value, v.Key);
+                        filter.InvokeOnAttach(v.Value, v.Key);
                     }
                 }
             }
@@ -369,7 +398,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.AlwaysTrue;
+                    this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView>.Null;
                     if (resetAction != null)
                     {
                         foreach (var v in dict)
@@ -413,7 +442,7 @@ namespace ObservableCollections
                                 var k = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
                                 dict.Add(v, k);
                                 viewMap.Add(e.NewItem.Key, v);
-                                filter.Invoke(k, v);
+                                filter.InvokeOnAdd(k, v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
@@ -421,6 +450,7 @@ namespace ObservableCollections
                                 if (viewMap.Remove(e.OldItem.Key, out var view))
                                 {
                                     dict.Remove(view);
+                                    filter.InvokeOnRemove(e.OldItem, view);
                                 }
                             }
                             break;
@@ -429,19 +459,30 @@ namespace ObservableCollections
                             {
                                 if (viewMap.Remove(e.OldItem.Key, out var view))
                                 {
-                                    dict.Remove(view);
+                                    if (dict.Remove(view, out var oldView))
+                                    {
+                                        filter.InvokeOnRemove(e.OldItem, view);
+                                    }
 
                                     var v = selector(e.NewItem);
                                     var k = new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value);
                                     dict[v] = k;
                                     viewMap[e.NewItem.Key] = v;
-                                    filter.Invoke(k, v);
+                                    filter.InvokeOnAdd(k, v);
                                 }
                                 break;
                             }
                         case NotifyCollectionChangedAction.Reset:
                             {
+                                if (!filter.IsNullFilter())
+                                {
+                                    foreach (var item in dict)
+                                    {
+                                        filter.InvokeOnRemove(item.Value, item.Key);
+                                    }
+                                }
                                 dict.Clear();
+                                viewMap.Clear();
                             }
                             break;
                         default:

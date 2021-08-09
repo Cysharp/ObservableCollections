@@ -18,9 +18,9 @@ namespace ObservableCollections
             this.dictionary = new Dictionary<TKey, TValue>();
         }
 
-        public ObservableDictionary(Dictionary<TKey, TValue> dictionary)
+        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection)
         {
-            this.dictionary = dictionary;
+            this.dictionary = new Dictionary<TKey, TValue>(collection);
         }
 
         public event NotifyCollectionChangedEventHandler<KeyValuePair<TKey, TValue>>? CollectionChanged;

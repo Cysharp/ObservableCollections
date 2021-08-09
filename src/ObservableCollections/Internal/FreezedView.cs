@@ -23,7 +23,7 @@ namespace ObservableCollections.Internal
         public FreezedView(IEnumerable<T> source, Func<T, TView> selector, bool reverse)
         {
             this.reverse = reverse;
-            this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+            this.filter = SynchronizedViewFilter<T, TView>.Null;
             this.list = source.Select(x => (x, selector(x))).ToList();
         }
 
@@ -54,7 +54,7 @@ namespace ObservableCollections.Internal
         {
             lock (SyncRoot)
             {
-                this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 if (resetAction != null)
                 {
                     foreach (var (item, view) in list)
@@ -103,7 +103,7 @@ namespace ObservableCollections.Internal
 
         public FreezedSortableView(IEnumerable<T> source, Func<T, TView> selector)
         {
-            this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+            this.filter = SynchronizedViewFilter<T, TView>.Null;
             this.array = source.Select(x => (x, selector(x))).ToArray();
         }
 
@@ -134,7 +134,7 @@ namespace ObservableCollections.Internal
         {
             lock (SyncRoot)
             {
-                this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 if (resetAction != null)
                 {
                     foreach (var (item, view) in array)

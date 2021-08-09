@@ -45,17 +45,13 @@ namespace ObservableCollections
                 this.source = source;
                 this.selector = selector;
                 this.reverse = reverse;
-                this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
                     this.list = source.list.Select(x => (x, selector(x))).ToList();
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
-            }
-
-            protected virtual void DoSort()
-            {
             }
 
             public int Count
@@ -76,7 +72,7 @@ namespace ObservableCollections
                     this.filter = filter;
                     foreach (var (value, view) in list)
                     {
-                        filter.Invoke(value, view);
+                        filter.InvokeOnAttach(value, view);
                     }
                 }
             }
@@ -85,7 +81,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                    this.filter = SynchronizedViewFilter<T, TView>.Null;
                     if (resetAction != null)
                     {
                         foreach (var (item, view) in list)
@@ -139,7 +135,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Add(v);
-                                    filter.Invoke(v);
+                                    filter.InvokeOnAdd(v);
                                 }
                                 else
                                 {
@@ -147,7 +143,7 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         list.Add(v);
-                                        filter.Invoke(v);
+                                        filter.InvokeOnAdd(v);
                                     }
                                 }
                             }
@@ -158,7 +154,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Insert(e.NewStartingIndex, v);
-                                    filter.Invoke(v);
+                                    filter.InvokeOnAdd(v);
                                 }
                                 else
                                 {
@@ -169,7 +165,7 @@ namespace ObservableCollections
                                     {
                                         var v = (span[i], selector(span[i]));
                                         newArray[i] = v;
-                                        filter.Invoke(v);
+                                        filter.InvokeOnAdd(v);
                                     }
                                     list.InsertRange(e.NewStartingIndex, newArray);
                                 }
@@ -178,10 +174,22 @@ namespace ObservableCollections
                         case NotifyCollectionChangedAction.Remove:
                             if (e.IsSingleItem)
                             {
+                                var v = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
+                                filter.InvokeOnRemove(v.Item1, v.Item2);
                             }
                             else
                             {
+                                if (!filter.IsNullFilter())
+                                {
+                                    var len = e.OldStartingIndex + e.OldItems.Length;
+                                    for (int i = e.OldStartingIndex; i < len; i++)
+                                    {
+                                        var v = list[i];
+                                        filter.InvokeOnRemove(v.Item1, v.Item2);
+                                    }
+                                }
+
                                 list.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
                             }
                             break;
@@ -189,25 +197,39 @@ namespace ObservableCollections
                             // ObservableList does not support replace range
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
+
+                                var oldItem = list[e.NewStartingIndex];
                                 list[e.NewStartingIndex] = v;
+
+                                filter.InvokeOnRemove(oldItem);
+                                filter.InvokeOnAdd(v);
                                 break;
                             }
                         case NotifyCollectionChangedAction.Move:
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
+                                var removeItem = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
                                 list.Insert(e.NewStartingIndex, v);
-                                filter.Invoke(v);
+
+                                filter.InvokeOnRemove(removeItem);
+                                filter.InvokeOnAdd(v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
+                            if (!filter.IsNullFilter())
+                            {
+                                foreach (var item in list)
+                                {
+                                    filter.InvokeOnRemove(item);
+                                }
+                            }
                             list.Clear();
                             break;
                         default:
                             break;
                     }
 
-                    DoSort();
                     RoutingCollectionChanged?.Invoke(e);
                     CollectionStateChanged?.Invoke(e.Action);
                 }
@@ -234,7 +256,7 @@ namespace ObservableCollections
                 this.source = source;
                 this.identitySelector = identitySelector;
                 this.transform = transform;
-                this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 lock (source.SyncRoot)
                 {
                     var dict = new SortedDictionary<(T, TKey), (T, TView)>(new Comparer(comparer));
@@ -268,7 +290,7 @@ namespace ObservableCollections
                     this.filter = filter;
                     foreach (var (_, (value, view)) in list)
                     {
-                        filter.Invoke(value, view);
+                        filter.InvokeOnAttach(value, view);
                     }
                 }
             }
@@ -277,7 +299,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                    this.filter = SynchronizedViewFilter<T, TView>.Null;
                     if (resetAction != null)
                     {
                         foreach (var (_, (value, view)) in list)
@@ -323,7 +345,7 @@ namespace ObservableCollections
                                     var view = transform(value);
                                     var id = identitySelector(value);
                                     list.Add((value, id), (value, view));
-                                    filter.Invoke(value, view);
+                                    filter.InvokeOnAdd(value, view);
                                 }
                                 else
                                 {
@@ -332,7 +354,7 @@ namespace ObservableCollections
                                         var view = transform(value);
                                         var id = identitySelector(value);
                                         list.Add((value, id), (value, view));
-                                        filter.Invoke(value, view);
+                                        filter.InvokeOnAdd(value, view);
                                     }
                                 }
                             }
@@ -343,14 +365,16 @@ namespace ObservableCollections
                                 {
                                     var value = e.OldItem;
                                     var id = identitySelector(value);
-                                    list.Remove((value, id));
+                                    list.Remove((value, id), out var v);
+                                    filter.InvokeOnRemove(v.Value, v.View);
                                 }
                                 else
                                 {
                                     foreach (var value in e.OldItems)
                                     {
                                         var id = identitySelector(value);
-                                        list.Remove((value, id));
+                                        list.Remove((value, id), out var v);
+                                        filter.InvokeOnRemove(v.Value, v.View);
                                     }
                                 }
                             }
@@ -361,16 +385,25 @@ namespace ObservableCollections
                             // Replace is remove old item and insert new item(same index on replace, difference index on move).
                             {
                                 var oldValue = e.OldItem;
-                                list.Remove((oldValue, identitySelector(oldValue)));
+                                list.Remove((oldValue, identitySelector(oldValue)), out var oldView);
 
                                 var value = e.NewItem;
                                 var view = transform(value);
                                 var id = identitySelector(value);
                                 list.Add((value, id), (value, view));
-                                filter.Invoke(value, view);
+
+                                filter.InvokeOnRemove(oldView);
+                                filter.InvokeOnAdd(value, view);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
+                            if (!filter.IsNullFilter())
+                            {
+                                foreach (var item in list)
+                                {
+                                    filter.InvokeOnRemove(item.Value);
+                                }
+                            }
                             list.Clear();
                             break;
                         default:
@@ -425,7 +458,7 @@ namespace ObservableCollections
                 this.source = source;
                 this.identitySelector = identitySelector;
                 this.transform = transform;
-                this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 lock (source.SyncRoot)
                 {
                     var dict = new SortedDictionary<(TView, TKey), (T, TView)>(new Comparer(comparer));
@@ -462,7 +495,7 @@ namespace ObservableCollections
                     this.filter = filter;
                     foreach (var (_, (value, view)) in list)
                     {
-                        filter.Invoke(value, view);
+                        filter.InvokeOnAttach(value, view);
                     }
                 }
             }
@@ -471,7 +504,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.AlwaysTrue;
+                    this.filter = SynchronizedViewFilter<T, TView>.Null;
                     if (resetAction != null)
                     {
                         foreach (var (_, (value, view)) in list)
@@ -518,7 +551,7 @@ namespace ObservableCollections
                                     var id = identitySelector(value);
                                     list.Add((view, id), (value, view));
                                     viewMap.Add(id, view);
-                                    filter.Invoke(value, view);
+                                    filter.InvokeOnAdd(value, view);
                                 }
                                 else
                                 {
@@ -528,7 +561,7 @@ namespace ObservableCollections
                                         var id = identitySelector(value);
                                         list.Add((view, id), (value, view));
                                         viewMap.Add(id, view);
-                                        filter.Invoke(value, view);
+                                        filter.InvokeOnAdd(value, view);
                                     }
                                 }
                             }
@@ -541,7 +574,8 @@ namespace ObservableCollections
                                     var id = identitySelector(value);
                                     if (viewMap.Remove(id, out var view))
                                     {
-                                        list.Remove((view, id));
+                                        list.Remove((view, id), out var v);
+                                        filter.InvokeOnRemove(v);
                                     }
                                 }
                                 else
@@ -551,7 +585,8 @@ namespace ObservableCollections
                                         var id = identitySelector(value);
                                         if (viewMap.Remove(id, out var view))
                                         {
-                                            list.Remove((view, id));
+                                            list.Remove((view, id), out var v);
+                                            filter.InvokeOnRemove(v);
                                         }
                                     }
                                 }
@@ -567,6 +602,7 @@ namespace ObservableCollections
                                 if (viewMap.Remove(oldKey, out var oldView))
                                 {
                                     list.Remove((oldView, oldKey));
+                                    filter.InvokeOnRemove(oldValue, oldView);
                                 }
 
                                 var value = e.NewItem;
@@ -574,11 +610,20 @@ namespace ObservableCollections
                                 var id = identitySelector(value);
                                 list.Add((view, id), (value, view));
                                 viewMap.Add(id, view);
-                                filter.Invoke(value, view);
+
+                                filter.InvokeOnAdd(value, view);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
+                            if (!filter.IsNullFilter())
+                            {
+                                foreach (var item in list)
+                                {
+                                    filter.InvokeOnRemove(item.Value);
+                                }
+                            }
                             list.Clear();
+                            viewMap.Clear();
                             break;
                         default:
                             break;

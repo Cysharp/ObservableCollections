@@ -17,9 +17,14 @@ namespace ObservableCollections
             list = new List<T>();
         }
 
-        public ObservableList(IEnumerable<T> source)
+        public ObservableList(int capacity)
         {
-            list = source.ToList();
+            list = new List<T>(capacity);
+        }
+
+        public ObservableList(IEnumerable<T> collection)
+        {
+            list = collection.ToList();
         }
 
         public T this[int index]
