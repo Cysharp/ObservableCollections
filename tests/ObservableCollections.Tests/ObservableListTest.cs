@@ -136,5 +136,87 @@ namespace ObservableCollections.Tests
             view.Select(x => x.Value).Should().Equal(60, 50, 40, 30, 20, 10);
             view.Select(x => x.View).Should().Equal(60, 50, 40, 30, 20, 10);
         }
+
+        [Fact]
+        public void FilterTest()
+        {
+            var list = new ObservableList<int>();
+            var view1 = list.CreateView(x => new ViewContainer<int>(x));
+            var view2 = list.CreateSortedView(x => x, x => new ViewContainer<int>(x), comparer: Comparer<int>.Default);
+            var view3 = list.CreateSortedView(x => x, x => new ViewContainer<int>(x), viewComparer: Comparer<ViewContainer<int>>.Default);
+            list.AddRange(new[] { 10, 21, 30, 44, 45, 66, 90 });
+
+            var filter1 = new TestFilter<int>((x, v) => x % 2 == 0);
+            var filter2 = new TestFilter<int>((x, v) => x % 2 == 0);
+            var filter3 = new TestFilter<int>((x, v) => x % 2 == 0);
+            view1.AttachFilter(filter1);
+            view2.AttachFilter(filter2);
+            view3.AttachFilter(filter3);
+
+            filter1.CalledWhenTrue.Select(x => x.Item1).Should().Equal(10, 30, 44, 66, 90);
+            filter2.CalledWhenTrue.Select(x => x.Item1).Should().Equal(10, 30, 44, 66, 90);
+            filter3.CalledWhenTrue.Select(x => x.Item1).Should().Equal(10, 30, 44, 66, 90);
+
+            filter1.CalledWhenFalse.Select(x => x.Item1).Should().Equal(21, 45);
+            filter2.CalledWhenFalse.Select(x => x.Item1).Should().Equal(21, 45);
+            filter3.CalledWhenFalse.Select(x => x.Item1).Should().Equal(21, 45);
+
+            view1.Select(x => x.Value).Should().Equal(10, 30, 44, 66, 90);
+            view2.Select(x => x.Value).Should().Equal(10, 30, 44, 66, 90);
+            view3.Select(x => x.Value).Should().Equal(10, 30, 44, 66, 90);
+
+            filter1.Clear();
+            filter2.Clear();
+            filter3.Clear();
+
+            list.Add(100);
+            list.AddRange(new[] { 101 });
+            filter1.CalledWhenTrue.Select(x => x.Item1).Should().Equal(100);
+            filter2.CalledWhenTrue.Select(x => x.Item1).Should().Equal(100);
+            filter3.CalledWhenTrue.Select(x => x.Item1).Should().Equal(100);
+            filter1.CalledWhenFalse.Select(x => x.Item1).Should().Equal(101);
+            filter2.CalledWhenFalse.Select(x => x.Item1).Should().Equal(101);
+            filter3.CalledWhenFalse.Select(x => x.Item1).Should().Equal(101);
+
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Add, 100), (ChangedKind.Add, 101));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Add, 100), (ChangedKind.Add, 101));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Add, 100), (ChangedKind.Add, 101));
+
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            list.Insert(0, 1000);
+            list.InsertRange(0, new[] { 999 });
+
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Add, 1000), (ChangedKind.Add, 999));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Add, 1000), (ChangedKind.Add, 999));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Add, 1000), (ChangedKind.Add, 999));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            list.RemoveAt(0);
+            list.RemoveRange(0, 1);
+
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 999), (ChangedKind.Remove, 1000));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 999), (ChangedKind.Remove, 1000));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 999), (ChangedKind.Remove, 1000));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            list[0] = 9999;
+
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 10), (ChangedKind.Add, 9999));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 10), (ChangedKind.Add, 9999));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 10), (ChangedKind.Add, 9999));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            list.Move(3, 0);
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Move, 44));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Move, 44));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Move, 44));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            list.Clear();
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 44), (ChangedKind.Remove, 9999), (ChangedKind.Remove, 21), (ChangedKind.Remove, 30), (ChangedKind.Remove, 45), (ChangedKind.Remove, 66), (ChangedKind.Remove, 90), (ChangedKind.Remove, 100), (ChangedKind.Remove, 101));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 21), (ChangedKind.Remove, 30), (ChangedKind.Remove, 44), (ChangedKind.Remove, 45), (ChangedKind.Remove, 66), (ChangedKind.Remove, 90), (ChangedKind.Remove, 100), (ChangedKind.Remove, 101), (ChangedKind.Remove, 9999));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 21), (ChangedKind.Remove, 30), (ChangedKind.Remove, 44), (ChangedKind.Remove, 45), (ChangedKind.Remove, 66), (ChangedKind.Remove, 90), (ChangedKind.Remove, 100), (ChangedKind.Remove, 101), (ChangedKind.Remove, 9999));
+        }
     }
 }

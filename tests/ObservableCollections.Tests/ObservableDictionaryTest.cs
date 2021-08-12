@@ -99,5 +99,60 @@ namespace ObservableCollections.Tests
             view.Select(x => x.Value.Value).Should().Equal(60, 50, 40, 30, 20, 10);
             view.Select(x => x.View).Should().Equal(60, 50, 40, 30, 20, 10);
         }
+
+        [Fact]
+        public void FilterTest()
+        {
+            var dict = new ObservableDictionary<int, int>();
+            var view1 = dict.CreateView(x => new ViewContainer<int>(x.Value));
+            var view2 = dict.CreateSortedView(x => x.Key, x => new ViewContainer<int>(x.Value), x => x.Value, true);
+            var view3 = dict.CreateSortedView(x => new ViewContainer<int>(x.Value), viewComparer: Comparer<ViewContainer<int>>.Default);
+            var filter1 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);
+            var filter2 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);
+            var filter3 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);
+
+            dict.Add(10, -12); // 0
+            dict.Add(50, -53); // 1
+            dict.Add(30, -34); // 2
+            dict.Add(20, -25); // 3
+            dict.Add(40, -40); // 4
+
+            view1.AttachFilter(filter1);
+            view2.AttachFilter(filter2);
+            view3.AttachFilter(filter3);
+
+            filter1.CalledWhenTrue.Select(x => x.Item1.Value).Should().Equal(-12, -34, -40);
+            filter2.CalledWhenTrue.Select(x => x.Item1.Value).Should().Equal(-40, -34, -12);
+            filter3.CalledWhenTrue.Select(x => x.Item1.Value).Should().Equal(-40, -34, -12);
+
+            dict.Add(99, -100);
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Add, -100));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Add, -100));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Add, -100));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            dict[10] = -1090;
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Remove, -12), (ChangedKind.Add, -1090));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Remove, -12), (ChangedKind.Add, -1090));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Remove, -12), (ChangedKind.Add, -1090));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            dict.Remove(20);
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Remove, -25));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Remove, -25));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value)).Should().Equal((ChangedKind.Remove, -25));
+            foreach (var item in new[] { filter1, filter2, filter3 }) item.CalledOnCollectionChanged.Clear();
+
+            dict.Clear();
+            filter1.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value))
+                .OrderBy(x => x.Value)
+                .Should().Equal((ChangedKind.Remove, -1090), (ChangedKind.Remove, -100), (ChangedKind.Remove, -53), (ChangedKind.Remove, -40), (ChangedKind.Remove, -34));
+            filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value))
+                .OrderBy(x => x.Value)
+                .Should().Equal((ChangedKind.Remove, -1090), (ChangedKind.Remove, -100), (ChangedKind.Remove, -53), (ChangedKind.Remove, -40), (ChangedKind.Remove, -34));
+            filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value.Value))
+                .OrderBy(x => x.Value)
+                .Should().Equal((ChangedKind.Remove, -1090), (ChangedKind.Remove, -100), (ChangedKind.Remove, -53), (ChangedKind.Remove, -40), (ChangedKind.Remove, -34));
+        }
     }
 }

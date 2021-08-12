@@ -26,7 +26,9 @@ namespace ObservableCollections
 
     public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
     {
+        // TODO:Remove SyncRoot
         object SyncRoot { get; }
+
         event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 

@@ -45,7 +45,7 @@ namespace ObservableCollections.Internal
                 this.filter = filter;
                 foreach (var (value, view) in list)
                 {
-                    filter.Invoke(value, view);
+                    filter.InvokeOnAttach(value, view);
                 }
             }
         }
@@ -125,7 +125,7 @@ namespace ObservableCollections.Internal
                 this.filter = filter;
                 foreach (var (value, view) in array)
                 {
-                    filter.Invoke(value, view);
+                    filter.InvokeOnAttach(value, view);
                 }
             }
         }
