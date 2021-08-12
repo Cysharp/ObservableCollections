@@ -207,13 +207,13 @@ namespace ObservableCollections
                             }
                         case NotifyCollectionChangedAction.Move:
                             {
-                                var v = (e.NewItem, selector(e.NewItem));
                                 var removeItem = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
-                                list.Insert(e.NewStartingIndex, v);
+                                list.Insert(e.NewStartingIndex, removeItem);
 
-                                filter.InvokeOnRemove(removeItem);
-                                filter.InvokeOnAdd(v);
+                                // TODO:???
+                                //filter.InvokeOnRemove(removeItem);
+                                //filter.InvokeOnAdd(v);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
