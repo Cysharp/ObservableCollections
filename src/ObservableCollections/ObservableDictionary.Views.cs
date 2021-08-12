@@ -145,7 +145,6 @@ namespace ObservableCollections
                                 }
                             }
                             break;
-                        case NotifyCollectionChangedAction.Move:
                         case NotifyCollectionChangedAction.Replace:
                             {
                                 if (dict.Remove(e.OldItem.Key, out var oldView))
@@ -171,6 +170,7 @@ namespace ObservableCollections
                                 dict.Clear();
                             }
                             break;
+                        case NotifyCollectionChangedAction.Move: // ObservableDictionary have no Move operation.
                         default:
                             break;
                     }
@@ -295,7 +295,6 @@ namespace ObservableCollections
                                 }
                             }
                             break;
-                        case NotifyCollectionChangedAction.Move:
                         case NotifyCollectionChangedAction.Replace:
                             {
                                 var k = new KeyValuePair<TKey, TValue>(e.OldItem.Key, e.OldItem.Value);
@@ -322,6 +321,7 @@ namespace ObservableCollections
                                 dict.Clear();
                             }
                             break;
+                        case NotifyCollectionChangedAction.Move: // ObservableDictionary have no Move operation.
                         default:
                             break;
                     }
@@ -454,7 +454,6 @@ namespace ObservableCollections
                                 }
                             }
                             break;
-                        case NotifyCollectionChangedAction.Move:
                         case NotifyCollectionChangedAction.Replace:
                             {
                                 if (viewMap.Remove(e.OldItem.Key, out var view))
@@ -485,6 +484,7 @@ namespace ObservableCollections
                                 viewMap.Clear();
                             }
                             break;
+                        case NotifyCollectionChangedAction.Move: // ObservableDictionary have no Move operation.
                         default:
                             break;
                     }

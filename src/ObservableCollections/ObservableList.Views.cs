@@ -1,9 +1,6 @@
 ﻿using ObservableCollections.Internal;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
 
 namespace ObservableCollections
 {
@@ -211,9 +208,7 @@ namespace ObservableCollections
                                 list.RemoveAt(e.OldStartingIndex);
                                 list.Insert(e.NewStartingIndex, removeItem);
 
-                                // TODO:???
-                                //filter.InvokeOnRemove(removeItem);
-                                //filter.InvokeOnAdd(v);
+                                filter.InvokeOnMove(removeItem);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
@@ -380,9 +375,8 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Replace:
-                        case NotifyCollectionChangedAction.Move:
                             // ObservableList does not support replace range
-                            // Replace is remove old item and insert new item(same index on replace, difference index on move).
+                            // Replace is remove old item and insert new item.
                             {
                                 var oldValue = e.OldItem;
                                 list.Remove((oldValue, identitySelector(oldValue)), out var oldView);
@@ -394,6 +388,16 @@ namespace ObservableCollections
 
                                 filter.InvokeOnRemove(oldView);
                                 filter.InvokeOnAdd(value, view);
+                            }
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            {
+                                // Move(index change) does not affect sorted list.
+                                var oldValue = e.OldItem;
+                                if (list.TryGetValue((oldValue, identitySelector(oldValue)), out var view))
+                                {
+                                    filter.InvokeOnMove(view);
+                                }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
@@ -593,9 +597,8 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Replace:
-                        case NotifyCollectionChangedAction.Move:
                             // ObservableList does not support replace range
-                            // Replace is remove old item and insert new item(same index on replace, difference index on move).
+                            // Replace is remove old item and insert new item.
                             {
                                 var oldValue = e.OldItem;
                                 var oldKey = identitySelector(oldValue);
@@ -612,6 +615,17 @@ namespace ObservableCollections
                                 viewMap.Add(id, view);
 
                                 filter.InvokeOnAdd(value, view);
+                            }
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            // Move(index change) does not affect soreted dict.
+                            {
+                                var value = e.OldItem;
+                                var key = identitySelector(value);
+                                if (viewMap.TryGetValue(key, out var view))
+                                {
+                                    filter.InvokeOnMove(value, view);
+                                }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:

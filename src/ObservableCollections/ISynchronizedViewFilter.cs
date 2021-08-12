@@ -12,7 +12,7 @@ namespace ObservableCollections
 
     public enum ChangedKind
     {
-        Add, Remove
+        Add, Remove, Move
     }
 
     public class SynchronizedViewFilter<T, TView> : ISynchronizedViewFilter<T, TView>
@@ -94,6 +94,16 @@ namespace ObservableCollections
         internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
         {
             filter.OnCollectionChanged(ChangedKind.Remove, value, view);
+        }
+
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value)
+        {
+            InvokeOnMove(filter, value.value, value.view);
+        }
+
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
+        {
+            filter.OnCollectionChanged(ChangedKind.Move, value, view);
         }
 
         internal static void InvokeOnAttach<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
