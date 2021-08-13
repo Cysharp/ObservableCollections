@@ -7,6 +7,14 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <ListView ItemsSource="{Binding ItemsView}"></ListView>
+        
+        <Button Grid.Column="1" Click="Button_Click">Insert</Button>
 
     </Grid>
 </Window>
