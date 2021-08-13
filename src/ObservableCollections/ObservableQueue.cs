@@ -94,9 +94,8 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var index = queue.Count - 1;
                 var v = queue.Dequeue();
-                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(v, index));
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(v, 0));
                 return v;
             }
         }
@@ -105,10 +104,9 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var index = queue.Count - 1;
                 if (queue.TryDequeue(out result))
                 {
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(result, index));
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(result, 0));
                     return true;
                 }
                 return false;
@@ -119,17 +117,15 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var startIndex = queue.Count - count;
-
                 var dest = ArrayPool<T>.Shared.Rent(count);
                 try
                 {
                     for (int i = 0; i < count; i++)
                     {
-                        dest[0] = queue.Dequeue();
+                        dest[i] = queue.Dequeue();
                     }
 
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(dest.AsSpan(0, count), startIndex));
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(dest.AsSpan(0, count), 0));
                 }
                 finally
                 {
@@ -142,14 +138,12 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var count = queue.Count;
-                var destCount = dest.Length;
                 for (int i = 0; i < dest.Length; i++)
                 {
-                    dest[0] = queue.Dequeue();
+                    dest[i] = queue.Dequeue();
                 }
 
-                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(dest, count - queue.Count));
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(dest, 0));
             }
         }
 
