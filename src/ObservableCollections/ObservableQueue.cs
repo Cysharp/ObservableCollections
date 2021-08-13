@@ -1,12 +1,7 @@
 ﻿using ObservableCollections.Internal;
-using System;
 using System.Buffers;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ObservableCollections
 {
@@ -158,53 +153,63 @@ namespace ObservableCollections
             }
         }
 
-        // TODO:
-        void Clear()
+        public void Clear()
         {
+            lock (SyncRoot)
+            {
+                queue.Clear();
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Reset());
+            }
         }
 
-        //bool Contains(T item)
-        //{
-        //}
+        public T Peek()
+        {
+            lock (SyncRoot)
+            {
+                return queue.Peek();
+            }
+        }
 
-        //void CopyTo(T[] array, int arrayIndex);
+        public bool TryPeek([MaybeNullWhen(false)] T result)
+        {
+            lock (SyncRoot)
+            {
+                return queue.TryPeek(out result);
+            }
+        }
 
-        // Peek
+        public T[] ToArray()
+        {
+            lock (SyncRoot)
+            {
+                return queue.ToArray();
+            }
+        }
 
-        // ToArray
+        public void TrimExcess()
+        {
+            lock (SyncRoot)
+            {
+                queue.TrimExcess();
+            }
+        }
 
-        // TrimExcess
-
-        // EnsureCapacity
-
-
-
-        // TryPeek
-
+        public void EnsureCapacity(int capacity)
+        {
+            lock (SyncRoot)
+            {
+                queue.EnsureCapacity(capacity);
+            }
+        }
 
         public IEnumerator<T> GetEnumerator()
         {
-            throw new NotImplementedException();
+            return new SynchronizedEnumerator<T>(SyncRoot, queue.GetEnumerator());
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            throw new NotImplementedException();
-        }
-
-        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ISynchronizedView<T, TView> CreateSortedView<TKey, TView>(Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer) where TKey : notnull
-        {
-            throw new NotImplementedException();
-        }
-
-        public ISynchronizedView<T, TView> CreateSortedView<TKey, TView>(Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer) where TKey : notnull
-        {
-            throw new NotImplementedException();
+            return GetEnumerator();
         }
     }
 }
