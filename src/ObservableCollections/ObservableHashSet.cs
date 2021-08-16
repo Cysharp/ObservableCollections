@@ -8,7 +8,7 @@ namespace ObservableCollections
     public sealed partial class ObservableHashSet<T> : IReadOnlySet<T>, IReadOnlyCollection<T>, IObservableCollection<T>
     {
         readonly HashSet<T> set;
-        public readonly object SyncRoot = new object();
+        public object SyncRoot { get; } = new object();
 
         public ObservableHashSet()
         {

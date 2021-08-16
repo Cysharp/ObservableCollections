@@ -8,7 +8,7 @@ namespace ObservableCollections
     public sealed partial class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
         readonly Stack<T> stack;
-        public readonly object SyncRoot = new object();
+        public object SyncRoot { get; } = new object();
 
         public ObservableStack()
         {

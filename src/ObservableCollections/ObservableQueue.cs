@@ -8,7 +8,7 @@ namespace ObservableCollections
     public sealed partial class ObservableQueue<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
         readonly Queue<T> queue;
-        public readonly object SyncRoot = new object();
+        public object SyncRoot { get; } = new object();
 
         public ObservableQueue()
         {

@@ -8,7 +8,7 @@ namespace ObservableCollections
     public sealed partial class ObservableLinkedList<T> : IReadOnlyCollection<T>, IObservableCollection<LinkedListNode<T>>
     {
         readonly LinkedList<T> list;
-        public readonly object SyncRoot = new object();
+        public object SyncRoot { get; } = new object();
 
         public event NotifyCollectionChangedEventHandler<LinkedListNode<T>>? CollectionChanged;
 
@@ -126,11 +126,7 @@ namespace ObservableCollections
             }
         }
 
-
-
-        // TODO: GetEnumerator
-
-        public IEnumerator<T> GetEnumerator()
+        public IEnumerator<LinkedListNode<T>> GetEnumerator()
         {
             throw new NotImplementedException();
         }
@@ -139,5 +135,15 @@ namespace ObservableCollections
         {
             throw new NotImplementedException();
         }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+
+
+        // TODO: GetEnumerator
+
     }
 }

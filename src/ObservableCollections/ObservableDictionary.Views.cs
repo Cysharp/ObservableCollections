@@ -12,25 +12,15 @@ namespace ObservableCollections
             return new View<TView>(this, transform);
         }
 
+        // using key implicitly
         public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateSortedView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<KeyValuePair<TKey, TValue>> comparer)
         {
-            return new SortedView<KeyValuePair<TKey, TValue>, TKey, TView>(this, this.SyncRoot, dictionary, x => x.Key, transform, comparer);
+            return this.CreateSortedView(x => x.Key, transform, comparer);
         }
 
         public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateSortedView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<TView> viewComparer)
         {
-            return new SortedViewViewComparer<KeyValuePair<TKey, TValue>, TKey, TView>(this, this.SyncRoot, dictionary, x => x.Key, transform, viewComparer);
-        }
-
-        // identity selector is ignored
-        ISynchronizedView<KeyValuePair<TKey, TValue>, TView> IObservableCollection<KeyValuePair<TKey, TValue>>.CreateSortedView<TKey1, TView>(Func<KeyValuePair<TKey, TValue>, TKey1> identitySelector, Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<KeyValuePair<TKey, TValue>> comparer)
-        {
-            return new SortedView<KeyValuePair<TKey, TValue>, TKey, TView>(this, this.SyncRoot, dictionary, x => x.Key, transform, comparer);
-        }
-
-        ISynchronizedView<KeyValuePair<TKey, TValue>, TView> IObservableCollection<KeyValuePair<TKey, TValue>>.CreateSortedView<TKey1, TView>(Func<KeyValuePair<TKey, TValue>, TKey1> identitySelector, Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<TView> viewComparer)
-        {
-            return new SortedViewViewComparer<KeyValuePair<TKey, TValue>, TKey, TView>(this, this.SyncRoot, dictionary, x => x.Key, transform, viewComparer);
+            return this.CreateSortedView(x => x.Key, transform, viewComparer);
         }
 
         class View<TView> : ISynchronizedView<KeyValuePair<TKey, TValue>, TView>

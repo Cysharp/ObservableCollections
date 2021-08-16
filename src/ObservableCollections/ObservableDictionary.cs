@@ -11,7 +11,7 @@ namespace ObservableCollections
         where TKey : notnull
     {
         readonly Dictionary<TKey, TValue> dictionary;
-        public readonly object SyncRoot = new object();
+        public object SyncRoot { get; } = new object();
 
         public ObservableDictionary()
         {

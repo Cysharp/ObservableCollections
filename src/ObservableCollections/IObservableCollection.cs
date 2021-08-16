@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ObservableCollections.Internal;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -7,15 +8,11 @@ namespace ObservableCollections
 {
     public delegate void NotifyCollectionChangedEventHandler<T>(in NotifyCollectionChangedEventArgs<T> e);
 
-    public interface IObservableCollection<T>
+    public interface IObservableCollection<T> : IReadOnlyCollection<T>
     {
         event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
-
+        object SyncRoot { get; }
         ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
-        ISynchronizedView<T, TView> CreateSortedView<TKey, TView>(Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
-            where TKey : notnull;
-        ISynchronizedView<T, TView> CreateSortedView<TKey, TView>(Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer)
-            where TKey : notnull;
     }
 
     public interface IFreezedCollection<T>
@@ -26,7 +23,6 @@ namespace ObservableCollections
 
     public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
     {
-        // TODO:Remove SyncRoot
         object SyncRoot { get; }
 
         event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
@@ -34,7 +30,6 @@ namespace ObservableCollections
 
         void AttachFilter(ISynchronizedViewFilter<T, TView> filter);
         void ResetFilter(Action<T, TView>? resetAction);
-
         INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged();
     }
 
@@ -44,12 +39,28 @@ namespace ObservableCollections
         void Sort(IComparer<TView> viewComparer);
     }
 
+    public interface IGroupedSynchoronizedView<T, TKey, TView> : ILookup<TKey, (T, TView)>, ISynchronizedView<T, TView>
+    {
+    }
+
     public interface INotifyCollectionChangedSynchronizedView<T, TView> : ISynchronizedView<T, TView>, INotifyCollectionChanged, INotifyPropertyChanged
     {
     }
 
     public static class ObservableCollectionsExtensions
     {
+        public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
+            where TKey : notnull
+        {
+            return new SortedView<T, TKey, TView>(source, identitySelector, transform, comparer);
+        }
+
+        public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer)
+            where TKey : notnull
+        {
+            return new SortedViewViewComparer<T, TKey, TView>(source, identitySelector, transform, viewComparer);
+        }
+
         public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView, TCompare>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, Func<T, TCompare> compareSelector, bool ascending = true)
             where TKey : notnull
         {

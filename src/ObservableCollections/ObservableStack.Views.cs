@@ -11,16 +11,6 @@ namespace ObservableCollections
             return new View<TView>(this, transform, reverse);
         }
 
-        public ISynchronizedView<T, TView> CreateSortedView<TKey, TView>(Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer) where TKey : notnull
-        {
-            return new SortedView<T, TKey, TView>(this, SyncRoot, stack, identitySelector, transform, comparer);
-        }
-
-        public ISynchronizedView<T, TView> CreateSortedView<TKey, TView>(Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer) where TKey : notnull
-        {
-            return new SortedViewViewComparer<T, TKey, TView>(this, SyncRoot, stack, identitySelector, transform, viewComparer);
-        }
-
         class View<TView> : ISynchronizedView<T, TView>
         {
             readonly ObservableStack<T> source;

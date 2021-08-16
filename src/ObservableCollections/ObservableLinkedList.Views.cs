@@ -4,19 +4,9 @@ using System.Collections.Specialized;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableLinkedList<T> : IReadOnlyCollection<T>, IObservableCollection<LinkedListNode<T>>
+    public sealed partial class ObservableLinkedList<T>
     {
         public ISynchronizedView<LinkedListNode<T>, TView> CreateView<TView>(Func<LinkedListNode<T>, TView> transform, bool reverse = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ISynchronizedView<LinkedListNode<T>, TView> CreateSortedView<TKey, TView>(Func<LinkedListNode<T>, TKey> identitySelector, Func<LinkedListNode<T>, TView> transform, IComparer<LinkedListNode<T>> comparer) where TKey : notnull
-        {
-            throw new NotImplementedException();
-        }
-
-        public ISynchronizedView<LinkedListNode<T>, TView> CreateSortedView<TKey, TView>(Func<LinkedListNode<T>, TKey> identitySelector, Func<LinkedListNode<T>, TView> transform, IComparer<TView> viewComparer) where TKey : notnull
         {
             throw new NotImplementedException();
         }

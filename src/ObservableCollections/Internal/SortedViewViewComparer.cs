@@ -19,17 +19,17 @@ namespace ObservableCollections.Internal
 
         public object SyncRoot { get; } = new object();
 
-        public SortedViewViewComparer(IObservableCollection<T> source, object syncRoot, IEnumerable<T> sourceEnumerable, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> comparer)
+        public SortedViewViewComparer(IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> comparer)
         {
             this.source = source;
             this.identitySelector = identitySelector;
             this.transform = transform;
             this.filter = SynchronizedViewFilter<T, TView>.Null;
-            lock (syncRoot)
+            lock (source.SyncRoot)
             {
                 var dict = new SortedDictionary<(TView, TKey), (T, TView)>(new Comparer(comparer));
                 this.viewMap = new Dictionary<TKey, TView>();
-                foreach (var value in sourceEnumerable)
+                foreach (var value in source)
                 {
                     var view = transform(value);
                     var id = identitySelector(value);

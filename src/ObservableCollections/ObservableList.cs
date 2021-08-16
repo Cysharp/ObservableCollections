@@ -10,7 +10,7 @@ namespace ObservableCollections
     public sealed partial class ObservableList<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
     {
         readonly List<T> list;
-        public readonly object SyncRoot = new object();
+        public object SyncRoot { get; } = new object();
 
         public ObservableList()
         {

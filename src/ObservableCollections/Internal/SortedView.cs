@@ -4,7 +4,7 @@ using System.Collections.Specialized;
 namespace ObservableCollections.Internal
 {
     internal class SortedView<T, TKey, TView> : ISynchronizedView<T, TView>
-            where TKey : notnull
+        where TKey : notnull
     {
         readonly IObservableCollection<T> source;
         readonly Func<T, TView> transform;
@@ -18,16 +18,16 @@ namespace ObservableCollections.Internal
 
         public object SyncRoot { get; } = new object();
 
-        public SortedView(IObservableCollection<T> source, object syncRoot, IEnumerable<T> sourceEnumerable, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
+        public SortedView(IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
         {
             this.source = source;
             this.identitySelector = identitySelector;
             this.transform = transform;
             this.filter = SynchronizedViewFilter<T, TView>.Null;
-            lock (syncRoot)
+            lock (source.SyncRoot)
             {
                 var dict = new SortedDictionary<(T, TKey), (T, TView)>(new Comparer(comparer));
-                foreach (var v in sourceEnumerable)
+                foreach (var v in source)
                 {
                     dict.Add((v, identitySelector(v)), (v, transform(v)));
                 }
@@ -145,6 +145,8 @@ namespace ObservableCollections.Internal
                         }
                         break;
                     case NotifyCollectionChangedAction.Replace:
+                        // TODO:Range support
+
                         // ReplaceRange is not supported in all ObservableCollections collections
                         // Replace is remove old item and insert new item.
                         {
