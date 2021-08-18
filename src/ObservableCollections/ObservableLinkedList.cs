@@ -63,8 +63,6 @@ namespace ObservableCollections
             {
                 var newNode = list.AddBefore(node, value);
 
-                // list.
-
                 // special event, oldItem is target, newStartingIndex:-1 = before
                 var ev = new NotifyCollectionChangedEventArgs<LinkedListNode<T>>(
                     NotifyCollectionChangedAction.Add, isSingleItem: true,
@@ -123,6 +121,15 @@ namespace ObservableCollections
             {
                 list.Remove(item);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<LinkedListNode<T>>.Remove(item, -1));
+            }
+        }
+
+        public void Clear()
+        {
+            lock (SyncRoot)
+            {
+                list.Clear();
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<LinkedListNode<T>>.Reset());
             }
         }
 
