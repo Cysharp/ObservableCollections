@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace ObservableCollections.Internal
 {
@@ -69,7 +70,7 @@ namespace ObservableCollections.Internal
         {
             if (array.Length == index)
             {
-                ArrayPool<T>.Shared.Return(array);
+                ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
             }
             array = ArrayPool<T>.Shared.Rent(index * 2);
         }
@@ -78,7 +79,7 @@ namespace ObservableCollections.Internal
         {
             if (array != null)
             {
-                ArrayPool<T>.Shared.Return(array);
+                ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
                 array = null;
             }
         }

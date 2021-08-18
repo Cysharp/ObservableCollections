@@ -346,7 +346,8 @@ namespace ObservableCollections.Internal
                             var value = e.OldItem;
                             var key = keySelector(value);
 
-                            lookup
+                            // TODO:...
+                            // lookup
 
                             //var removeItems = lookup[key];
                             //foreach (var v in removeItems)

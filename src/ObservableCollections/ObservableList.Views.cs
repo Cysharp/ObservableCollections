@@ -11,12 +11,12 @@ namespace ObservableCollections
             return new View<TView>(this, transform, reverse);
         }
 
-        class View<TView> : ISynchronizedView<T, TView>
+        sealed class View<TView> : ISynchronizedView<T, TView>
         {
             readonly ObservableList<T> source;
             readonly Func<T, TView> selector;
             readonly bool reverse;
-            protected readonly List<(T, TView)> list;
+            readonly List<(T, TView)> list;
 
             ISynchronizedViewFilter<T, TView> filter;
 
@@ -111,8 +111,6 @@ namespace ObservableCollections
                     switch (e.Action)
                     {
                         case NotifyCollectionChangedAction.Add:
-                            list.EnsureCapacity(e.NewItems.Length);
-
                             // Add
                             if (e.NewStartingIndex == list.Count)
                             {

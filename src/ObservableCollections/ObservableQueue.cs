@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace ObservableCollections
 {
@@ -129,7 +130,7 @@ namespace ObservableCollections
                 }
                 finally
                 {
-                    ArrayPool<T>.Shared.Return(dest);
+                    ArrayPool<T>.Shared.Return(dest, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
                 }
             }
         }
