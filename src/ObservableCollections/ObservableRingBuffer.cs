@@ -3,54 +3,41 @@
 
     public sealed partial class ObservableRingBuffer<T>
     {
-        // TODO:not yet.
-        readonly T[] buffer;
+        readonly RingBuffer<T> buffer;
 
-        int head;
-        int count;
+        // TODO:SyncRoot
 
-        public ObservableRingBuffer(int capacity)
+        public ObservableRingBuffer()
         {
-            this.buffer = new T[capacity];
+            this.buffer = new RingBuffer<T>();
         }
 
-        public int Count => count;
+        public ObservableRingBuffer(IEnumerable<T> collection)
+        {
+            this.buffer = new RingBuffer<T>(collection);
+        }
+
+        public int Count => buffer.Count;
 
         public T this[int index]
         {
             get
             {
-                var i = (head + index) % buffer.Length;
-                return this.buffer[i];
+                return this.buffer[index];
             }
             set
             {
-
+                this.buffer[index] = value;
             }
         }
 
-        public void AddLast()
-        {
-
-
-            // AddLast
-            // AddFirst
-            //new LinkedList<int>().remo
-            //new Stack<int>().Push
-        }
-
-        public void AddFirst()
+        public void AddLast(T item)
         {
         }
 
-        public void RemoveLast()
+        public void AddLastRange(T[] items)
         {
-        }
 
-        public void RemoveFirst()
-        {
         }
-
-        // GetReverseEnumerable
     }
 }

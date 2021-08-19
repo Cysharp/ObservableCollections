@@ -26,6 +26,27 @@ namespace ObservableCollections
             this.mask = buffer.Length - 1;
         }
 
+        public RingBuffer(IEnumerable<T> collection)
+        {
+            var array = collection.TryGetNonEnumeratedCount(out var count)
+                ? new T[CalculateCapacity(count)]
+                : new T[8];
+            var i = 0;
+            foreach (var item in collection)
+            {
+                if (i == array.Length)
+                {
+                    Array.Resize(ref array, i * 2);
+                }
+                array[i++] = item;
+            }
+
+            this.buffer = array;
+            this.head = 0;
+            this.count = i;
+            this.mask = buffer.Length - 1;
+        }
+
         static int CalculateCapacity(int size)
         {
             size--;
@@ -146,7 +167,12 @@ namespace ObservableCollections
             }
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(GetSpan());
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
             if (count == 0) yield break;
 
@@ -220,17 +246,8 @@ namespace ObservableCollections
 
         public int IndexOf(T item)
         {
-            var span = GetSpan();
             var i = 0;
-            foreach (var v in span.First)
-            {
-                if (EqualityComparer<T>.Default.Equals(item, v))
-                {
-                    return i;
-                }
-                i++;
-            }
-            foreach (var v in span.Second)
+            foreach (var v in this)
             {
                 if (EqualityComparer<T>.Default.Equals(item, v))
                 {
@@ -239,6 +256,17 @@ namespace ObservableCollections
                 i++;
             }
             return -1;
+        }
+
+        public T[] ToArray()
+        {
+            var result = new T[count];
+            var i = 0;
+            foreach (var item in this)
+            {
+                result[i++] = item;
+            }
+            return result;
         }
 
         void IList<T>.Insert(int index, T item)
@@ -258,7 +286,7 @@ namespace ObservableCollections
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator();
+            return ((IEnumerable<T>)this).GetEnumerator();
         }
 
         [DoesNotReturn]
@@ -266,15 +294,65 @@ namespace ObservableCollections
         {
             throw new InvalidOperationException("RingBuffer is empty.");
         }
+
+        public ref struct Enumerator
+        {
+            ReadOnlySpan<T>.Enumerator firstEnumerator;
+            ReadOnlySpan<T>.Enumerator secondEnumerator;
+            bool useFirst;
+
+            public Enumerator(RingBufferSpan<T> span)
+            {
+                this.firstEnumerator = span.First.GetEnumerator();
+                this.secondEnumerator = span.Second.GetEnumerator();
+                this.useFirst = true;
+            }
+
+            public bool MoveNext()
+            {
+                if (useFirst)
+                {
+                    if (firstEnumerator.MoveNext())
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        useFirst = false;
+                    }
+                }
+
+                if (secondEnumerator.MoveNext())
+                {
+                    return true;
+                }
+                return false;
+            }
+
+            public T Current
+            {
+                get
+                {
+                    if (useFirst)
+                    {
+                        return firstEnumerator.Current;
+                    }
+                    else
+                    {
+                        return secondEnumerator.Current;
+                    }
+                }
+            }
+        }
     }
 
     public ref struct RingBufferSpan<T>
     {
-        public readonly Span<T> First;
-        public readonly Span<T> Second;
+        public readonly ReadOnlySpan<T> First;
+        public readonly ReadOnlySpan<T> Second;
         public readonly int Count;
 
-        public RingBufferSpan(Span<T> first, Span<T> second, int count)
+        internal RingBufferSpan(ReadOnlySpan<T> first, ReadOnlySpan<T> second, int count)
         {
             First = first;
             Second = second;

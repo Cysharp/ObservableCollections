@@ -11,7 +11,7 @@ namespace ObservableCollections.Tests
     public class RingBufferTest
     {
         [Fact]
-        public void Foo()
+        public void All()
         {
             var list = new RingBuffer<int>();
 
