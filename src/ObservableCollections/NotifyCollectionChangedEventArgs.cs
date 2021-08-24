@@ -36,6 +36,9 @@ namespace ObservableCollections
         public readonly int NewStartingIndex;
         public readonly int OldStartingIndex;
 
+        // TODO:is this required?
+        // byte distinguishedKey;
+
         public NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction action, bool isSingleItem, T newItem = default!, T oldItem = default!, ReadOnlySpan<T> newItems = default, ReadOnlySpan<T> oldItems = default, int newStartingIndex = -1, int oldStartingIndex = -1)
         {
             Action = action;

@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ObservableCollections
 {
-    public sealed class RingBuffer<T> : IList<T>
+    public sealed class RingBuffer<T> : IList<T>, IReadOnlyList<T>
     {
         T[] buffer;
         int head;
@@ -100,23 +100,27 @@ namespace ObservableCollections
             count++;
         }
 
-        public void RemoveLast()
+        public T RemoveLast()
         {
             if (count == 0) ThrowForEmpty();
 
             var index = (head + count) & mask;
+            var v = buffer[index];
             buffer[index] = default!;
             count--;
+            return v;
         }
 
-        public void RemoveFirst()
+        public T RemoveFirst()
         {
             if (count == 0) ThrowForEmpty();
 
             var index = head & mask;
+            var v = buffer[index];
             buffer[index] = default!;
             head = head + 1;
             count--;
+            return v;
         }
 
         void EnsureCapacity()
