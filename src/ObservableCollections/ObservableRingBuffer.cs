@@ -160,8 +160,27 @@ namespace ObservableCollections
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(value, buffer.Count - 1));
                 }
             }
+        }
 
+        public void AddLastRange(T[] values)
+        {
+            lock (SyncRoot)
+            {
+                if (buffer.Count + values.Length -1 == fixedSize)
+                {
+                    for (int i = 0; i < values.Length; i++)
+                    {
+                        buffer.RemoveFirst(); // removes...
+                    }
+                    for (int i = 0; i < values.Length; i++)
+                    {
+                        buffer.AddLast(values[i]);
+                    }
 
+                    // Remove...
+                }
+
+            }
         }
     }
 }

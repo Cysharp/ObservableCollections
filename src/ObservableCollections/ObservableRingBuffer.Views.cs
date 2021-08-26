@@ -155,43 +155,40 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
-                            if (e.IsSingleItem)
+                            // starting from 0 is RemoveFirst
+                            if (e.OldStartingIndex == 0)
                             {
-                                var v = ringBuffer[e.OldStartingIndex];
-                                ringBuffer.RemoveAt(e.OldStartingIndex);
-                                filter.InvokeOnRemove(v.Item1, v.Item2);
+                                // RemoveFirst
+                                if (e.IsSingleItem)
+                                {
+                                    var v = ringBuffer.RemoveFirst();
+                                    filter.InvokeOnRemove(v);
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < e.OldItems.Length; i++)
+                                    {
+                                        var v = ringBuffer.RemoveFirst();
+                                        filter.InvokeOnRemove(v);
+                                    }
+                                }
                             }
                             else
                             {
-                                var len = e.OldStartingIndex + e.OldItems.Length;
-                                for (int i = e.OldStartingIndex; i < len; i++)
+                                // RemoveLast
+                                if (e.IsSingleItem)
                                 {
-                                    var v = ringBuffer[i];
-                                    filter.InvokeOnRemove(v.Item1, v.Item2);
+                                    var v = ringBuffer.RemoveLast();
+                                    filter.InvokeOnRemove(v);
                                 }
-
-                                ringBuffer.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
-                            }
-                            break;
-                        case NotifyCollectionChangedAction.Replace:
-                            // ObservableList does not support replace range
-                            {
-                                var v = (e.NewItem, selector(e.NewItem));
-
-                                var oldItem = ringBuffer[e.NewStartingIndex];
-                                ringBuffer[e.NewStartingIndex] = v;
-
-                                filter.InvokeOnRemove(oldItem);
-                                filter.InvokeOnAdd(v);
-                                break;
-                            }
-                        case NotifyCollectionChangedAction.Move:
-                            {
-                                var removeItem = ringBuffer[e.OldStartingIndex];
-                                ringBuffer.RemoveAt(e.OldStartingIndex);
-                                ringBuffer.Insert(e.NewStartingIndex, removeItem);
-
-                                filter.InvokeOnMove(removeItem);
+                                else
+                                {
+                                    for (int i = 0; i < e.OldItems.Length; i++)
+                                    {
+                                        var v = ringBuffer.RemoveLast();
+                                        filter.InvokeOnRemove(v);
+                                    }
+                                }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
@@ -204,6 +201,8 @@ namespace ObservableCollections
                             }
                             ringBuffer.Clear();
                             break;
+                        case NotifyCollectionChangedAction.Replace:
+                        case NotifyCollectionChangedAction.Move:
                         default:
                             break;
                     }
