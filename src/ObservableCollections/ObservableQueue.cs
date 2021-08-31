@@ -54,7 +54,7 @@ namespace ObservableCollections
             lock (SyncRoot)
             {
                 var index = queue.Count;
-                using (var xs = new CopyedCollection<T>(items))
+                using (var xs = new CloneCollection<T>(items))
                 {
                     foreach (var item in xs.Span)
                     {

@@ -3,20 +3,31 @@ using System.Collections;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableRingBuffer<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
+    public sealed partial class ObservableFixedSizeRingBuffer<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
     {
         readonly RingBuffer<T> buffer;
+        readonly int capacity;
 
         public event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
 
-        public ObservableRingBuffer()
+        public ObservableFixedSizeRingBuffer(int capacity)
         {
-            this.buffer = new RingBuffer<T>();
+            this.capacity = capacity;
+            this.buffer = new RingBuffer<T>(capacity);
         }
 
-        public ObservableRingBuffer(IEnumerable<T> collection)
+        public ObservableFixedSizeRingBuffer(int capacity, IEnumerable<T> collection)
         {
-            this.buffer = new RingBuffer<T>(collection);
+            this.capacity = capacity;
+            this.buffer = new RingBuffer<T>(capacity);
+            foreach (var item in collection)
+            {
+                if (capacity == buffer.Count)
+                {
+                    buffer.RemoveFirst();
+                }
+                buffer.AddLast(item);
+            }
         }
 
         public bool IsReadOnly => false;
@@ -58,6 +69,12 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
+                if (capacity == buffer.Count)
+                {
+                    buffer.RemoveLast();
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, capacity - 1));
+                }
+
                 buffer.AddFirst(item);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, 0));
             }
@@ -67,6 +84,12 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
+                if (capacity == buffer.Count)
+                {
+                    buffer.RemoveLast();
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, capacity - 1));
+                }
+
                 buffer.AddLast(item);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, buffer.Count - 1));
             }
@@ -177,6 +200,15 @@ namespace ObservableCollections
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        // View
+
+        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false)
+        {
+            // TODO:
+            throw new NotImplementedException();
+            // return new View<TView>(this, transform, reverse);
         }
     }
 }

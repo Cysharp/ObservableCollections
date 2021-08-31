@@ -171,12 +171,7 @@ namespace ObservableCollections
             }
         }
 
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(GetSpan());
-        }
-
-        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        public IEnumerator<T> GetEnumerator()
         {
             if (count == 0) yield break;
 
@@ -251,7 +246,7 @@ namespace ObservableCollections
         public int IndexOf(T item)
         {
             var i = 0;
-            foreach (var v in this)
+            foreach (var v in GetSpan())
             {
                 if (EqualityComparer<T>.Default.Equals(item, v))
                 {
@@ -266,7 +261,7 @@ namespace ObservableCollections
         {
             var result = new T[count];
             var i = 0;
-            foreach (var item in this)
+            foreach (var item in GetSpan())
             {
                 result[i++] = item;
             }
@@ -297,6 +292,25 @@ namespace ObservableCollections
         static void ThrowForEmpty()
         {
             throw new InvalidOperationException("RingBuffer is empty.");
+        }
+    }
+
+    public ref struct RingBufferSpan<T>
+    {
+        public readonly ReadOnlySpan<T> First;
+        public readonly ReadOnlySpan<T> Second;
+        public readonly int Count;
+
+        internal RingBufferSpan(ReadOnlySpan<T> first, ReadOnlySpan<T> second, int count)
+        {
+            First = first;
+            Second = second;
+            Count = count;
+        }
+
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(this);
         }
 
         public ref struct Enumerator
@@ -347,20 +361,6 @@ namespace ObservableCollections
                     }
                 }
             }
-        }
-    }
-
-    public ref struct RingBufferSpan<T>
-    {
-        public readonly ReadOnlySpan<T> First;
-        public readonly ReadOnlySpan<T> Second;
-        public readonly int Count;
-
-        internal RingBufferSpan(ReadOnlySpan<T> first, ReadOnlySpan<T> second, int count)
-        {
-            First = first;
-            Second = second;
-            Count = count;
         }
     }
 }

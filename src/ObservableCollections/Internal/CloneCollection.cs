@@ -1,13 +1,13 @@
-﻿using System;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace ObservableCollections.Internal
 {
-    internal struct CopyedCollection<T> : IDisposable
+    /// <summary>
+    /// ReadOnly cloned collection.
+    /// </summary>
+    internal struct CloneCollection<T> : IDisposable
     {
         T[]? array;
         int length;
@@ -16,13 +16,13 @@ namespace ObservableCollections.Internal
 
         public IEnumerable<T> AsEnumerable() => new EnumerableCollection(array, length);
 
-        public CopyedCollection(T item)
+        public CloneCollection(T item)
         {
             this.array = ArrayPool<T>.Shared.Rent(1);
             this.length = 1;
         }
 
-        public CopyedCollection(IEnumerable<T> source)
+        public CloneCollection(IEnumerable<T> source)
         {
             if (Enumerable.TryGetNonEnumeratedCount(source, out var count))
             {
@@ -58,7 +58,7 @@ namespace ObservableCollections.Internal
             }
         }
 
-        public CopyedCollection(ReadOnlySpan<T> source)
+        public CloneCollection(ReadOnlySpan<T> source)
         {
             var array = ArrayPool<T>.Shared.Rent(source.Length);
             source.CopyTo(array);

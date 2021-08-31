@@ -78,7 +78,7 @@ namespace ObservableCollections
             lock (SyncRoot)
             {
                 var index = list.Count;
-                using (var xs = new CopyedCollection<T>(items))
+                using (var xs = new CloneCollection<T>(items))
                 {
                     // to avoid iterate twice, require copy before insert.
                     list.AddRange(xs.AsEnumerable());
@@ -189,7 +189,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                using (var xs = new CopyedCollection<T>(items))
+                using (var xs = new CloneCollection<T>(items))
                 {
                     list.InsertRange(index, xs.AsEnumerable());
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(xs.Span, index));
@@ -201,7 +201,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                using (var xs = new CopyedCollection<T>(items))
+                using (var xs = new CloneCollection<T>(items))
                 {
                     list.InsertRange(index, xs.AsEnumerable());
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(xs.Span, index));
@@ -245,7 +245,7 @@ namespace ObservableCollections
                 var range = CollectionsMarshal.AsSpan(list).Slice(index, count);
 
                 // require copy before remove
-                using (var xs = new CopyedCollection<T>(range))
+                using (var xs = new CloneCollection<T>(range))
                 {
                     list.RemoveRange(index, count);
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(xs.Span, index));
