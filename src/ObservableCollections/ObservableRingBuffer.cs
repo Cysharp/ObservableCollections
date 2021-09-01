@@ -72,6 +72,27 @@ namespace ObservableCollections
             }
         }
 
+        public T RemoveFirst()
+        {
+            lock (SyncRoot)
+            {
+                var item = buffer.RemoveFirst();
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, 0));
+                return item;
+            }
+        }
+
+        public T RemoveLast()
+        {
+            lock (SyncRoot)
+            {
+                var index = buffer.Count - 1;
+                var item = buffer.RemoveLast();
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, index));
+                return item;
+            }
+        }
+
         // AddFirstRange is not exists.
 
         public void AddLastRange(IEnumerable<T> items)
