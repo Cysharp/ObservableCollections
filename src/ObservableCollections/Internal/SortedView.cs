@@ -145,8 +145,6 @@ namespace ObservableCollections.Internal
                         }
                         break;
                     case NotifyCollectionChangedAction.Replace:
-                        // TODO:Range support
-
                         // ReplaceRange is not supported in all ObservableCollections collections
                         // Replace is remove old item and insert new item.
                         {

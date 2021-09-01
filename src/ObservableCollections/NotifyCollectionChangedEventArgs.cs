@@ -3,14 +3,6 @@ using System.Collections.Specialized;
 
 namespace ObservableCollections
 {
-    // TODO:???
-    //public interface IGroupedSynchronizedView<T, TKey, TView> : ISynchronizedView<T, TView>, IGrouping<TKey, TView>, IDisposable
-    //{
-    //    // void AttachFilter(Func<T, TView> filter);
-    //    // void ResetFilter();
-    //}
-
-
     /// <summary>
     /// Contract:
     ///     IsSingleItem ? (NewItem, OldItem) : (NewItems, OldItems)
@@ -35,9 +27,6 @@ namespace ObservableCollections
         public readonly ReadOnlySpan<T> OldItems;
         public readonly int NewStartingIndex;
         public readonly int OldStartingIndex;
-
-        // TODO:is this required?
-        // byte distinguishedKey;
 
         public NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction action, bool isSingleItem, T newItem = default!, T oldItem = default!, ReadOnlySpan<T> newItems = default, ReadOnlySpan<T> oldItems = default, int newStartingIndex = -1, int oldStartingIndex = -1)
         {

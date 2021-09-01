@@ -1,6 +1,4 @@
 ﻿using ObservableCollections.Internal;
-using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 
@@ -39,9 +37,10 @@ namespace ObservableCollections
         void Sort(IComparer<TView> viewComparer);
     }
 
-    public interface IGroupedSynchoronizedView<T, TKey, TView> : ILookup<TKey, (T, TView)>, ISynchronizedView<T, TView>
-    {
-    }
+    // will be implemented in the future?
+    //public interface IGroupedSynchoronizedView<T, TKey, TView> : ILookup<TKey, (T, TView)>, ISynchronizedView<T, TView>
+    //{
+    //}
 
     public interface INotifyCollectionChangedSynchronizedView<T, TView> : ISynchronizedView<T, TView>, INotifyCollectionChanged, INotifyPropertyChanged
     {
