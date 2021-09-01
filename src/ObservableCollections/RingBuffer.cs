@@ -104,7 +104,7 @@ namespace ObservableCollections
         {
             if (count == 0) ThrowForEmpty();
 
-            var index = (head + count) & mask;
+            var index = (head + count - 1) & mask;
             var v = buffer[index];
             buffer[index] = default!;
             count--;

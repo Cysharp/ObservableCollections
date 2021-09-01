@@ -23,13 +23,13 @@ namespace ObservableCollections.Tests
             list.AddLast(5); list.Should().Equal(1, 2, 3, 4, 5);
             list.AddLast(6); list.Should().Equal(1, 2, 3, 4, 5, 6);
 
-            list.RemoveLast();
-            list.RemoveLast();
+            list.RemoveLast().Should().Be(6);
+            list.RemoveLast().Should().Be(5);
             list.Should().Equal(1, 2, 3, 4);
             list.Reverse().Should().Equal(4, 3, 2, 1);
 
-            list.RemoveFirst();
-            list.RemoveFirst();
+            list.RemoveFirst().Should().Be(1);
+            list.RemoveFirst().Should().Be(2);
             list.Should().Equal(3, 4);
 
             list.AddFirst(99);
@@ -70,12 +70,12 @@ namespace ObservableCollections.Tests
             list.Should().Equal(6, 5, 4, 3, 2, 1);
             list.Reverse().Should().Equal(1, 2, 3, 4, 5, 6);
 
-            list.RemoveLast();
-            list.RemoveLast();
+            list.RemoveLast().Should().Be(1);
+            list.RemoveLast().Should().Be(2);
             list.Should().Equal(6, 5, 4, 3);
 
-            list.RemoveFirst();
-            list.RemoveFirst();
+            list.RemoveFirst().Should().Be(6);
+            list.RemoveFirst().Should().Be(5);
             list.Should().Equal(4, 3);
 
             list.AddFirst(99);

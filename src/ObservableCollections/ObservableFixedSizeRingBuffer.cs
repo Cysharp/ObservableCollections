@@ -86,8 +86,8 @@ namespace ObservableCollections
             {
                 if (capacity == buffer.Count)
                 {
-                    var remItem = buffer.RemoveLast();
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(remItem, capacity - 1));
+                    var remItem = buffer.RemoveFirst();
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(remItem, 0));
                 }
 
                 buffer.AddLast(item);
@@ -124,10 +124,10 @@ namespace ObservableCollections
             {
                 using (var xs = new CloneCollection<T>(items))
                 {
-                    if (capacity >= buffer.Count + xs.Span.Length - 1)
+                    if (capacity <= buffer.Count + xs.Span.Length)
                     {
                         // calc remove count
-                        var remCount = Math.Min(capacity, buffer.Count + xs.Span.Length - 1 - capacity);
+                        var remCount = Math.Min(buffer.Count, buffer.Count + xs.Span.Length - capacity);
                         using (var ys = new ResizableArray<T>(remCount))
                         {
                             for (int i = 0; i < remCount; i++)
@@ -159,12 +159,33 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
+                if (capacity <= buffer.Count + items.Length)
+                {
+                    // calc remove count
+                    var remCount = Math.Min(buffer.Count, buffer.Count + items.Length - capacity);
+                    using (var ys = new ResizableArray<T>(remCount))
+                    {
+                        for (int i = 0; i < remCount; i++)
+                        {
+                            ys.Add(buffer.RemoveFirst());
+                        }
+
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(ys.Span, 0));
+                    }
+                }
+
                 var index = buffer.Count;
-                foreach (var item in items)
+                var span = items.AsSpan();
+                if (span.Length > capacity)
+                {
+                    span = span.Slice(span.Length - capacity);
+                }
+
+                foreach (var item in span)
                 {
                     buffer.AddLast(item);
                 }
-                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(items, index));
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(span, index));
             }
         }
 
@@ -172,33 +193,33 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                    if (capacity >= buffer.Count + xs.Span.Length - 1)
+                if (capacity <= buffer.Count + items.Length)
+                {
+                    // calc remove count
+                    var remCount = Math.Min(buffer.Count, buffer.Count + items.Length - capacity);
+                    using (var ys = new ResizableArray<T>(remCount))
                     {
-                        // calc remove count
-                        var remCount = Math.Min(capacity, buffer.Count + xs.Span.Length - 1 - capacity);
-                        using (var ys = new ResizableArray<T>(remCount))
+                        for (int i = 0; i < remCount; i++)
                         {
-                            for (int i = 0; i < remCount; i++)
-                            {
-                                ys.Add(buffer.RemoveFirst());
-                            }
-
-                            CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(ys.Span, 0));
+                            ys.Add(buffer.RemoveFirst());
                         }
-                    }
 
-                    var index = buffer.Count;
-                    var span = xs.Span;
-                    if (span.Length > capacity)
-                    {
-                        span = span.Slice(span.Length - capacity);
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(ys.Span, 0));
                     }
+                }
 
-                    foreach (var item in span)
-                    {
-                        buffer.AddLast(item);
-                    }
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(span, index));
+                var index = buffer.Count;
+                var span = items;
+                if (span.Length > capacity)
+                {
+                    span = span.Slice(span.Length - capacity);
+                }
+
+                foreach (var item in span)
+                {
+                    buffer.AddLast(item);
+                }
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(span, index));
             }
         }
 
@@ -265,13 +286,9 @@ namespace ObservableCollections
             return GetEnumerator();
         }
 
-        // View
-
         public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false)
         {
-            // TODO:
-            throw new NotImplementedException();
-            // return new View<TView>(this, transform, reverse);
+            return new ObservableRingBuffer<T>.View<TView>(this, transform, reverse);
         }
     }
 }

@@ -11,9 +11,10 @@ namespace ObservableCollections
             return new View<TView>(this, transform, reverse);
         }
 
-        sealed class View<TView> : ISynchronizedView<T, TView>
+        // used with ObservableFixedSizeRingBuffer
+        internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
-            readonly ObservableRingBuffer<T> source;
+            readonly IObservableCollection<T> source;
             readonly Func<T, TView> selector;
             readonly bool reverse;
             readonly RingBuffer<(T, TView)> ringBuffer;
@@ -25,7 +26,7 @@ namespace ObservableCollections
 
             public object SyncRoot { get; }
 
-            public View(ObservableRingBuffer<T> source, Func<T, TView> selector, bool reverse)
+            public View(IObservableCollection<T> source, Func<T, TView> selector, bool reverse)
             {
                 this.source = source;
                 this.selector = selector;
@@ -34,7 +35,7 @@ namespace ObservableCollections
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
-                    this.ringBuffer = new RingBuffer<(T, TView)>(source.buffer.Select(x => (x, selector(x))));
+                    this.ringBuffer = new RingBuffer<(T, TView)>(source.Select(x => (x, selector(x))));
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
             }
@@ -202,6 +203,17 @@ namespace ObservableCollections
                             ringBuffer.Clear();
                             break;
                         case NotifyCollectionChangedAction.Replace:
+                            // range is not supported
+                            {
+                                var v = (e.NewItem, selector(e.NewItem));
+
+                                var oldItem = ringBuffer[e.NewStartingIndex];
+                                ringBuffer[e.NewStartingIndex] = v;
+
+                                filter.InvokeOnRemove(oldItem);
+                                filter.InvokeOnAdd(v);
+                                break;
+                            }
                         case NotifyCollectionChangedAction.Move:
                         default:
                             break;
