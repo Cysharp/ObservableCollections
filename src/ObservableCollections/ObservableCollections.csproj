@@ -24,5 +24,4 @@
         <!-- After copy, replace for unity codes -->
         <Exec Command="dotnet run -c $(ConfigurationName) --project $(MSBuildProjectDirectory)\..\..\tools\PostBuildUtility\PostBuildUtility.csproj -- replace-to-unity $(DestinationRoot)" />
     </Target>
-
 </Project>
