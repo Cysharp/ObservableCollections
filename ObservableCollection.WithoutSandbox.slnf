@@ -1,0 +1,10 @@
+{
+  "solution": {
+    "path": "ObservableCollections.sln",
+    "projects": [
+      "src\\ObservableCollections\\ObservableCollections.csproj",
+      "tests\\ObservableCollections.Tests\\ObservableCollections.Tests.csproj",
+      "tools\\PostBuildUtility\\PostBuildUtility.csproj"
+    ]
+  }
+}

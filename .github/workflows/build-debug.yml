@@ -25,8 +25,8 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
           include-prerelease: ${{ env.DOTNET_INCLUDE_PRERELEASE }}
-      - run: dotnet build -c Debug
-      - run: dotnet test -c Debug --no-build < /dev/null
+      - run: dotnet build ObservableCollection.WithoutSandbox.slnf -c Debug
+      - run: dotnet test ObservableCollection.WithoutSandbox.slnf -c Debug --no-build < /dev/null
 
   build-unity:
     if: "((github.event_name == 'push' && github.repository_owner == 'Cysharp') || startsWith(github.event.pull_request.head.label, 'Cysharp:'))"
