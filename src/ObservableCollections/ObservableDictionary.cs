@@ -20,7 +20,15 @@ namespace ObservableCollections
 
         public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection)
         {
+#if NET6_0_OR_GREATER
             this.dictionary = new Dictionary<TKey, TValue>(collection);
+#else
+            this.dictionary = new Dictionary<TKey, TValue>();
+            foreach (var item in collection)
+            {
+                dictionary.Add(item.Key, item.Value);
+            }
+#endif
         }
 
         public event NotifyCollectionChangedEventHandler<KeyValuePair<TKey, TValue>>? CollectionChanged;
@@ -191,7 +199,9 @@ namespace ObservableCollections
             }
         }
 
+#pragma warning disable CS8767
         public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+#pragma warning restore CS8767
         {
             lock (SyncRoot)
             {

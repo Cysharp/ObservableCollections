@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ObservableCollections
@@ -147,7 +149,7 @@ namespace ObservableCollections
 
         public void Clear()
         {
-            Array.Clear(buffer);
+            Array.Clear(buffer, 0, buffer.Length);
             head = 0;
             count = 0;
         }

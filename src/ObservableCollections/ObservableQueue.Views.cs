@@ -1,6 +1,9 @@
 ﻿using ObservableCollections.Internal;
 using System.Collections;
 using System.Collections.Specialized;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ObservableCollections
 {
@@ -120,7 +123,6 @@ namespace ObservableCollections
                             }
                             else
                             {
-                                queue.EnsureCapacity(e.NewItems.Length);
                                 foreach (var item in e.NewItems)
                                 {
                                     var v = (item, selector(item));

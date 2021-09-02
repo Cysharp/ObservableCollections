@@ -1,5 +1,7 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace ObservableCollections.Internal
@@ -24,7 +26,7 @@ namespace ObservableCollections.Internal
 
         public CloneCollection(IEnumerable<T> source)
         {
-            if (Enumerable.TryGetNonEnumeratedCount(source, out var count))
+            if (source.TryGetNonEnumeratedCount(out var count))
             {
                 var array = ArrayPool<T>.Shared.Rent(count);
 
@@ -70,7 +72,7 @@ namespace ObservableCollections.Internal
         {
             if (array.Length == index)
             {
-                ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+                ArrayPool<T>.Shared.Return(array, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
             }
             array = ArrayPool<T>.Shared.Rent(index * 2);
         }
@@ -79,7 +81,7 @@ namespace ObservableCollections.Internal
         {
             if (array != null)
             {
-                ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+                ArrayPool<T>.Shared.Return(array, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
                 array = null;
             }
         }

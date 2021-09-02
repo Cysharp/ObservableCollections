@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -32,7 +33,7 @@ namespace ObservableCollections.Internal
         void EnsureCapacity()
         {
             var newArray = array.AsSpan().ToArray();
-            ArrayPool<T>.Shared.Return(array!, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+            ArrayPool<T>.Shared.Return(array!, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
             array = newArray;
         }
 
@@ -40,7 +41,7 @@ namespace ObservableCollections.Internal
         {
             if (array != null)
             {
-                ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+                ArrayPool<T>.Shared.Return(array, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
                 array = null;
             }
         }

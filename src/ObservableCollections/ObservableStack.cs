@@ -1,6 +1,8 @@
 ﻿using ObservableCollections.Internal;
+using System;
 using System.Buffers;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -102,11 +104,14 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                if (stack.TryPop(out result))
+                if (stack.Count != 0)
                 {
+                    result = stack.Pop();
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(result, 0));
                     return true;
                 }
+
+                result = default;
                 return false;
             }
         }
@@ -127,7 +132,7 @@ namespace ObservableCollections
                 }
                 finally
                 {
-                    ArrayPool<T>.Shared.Return(dest, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+                    ArrayPool<T>.Shared.Return(dest, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
                 }
             }
         }
@@ -166,7 +171,13 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                return stack.TryPeek(out result);
+                if (stack.Count != 0)
+                {
+                    result = stack.Peek();
+                    return true;
+                }
+                result = default;
+                return false;
             }
         }
 
@@ -183,14 +194,6 @@ namespace ObservableCollections
             lock (SyncRoot)
             {
                 stack.TrimExcess();
-            }
-        }
-
-        public void EnsureCapacity(int capacity)
-        {
-            lock (SyncRoot)
-            {
-                stack.EnsureCapacity(capacity);
             }
         }
 

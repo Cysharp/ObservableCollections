@@ -102,7 +102,6 @@ namespace ObservableCollections
             lock (SyncRoot)
             {
                 var index = list.Count;
-                list.EnsureCapacity(items.Length);
                 foreach (var item in items)
                 {
                     list.Add(item);
@@ -242,7 +241,11 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
+#if NET5_0_OR_GREATER
                 var range = CollectionsMarshal.AsSpan(list).Slice(index, count);
+#else
+                var range = list.GetRange(index, count);
+#endif
 
                 // require copy before remove
                 using (var xs = new CloneCollection<T>(range))

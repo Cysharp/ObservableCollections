@@ -3,6 +3,10 @@ using System.Buffers;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
 
 namespace ObservableCollections
 {
@@ -105,11 +109,13 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                if (queue.TryDequeue(out result))
+                if (queue.Count != 0)
                 {
+                    result = queue.Dequeue();
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(result, 0));
                     return true;
                 }
+                result = default;
                 return false;
             }
         }
@@ -130,7 +136,7 @@ namespace ObservableCollections
                 }
                 finally
                 {
-                    ArrayPool<T>.Shared.Return(dest, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+                    ArrayPool<T>.Shared.Return(dest, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
                 }
             }
         }
@@ -169,7 +175,13 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                return queue.TryPeek(out result);
+                if (queue.Count != 0)
+                {
+                    result = queue.Peek();
+                    return true;
+                }
+                result = default;
+                return false;
             }
         }
 
@@ -186,14 +198,6 @@ namespace ObservableCollections
             lock (SyncRoot)
             {
                 queue.TrimExcess();
-            }
-        }
-
-        public void EnsureCapacity(int capacity)
-        {
-            lock (SyncRoot)
-            {
-                queue.EnsureCapacity(capacity);
             }
         }
 

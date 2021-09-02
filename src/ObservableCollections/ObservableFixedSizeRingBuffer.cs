@@ -1,5 +1,7 @@
 ﻿using ObservableCollections.Internal;
+using System;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace ObservableCollections
 {

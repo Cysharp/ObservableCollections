@@ -1,5 +1,7 @@
 ﻿using ObservableCollections.Internal;
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ObservableCollections
@@ -16,10 +18,14 @@ namespace ObservableCollections
             this.set = new HashSet<T>();
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+
         public ObservableHashSet(int capacity)
         {
             this.set = new HashSet<T>(capacity);
         }
+
+#endif
 
         public ObservableHashSet(IEnumerable<T> collection)
         {
@@ -174,10 +180,14 @@ namespace ObservableCollections
             }
         }
 
+#if !NETSTANDARD2_0
+
         public bool TryGetValue(T equalValue, [MaybeNullWhen(false)] out T actualValue)
         {
             return set.TryGetValue(equalValue, out actualValue);
         }
+
+#endif
 
         public bool Contains(T item)
         {

@@ -1,7 +1,12 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+<button @onclick=OnClick>button</button>
 
-Welcome to your new app.
-
-<SurveyPrompt Title="How is Blazor working for you?" />
+<table>
+	@foreach (var item in ItemsView)
+	{
+		<tr>
+			<td>@item</td>
+		</tr>
+	}
+</table>

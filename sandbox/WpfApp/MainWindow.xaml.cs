@@ -30,7 +30,7 @@ namespace WpfApp
             InitializeComponent();
             this.DataContext = this;
 
-
+            
 
 
             list = new ObservableList<int>();
