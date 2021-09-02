@@ -10,6 +10,7 @@
         <PackageReference Include="System.Memory" Version="4.5.4" />
     </ItemGroup>
 
+    <!-- PostBuild copy should run only once so use Condition. -->
     <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="$(TargetFramework) == 'netstandard2.0'">
         <PropertyGroup>
             <DestinationRoot>$(MSBuildProjectDirectory)\..\ObservableCollections.Unity\Assets\Plugins\ObservableCollections\Runtime\</DestinationRoot>
