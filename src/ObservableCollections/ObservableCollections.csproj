@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFrameworks>netstandard2.0;netstandard2.1;net5.0;net6.0</TargetFrameworks>
@@ -18,8 +18,8 @@
             <CopySource Include="$(MSBuildProjectDirectory)\**\*.cs" Exclude="**\bin\**\*.*;**\obj\**\*.*;_InternalVisibleTo.cs" />
         </ItemGroup>
 
-        <Copy SourceFiles="@(CopySource)" DestinationFiles="$(DestinationRoot)\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" UseHardlinksIfPossible="true" />
-
+        <Copy SourceFiles="@(CopySource)" DestinationFiles="$(DestinationRoot)\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" UseHardlinksIfPossible="false" />
+        
         <!-- After copy, replace for unity codes -->
         <Exec Command="dotnet run -c $(ConfigurationName) --project $(MSBuildProjectDirectory)\..\..\tools\PostBuildUtility\PostBuildUtility.csproj -- replace-to-unity $(DestinationRoot)" />
     </Target>

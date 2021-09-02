@@ -52,6 +52,7 @@ namespace PostBuildUtility
 
                 if (text != original)
                 {
+                    Console.WriteLine("Replace Output:" + path);
                     File.WriteAllText(path, text, noBomUtf8);
                 }
             }

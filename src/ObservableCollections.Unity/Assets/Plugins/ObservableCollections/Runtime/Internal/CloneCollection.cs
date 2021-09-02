@@ -82,7 +82,7 @@ namespace ObservableCollections.Internal
             if (array != null)
             {
                 ArrayPool<T>.Shared.Return(array, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
-                array = null!;
+                array = null;
             }
         }
 
