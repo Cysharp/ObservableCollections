@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NET_STANDARD_2_0 || NET_4_6
 
 namespace System.Diagnostics.CodeAnalysis
 {

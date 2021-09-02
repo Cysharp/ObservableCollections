@@ -1,4 +1,4 @@
-﻿using ObservableCollections.Internal;
+using ObservableCollections.Internal;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -180,7 +180,7 @@ namespace ObservableCollections
             }
         }
 
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET_STANDARD_2_0 && !NET_4_6
 
         public bool TryGetValue(T equalValue, [MaybeNullWhen(false)] out T actualValue)
         {

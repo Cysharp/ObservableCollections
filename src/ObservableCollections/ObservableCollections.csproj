@@ -10,4 +10,18 @@
         <PackageReference Include="System.Memory" Version="4.5.4" />
     </ItemGroup>
 
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="$(TargetFramework) == 'netstandard2.0'">
+        <PropertyGroup>
+            <DestinationRoot>$(MSBuildProjectDirectory)\..\ObservableCollections.Unity\Assets\Plugins\ObservableCollections\Runtime\</DestinationRoot>
+        </PropertyGroup>
+        <ItemGroup>
+            <CopySource Include="$(MSBuildProjectDirectory)\**\*.cs" Exclude="**\bin\**\*.*;**\obj\**\*.*;_InternalVisibleTo.cs" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(CopySource)" DestinationFiles="$(DestinationRoot)\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" UseHardlinksIfPossible="true" />
+
+        <!-- After copy, replace for unity codes -->
+        <Exec Command="dotnet run -c $(ConfigurationName) --project $(MSBuildProjectDirectory)\..\..\tools\PostBuildUtility\PostBuildUtility.csproj -- replace-to-unity $(DestinationRoot)" />
+    </Target>
+
 </Project>

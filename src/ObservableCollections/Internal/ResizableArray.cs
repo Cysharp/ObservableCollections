@@ -5,7 +5,8 @@ using System.Runtime.CompilerServices;
 
 namespace ObservableCollections.Internal
 {
-    internal ref struct ResizableArray<T>
+    // internal ref struct ResizableArray<T>
+    internal struct ResizableArray<T> : IDisposable
     {
         T[]? array;
         int count;
