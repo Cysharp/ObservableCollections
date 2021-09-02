@@ -117,29 +117,11 @@ nuget/*.unitypackage
 
 # Unity
 
-src/MessagePipe.Unity/Library/*
-src/MessagePipe.Unity/Temp/*
-src/MessagePipe.Unity/Logs/*
-src/MessagePipe.Unity/Assembly-CSharp.csproj
-
-src/MessagePipe.Unity/MessagePipe.csproj
-
-src/MessagePipe.Unity/MessagePipe.Unity.sln
-
-src/MessagePipe.Unity/MessagePipe.VContainer.csproj
-
-src/MessagePipe.Unity/RuntimeUnitTestToolkit.csproj
-
-src/MessagePipe.Unity/Tests.csproj
-
-src/MessagePipe.Unity/Assembly-CSharp-firstpass.csproj
-
-src/MessagePipe.Unity/MessagePipe.Zenject.csproj
-
-src/MessagePipe.Unity/Assembly-CSharp-Editor.csproj
-
-src/MessagePipe.Unity/Zenject-Editor.csproj
-
-src/MessagePipe.Unity/Zenject.csproj
-
-src/MessagePipe.Unity/MessagePipe.Editor.csproj
+src/ObservableCollections.Unity/Library/*
+src/ObservableCollections.Unity/Temp/*
+src/ObservableCollections.Unity/Logs/*
+src/ObservableCollections.Unity/Assembly-CSharp.csproj
+src/ObservableCollections.Unity/ObservableCollections.csproj
+src/ObservableCollections.Unity/ObservableCollections.Unity.sln
+src/ObservableCollections.Unity/Assembly-CSharp-firstpass.csproj
+src/ObservableCollections.Unity/Assembly-CSharp-Editor.csproj
