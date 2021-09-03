@@ -20,7 +20,7 @@ jobs:
   update-packagejson:
     runs-on: ubuntu-latest
     env:
-      TARGET_FILE: ./src/ObservableCollections/Assets/Plugins/ObservableCollections/package.json
+      TARGET_FILE: ./src/ObservableCollections.Unity/Assets/Plugins/ObservableCollections/package.json
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     steps:
@@ -122,7 +122,7 @@ jobs:
         env:
           UNITY_LICENSE: ${{ secrets[matrix.license] }}
         with:
-          projectPath: src/ObservableCollections
+          projectPath: src/ObservableCollections.Unity
           unityVersion: ${{ matrix.unity }}
           targetPlatform: StandaloneLinux64
           buildMethod: PackageExporter.Export
@@ -136,13 +136,13 @@ jobs:
           else
             echo "Great, all .meta files are commited."
           fi
-        working-directory: src/ObservableCollections
+        working-directory: src/ObservableCollections.Unity
 
       # Store artifacts.
       - uses: actions/upload-artifact@v2
         with:
           name: ObservableCollections.${{ env.GIT_TAG }}.unitypackage
-          path: ./src/ObservableCollections/ObservableCollections.${{ env.GIT_TAG }}.unitypackage
+          path: ./src/ObservableCollections.Unity/ObservableCollections.${{ env.GIT_TAG }}.unitypackage
 
   create-release:
     if: github.event.inputs.dry_run == 'false'
