@@ -50,5 +50,10 @@ namespace WpfApp
                 list.Add(adder++);
             });
         }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            ItemsView.Dispose();
+        }
     }
 }
