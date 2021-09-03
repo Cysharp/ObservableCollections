@@ -54,10 +54,30 @@ PM> Install-Package [ObservableCollections](https://www.nuget.org/packages/Obser
 
 create new `ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`.
 
+```csharp
+// Blazor simple sample.
+public partial class Index : IDisposable
+{
+    ObservableList<int> list;
+    public ISynchronizedView<int, int> ItemsView { get; set; }
 
+    protected override void OnInitialized()
+    {
+        list = new ObservableList<int>();
+        ItemsView = list.CreateView(x => x);
 
+        ItemsView.CollectionStateChanged += action =>
+        {
+            InvokeAsync(StateHasChanged);
+        };
+    }
 
-
+    public void Dispose()
+    {
+        ItemsView.Dispose();
+    }
+}
+```
 
 ```csharp
 // WPF simple sample.
@@ -71,7 +91,6 @@ public MainWindow()
     this.DataContext = this;
 
     list = new ObservableList<int>();
-    list.AddRange(new[] { 1, 10, 188 });
     ItemsView = list.CreateSortedView(x => x, x => x, comparer: Comparer<int>.Default).WithINotifyCollectionChanged();
 
     BindingOperations.EnableCollectionSynchronization(ItemsView, new object()); // for ui synchronization safety of viewmodel
@@ -83,15 +102,82 @@ protected override void OnClosed(EventArgs e)
 }
 ```
 
+```csharp
+// Unity, with filter sample.
+
+public class SampleScript : MonoBehaviour
+{
+    public Button prefab;
+    public GameObject root;
+    ObservableRingBuffer<int> collection;
+    ISynchronizedView<GameObject> view;
+
+    void Start()
+    {
+        collection = new ObservableRingBuffer<int>();
+        view = collection.CreateView(x =>
+        {
+            var item = GameObject.Instantiate(prefab);
+            item.GetComponentInChildren<Text>().text = x.ToString();
+            return item.gameObject;
+        });
+        view.AttachFilter(new GameObjectFilter(root));
+    }
+
+    void OnDestroy()
+    {
+        view.Dispose();
+    }
+
+    public class GameObjectFilter : ISynchronizedViewFilter<int, GameObject>
+    {
+        readonly GameObject root;
+
+        public GameObjectFilter(GameObject root)
+        {
+            this.root = root;
+        }
+
+        public void OnCollectionChanged(ChangedKind changedKind, int value, GameObject view)
+        {
+            if (changedKind == ChangedKind.Add)
+            {
+                view.transform.SetParent(root.transform);
+            }
+            else if (changedKind == ChangedKind.Remove)
+            {
+                GameObject.Destroy(view);
+            }
+        }
+
+        public bool IsMatch(int value, GameObject view)
+        {
+            return value % 2 == 0;
+        }
+
+        public void WhenTrue(int value, GameObject view)
+        {
+            view.SetActive(true);
+        }
+
+        public void WhenFalse(int value, GameObject view)
+        {
+            view.SetActive(false);
+        }
+    }
+}
+```
+
 TODO: write more usage...
 
 View/SoretedView
 ---
 
+Filter
+---
 
 Collections
 ---
-
 
 Unity
 ---
