@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ObservableCollections;
+using System;
 
 namespace ConsoleApp
 {
@@ -6,7 +7,8 @@ namespace ConsoleApp
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+
+
         }
     }
 }

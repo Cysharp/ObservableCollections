@@ -22,6 +22,7 @@ namespace ObservableCollections.Internal
         {
             this.array = ArrayPool<T>.Shared.Rent(1);
             this.length = 1;
+            this.array[0] = item;
         }
 
         public CloneCollection(IEnumerable<T> source)
