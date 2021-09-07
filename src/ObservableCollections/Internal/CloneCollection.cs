@@ -114,7 +114,7 @@ namespace ObservableCollections.Internal
             public void Add(T item) => throw new NotSupportedException();
             public void Clear() => throw new NotSupportedException();
             public bool Contains(T item) => throw new NotSupportedException();
-            public void CopyTo(T[] dest, int destIndex) => array.CopyTo(dest, destIndex);
+            public void CopyTo(T[] dest, int destIndex) =>  Array.Copy(array, 0, dest, destIndex, count);
 
             public IEnumerator<T> GetEnumerator()
             {

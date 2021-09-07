@@ -22,6 +22,7 @@ namespace ObservableCollections.Internal
         {
             this.array = ArrayPool<T>.Shared.Rent(1);
             this.length = 1;
+            this.array[0] = item;
         }
 
         public CloneCollection(IEnumerable<T> source)
@@ -113,7 +114,7 @@ namespace ObservableCollections.Internal
             public void Add(T item) => throw new NotSupportedException();
             public void Clear() => throw new NotSupportedException();
             public bool Contains(T item) => throw new NotSupportedException();
-            public void CopyTo(T[] dest, int destIndex) => array.CopyTo(dest, destIndex);
+            public void CopyTo(T[] dest, int destIndex) =>  Array.Copy(array, 0, dest, destIndex, count);
 
             public IEnumerator<T> GetEnumerator()
             {
