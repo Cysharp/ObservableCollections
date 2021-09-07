@@ -179,6 +179,9 @@ Filter
 Collections
 ---
 
+Freezed
+---
+
 Unity
 ---
 
