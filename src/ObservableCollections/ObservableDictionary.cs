@@ -211,7 +211,13 @@ namespace ObservableCollections
 
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
         {
-            return new SynchronizedEnumerator<KeyValuePair<TKey, TValue>>(SyncRoot, dictionary.GetEnumerator());
+            lock (SyncRoot)
+            {
+                foreach (var item in dictionary)
+                {
+                    yield return item;
+                }
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()

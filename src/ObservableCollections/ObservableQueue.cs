@@ -203,7 +203,13 @@ namespace ObservableCollections
 
         public IEnumerator<T> GetEnumerator()
         {
-            return new SynchronizedEnumerator<T>(SyncRoot, queue.GetEnumerator());
+            lock (SyncRoot)
+            {
+                foreach (var item in queue)
+                {
+                    yield return item;
+                }
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()

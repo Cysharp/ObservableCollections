@@ -195,7 +195,13 @@ namespace ObservableCollections
 
         public IEnumerator<T> GetEnumerator()
         {
-            return new SynchronizedEnumerator<T>(SyncRoot, buffer.GetEnumerator());
+            lock (SyncRoot)
+            {
+                foreach (var item in buffer)
+                {
+                    yield return item;
+                }
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
