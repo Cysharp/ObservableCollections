@@ -67,13 +67,28 @@ namespace ObservableCollections.Internal
 
         public IEnumerator<(T, TView)> GetEnumerator()
         {
-            if (!reverse)
+            lock (SyncRoot)
             {
-                return new SynchronizedViewEnumerator<T, TView>(SyncRoot, list.GetEnumerator(), filter);
-            }
-            else
-            {
-                return new SynchronizedViewEnumerator<T, TView>(SyncRoot, list.AsEnumerable().Reverse().GetEnumerator(), filter);
+                if (!reverse)
+                {
+                    foreach (var item in list)
+                    {
+                        if (filter.IsMatch(item.Item1, item.Item2))
+                        {
+                            yield return item;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var item in list.AsEnumerable().Reverse())
+                    {
+                        if (filter.IsMatch(item.Item1, item.Item2))
+                        {
+                            yield return item;
+                        }
+                    }
+                }
             }
         }
 
@@ -147,7 +162,16 @@ namespace ObservableCollections.Internal
 
         public IEnumerator<(T, TView)> GetEnumerator()
         {
-            return new SynchronizedViewEnumerator<T, TView>(SyncRoot, array.AsEnumerable().GetEnumerator(), filter);
+            lock (SyncRoot)
+            {
+                foreach (var item in array)
+                {
+                    if (filter.IsMatch(item.Item1, item.Item2))
+                    {
+                        yield return item;
+                    }
+                }
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

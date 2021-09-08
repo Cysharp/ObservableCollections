@@ -90,13 +90,28 @@ namespace ObservableCollections
 
             public IEnumerator<(T, TView)> GetEnumerator()
             {
-                if (!reverse)
+                lock (SyncRoot)
                 {
-                    return new SynchronizedViewEnumerator<T, TView>(SyncRoot, list.GetEnumerator(), filter);
-                }
-                else
-                {
-                    return new SynchronizedViewEnumerator<T, TView>(SyncRoot, list.AsEnumerable().Reverse().GetEnumerator(), filter);
+                    if (!reverse)
+                    {
+                        foreach (var item in list)
+                        {
+                            if (filter.IsMatch(item.Item1, item.Item2))
+                            {
+                                yield return item;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (var item in list.AsEnumerable().Reverse())
+                        {
+                            if (filter.IsMatch(item.Item1, item.Item2))
+                            {
+                                yield return item;
+                            }
+                        }
+                    }
                 }
             }
 

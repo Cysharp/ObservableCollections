@@ -88,7 +88,16 @@ namespace ObservableCollections
 
             public IEnumerator<(T, TView)> GetEnumerator()
             {
-                return new SynchronizedViewEnumerator<T, TView>(SyncRoot, dict.Select(x => x.Value).GetEnumerator(), filter);
+                lock (SyncRoot)
+                {
+                    foreach (var item in dict)
+                    {
+                        if (filter.IsMatch(item.Value.Item1, item.Value.Item2))
+                        {
+                            yield return item.Value;
+                        }
+                    }
+                }
             }
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

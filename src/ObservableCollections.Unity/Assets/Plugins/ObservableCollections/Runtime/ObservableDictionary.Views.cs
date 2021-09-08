@@ -103,9 +103,17 @@ namespace ObservableCollections
 
             public IEnumerator<(KeyValuePair<TKey, TValue>, TView)> GetEnumerator()
             {
-                return new SynchronizedViewEnumerator<KeyValuePair<TKey, TValue>, TView>(SyncRoot,
-                    dict.Select(x => (new KeyValuePair<TKey, TValue>(x.Key, x.Value.Item1), x.Value.Item2)).GetEnumerator(),
-                    filter);
+                lock (SyncRoot)
+                {
+                    foreach (var item in dict)
+                    {
+                        var v = (new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2);
+                        if (filter.IsMatch(v.Item1, v.Item2))
+                        {
+                            yield return v;
+                        }
+                    }
+                }
             }
 
             IEnumerator IEnumerable.GetEnumerator()

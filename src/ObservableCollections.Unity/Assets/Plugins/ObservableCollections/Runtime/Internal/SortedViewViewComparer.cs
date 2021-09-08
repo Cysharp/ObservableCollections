@@ -13,7 +13,7 @@ namespace ObservableCollections.Internal
         readonly Func<T, TView> transform;
         readonly Func<T, TKey> identitySelector;
         readonly Dictionary<TKey, TView> viewMap; // view-map needs to use in remove.
-        readonly SortedDictionary<(TView View, TKey Key), (T Value, TView View)> list;
+        readonly SortedDictionary<(TView View, TKey Key), (T Value, TView View)> dict;
 
         ISynchronizedViewFilter<T, TView> filter;
 
@@ -39,7 +39,7 @@ namespace ObservableCollections.Internal
                     dict.Add((view, id), (value, view));
                     viewMap.Add(id, view);
                 }
-                this.list = dict;
+                this.dict = dict;
                 this.source.CollectionChanged += SourceCollectionChanged;
             }
         }
@@ -50,7 +50,7 @@ namespace ObservableCollections.Internal
             {
                 lock (SyncRoot)
                 {
-                    return list.Count;
+                    return dict.Count;
                 }
             }
         }
@@ -60,7 +60,7 @@ namespace ObservableCollections.Internal
             lock (SyncRoot)
             {
                 this.filter = filter;
-                foreach (var (_, (value, view)) in list)
+                foreach (var (_, (value, view)) in dict)
                 {
                     filter.InvokeOnAttach(value, view);
                 }
@@ -74,7 +74,7 @@ namespace ObservableCollections.Internal
                 this.filter = SynchronizedViewFilter<T, TView>.Null;
                 if (resetAction != null)
                 {
-                    foreach (var (_, (value, view)) in list)
+                    foreach (var (_, (value, view)) in dict)
                     {
                         resetAction(value, view);
                     }
@@ -92,7 +92,17 @@ namespace ObservableCollections.Internal
 
         public IEnumerator<(T, TView)> GetEnumerator()
         {
-            return new SynchronizedViewEnumerator<T, TView>(SyncRoot, list.Select(x => x.Value).GetEnumerator(), filter);
+
+            lock (SyncRoot)
+            {
+                foreach (var item in dict)
+                {
+                    if (filter.IsMatch(item.Value.Value, item.Value.View))
+                    {
+                        yield return item.Value;
+                    }
+                }
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -116,7 +126,7 @@ namespace ObservableCollections.Internal
                                 var value = e.NewItem;
                                 var view = transform(value);
                                 var id = identitySelector(value);
-                                list.Add((view, id), (value, view));
+                                dict.Add((view, id), (value, view));
                                 viewMap.Add(id, view);
                                 filter.InvokeOnAdd(value, view);
                             }
@@ -126,7 +136,7 @@ namespace ObservableCollections.Internal
                                 {
                                     var view = transform(value);
                                     var id = identitySelector(value);
-                                    list.Add((view, id), (value, view));
+                                    dict.Add((view, id), (value, view));
                                     viewMap.Add(id, view);
                                     filter.InvokeOnAdd(value, view);
                                 }
@@ -141,7 +151,7 @@ namespace ObservableCollections.Internal
                                 var id = identitySelector(value);
                                 if (viewMap.Remove(id, out var view))
                                 {
-                                    list.Remove((view, id), out var v);
+                                    dict.Remove((view, id), out var v);
                                     filter.InvokeOnRemove(v);
                                 }
                             }
@@ -152,7 +162,7 @@ namespace ObservableCollections.Internal
                                     var id = identitySelector(value);
                                     if (viewMap.Remove(id, out var view))
                                     {
-                                        list.Remove((view, id), out var v);
+                                        dict.Remove((view, id), out var v);
                                         filter.InvokeOnRemove(v);
                                     }
                                 }
@@ -166,14 +176,14 @@ namespace ObservableCollections.Internal
                             var oldKey = identitySelector(oldValue);
                             if (viewMap.Remove(oldKey, out var oldView))
                             {
-                                list.Remove((oldView, oldKey));
+                                dict.Remove((oldView, oldKey));
                                 filter.InvokeOnRemove(oldValue, oldView);
                             }
 
                             var value = e.NewItem;
                             var view = transform(value);
                             var id = identitySelector(value);
-                            list.Add((view, id), (value, view));
+                            dict.Add((view, id), (value, view));
                             viewMap.Add(id, view);
 
                             filter.InvokeOnAdd(value, view);
@@ -193,12 +203,12 @@ namespace ObservableCollections.Internal
                     case NotifyCollectionChangedAction.Reset:
                         if (!filter.IsNullFilter())
                         {
-                            foreach (var item in list)
+                            foreach (var item in dict)
                             {
                                 filter.InvokeOnRemove(item.Value);
                             }
                         }
-                        list.Clear();
+                        dict.Clear();
                         viewMap.Clear();
                         break;
                     default:
