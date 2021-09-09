@@ -212,13 +212,7 @@ namespace ObservableCollections.Internal
 
             public int Compare((T value, TKey id) x, (T value, TKey id) y)
             {
-                var compare = comparer.Compare(x.value, y.value);
-                if (compare == 0)
-                {
-                    compare = Comparer<TKey>.Default.Compare(x.id, y.id);
-                }
-
-                return compare;
+                return comparer.Compare(x.value, y.value);
             }
         }
     }

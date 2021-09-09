@@ -231,13 +231,7 @@ namespace ObservableCollections.Internal
 
             public int Compare((TView view, TKey id) x, (TView view, TKey id) y)
             {
-                var compare = comparer.Compare(x.view, y.view);
-                if (compare == 0)
-                {
-                    compare = Comparer<TKey>.Default.Compare(x.id, y.id);
-                }
-
-                return compare;
+                return comparer.Compare(x.view, y.view);
             }
         }
     }
