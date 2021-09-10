@@ -51,19 +51,19 @@ namespace ObservableCollections
     public static class ObservableCollectionsExtensions
     {
         public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
-            where TKey : IComparable<TKey>
+            
         {
             return new SortedView<T, TKey, TView>(source, identitySelector, transform, comparer);
         }
 
         public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer)
-            where TKey : IComparable<TKey>
+            
         {
             return new SortedViewViewComparer<T, TKey, TView>(source, identitySelector, transform, viewComparer);
         }
 
         public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView, TCompare>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, Func<T, TCompare> compareSelector, bool ascending = true)
-            where TKey : IComparable<TKey>
+            
         {
             return source.CreateSortedView(identitySelector, transform, new AnonymousComparer<T, TCompare>(compareSelector, ascending));
         }

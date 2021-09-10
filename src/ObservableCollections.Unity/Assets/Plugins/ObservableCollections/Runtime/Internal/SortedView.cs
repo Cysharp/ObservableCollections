@@ -7,7 +7,7 @@ using System.Linq;
 namespace ObservableCollections.Internal
 {
     internal class SortedView<T, TKey, TView> : ISynchronizedView<T, TView>
-        where TKey : IComparable<TKey>
+        
     {
         readonly IObservableCollection<T> source;
         readonly Func<T, TView> transform;
