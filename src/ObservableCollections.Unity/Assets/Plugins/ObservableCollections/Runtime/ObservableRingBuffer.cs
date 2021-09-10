@@ -193,6 +193,30 @@ namespace ObservableCollections
             }
         }
 
+        public T[] ToArray()
+        {
+            lock (SyncRoot)
+            {
+                return buffer.ToArray();
+            }
+        }
+
+        public int BinarySearch(T item)
+        {
+            lock (SyncRoot)
+            {
+                return buffer.BinarySearch(item);
+            }
+        }
+
+        public int BinarySearch(T item, IComparer<T> comparer)
+        {
+            lock (SyncRoot)
+            {
+                return buffer.BinarySearch(item, comparer);
+            }
+        }
+
         public IEnumerator<T> GetEnumerator()
         {
             lock (SyncRoot)

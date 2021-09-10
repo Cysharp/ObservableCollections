@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Specialized;
+using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
@@ -17,6 +18,7 @@ namespace ObservableCollections
     ///     Action.Reset
     ///         -
     /// </summary>
+    [StructLayout(LayoutKind.Auto)]
     public readonly ref struct NotifyCollectionChangedEventArgs<T>
     {
         public readonly NotifyCollectionChangedAction Action;

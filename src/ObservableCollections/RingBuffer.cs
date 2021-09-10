@@ -270,6 +270,35 @@ namespace ObservableCollections
             return result;
         }
 
+        public int BinarySearch(T item)
+        {
+            return BinarySearch(item, Comparer<T>.Default);
+        }
+
+        public int BinarySearch(T item, IComparer<T> comparer)
+        {
+            var lo = 0;
+            var hi = count - 1;
+
+            while (lo <= hi)
+            {
+                var mid = (int)(((uint)hi + (uint)lo) >> 1);
+                var found = comparer.Compare(this[mid], item);
+
+                if (found == 0) return mid;
+                if (found < 0)
+                {
+                    lo = mid + 1;
+                }
+                else
+                {
+                    hi = mid - 1;
+                }
+            }
+
+            return ~lo;
+        }
+
         void IList<T>.Insert(int index, T item)
         {
             throw new NotSupportedException();
