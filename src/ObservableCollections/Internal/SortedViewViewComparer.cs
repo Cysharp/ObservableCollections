@@ -7,7 +7,7 @@ using System.Linq;
 namespace ObservableCollections.Internal
 {
     internal class SortedViewViewComparer<T, TKey, TView> : ISynchronizedView<T, TView>
-            where TKey : notnull
+            where TKey : notnull, IComparable<TKey>
     {
         readonly IObservableCollection<T> source;
         readonly Func<T, TView> transform;
@@ -231,7 +231,13 @@ namespace ObservableCollections.Internal
 
             public int Compare((TView view, TKey id) x, (TView view, TKey id) y)
             {
-                return comparer.Compare(x.view, y.view);
+                var compare = comparer.Compare(x.view, y.view);
+                if (compare == 0)
+                {
+                    compare = Comparer<TKey>.Default.Compare(x.id, y.id);
+                }
+
+                return compare;
             }
         }
     }

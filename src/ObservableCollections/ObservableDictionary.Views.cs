@@ -14,18 +14,7 @@ namespace ObservableCollections
             // reverse is no used.
             return new View<TView>(this, transform);
         }
-
-        // using key implicitly
-        public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateSortedView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<KeyValuePair<TKey, TValue>> comparer)
-        {
-            return this.CreateSortedView(x => x.Key, transform, comparer);
-        }
-
-        public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateSortedView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform, IComparer<TView> viewComparer)
-        {
-            return this.CreateSortedView(x => x.Key, transform, viewComparer);
-        }
-
+        
         class View<TView> : ISynchronizedView<KeyValuePair<TKey, TValue>, TView>
         {
             readonly ObservableDictionary<TKey, TValue> source;

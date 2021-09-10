@@ -106,7 +106,7 @@ namespace ObservableCollections.Tests
             var dict = new ObservableDictionary<int, int>();
             var view1 = dict.CreateView(x => new ViewContainer<int>(x.Value));
             var view2 = dict.CreateSortedView(x => x.Key, x => new ViewContainer<int>(x.Value), x => x.Value, true);
-            var view3 = dict.CreateSortedView(x => new ViewContainer<int>(x.Value), viewComparer: Comparer<ViewContainer<int>>.Default);
+            var view3 = dict.CreateSortedView(x => new ViewContainer<int>(x.Value), x => x.Value, viewComparer: Comparer<ViewContainer<int>>.Default);
             var filter1 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);
             var filter2 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);
             var filter3 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);

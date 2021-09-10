@@ -24,6 +24,7 @@ namespace PostBuildUtility
                 // Remove nullable
                 {"#nullable disable", "" },
                 {"where T : notnull", "" },
+                {"where TKey : notnull, IComparable<TKey>", "where TKey : IComparable<TKey>" }, // override project specified
                 {"where TKey : notnull", "" },
                 {">?", ">" }, // generics <T>?
                 {"T?", "T" },
