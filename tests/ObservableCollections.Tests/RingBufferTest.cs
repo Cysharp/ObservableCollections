@@ -126,34 +126,42 @@ namespace ObservableCollections.Tests
 
         }
 
-        // TODO: need more test.
         [Fact]
         public void BinarySearchTest()
         {
             var empty = new RingBuffer<int>(new int[] { });
+            var emptyL = new List<int>();
             var single = new RingBuffer<int>(new[] { 10 });
+            var singleL = new List<int>(new[] { 10 });
             var buffer = new RingBuffer<int>(new[]
+            {
+                1, 4, 5, 6, 10, 14, 15,17, 20, 33
+            });
+            var multiL = new List<int>(new[]
             {
                 1, 4, 5, 6, 10, 14, 15,17, 20, 33
             });
 
             empty.BinarySearch(99).Should().BeLessThan(0);
-
+            empty.BinarySearch(99).Should().Be(emptyL.BinarySearch(99));
             {
                 single.BinarySearch(10).Should().Be(0);
                 var x1 = single.BinarySearch(4);
                 x1.Should().BeLessThan(0);
                 (~x1).Should().Be(0);
+                x1.Should().Be(single.BinarySearch(4));
 
                 var x2 = single.BinarySearch(40);
                 x2.Should().BeLessThan(0);
                 (~x2).Should().Be(1);
+                x2.Should().Be(single.BinarySearch(40));
             }
 
             {
-                buffer.BinarySearch(0);
-
-
+                for (int i = 0; i < 50; i++)
+                {
+                    buffer.BinarySearch(i).Should().Be(multiL.BinarySearch(i));
+                }
             }
 
 
