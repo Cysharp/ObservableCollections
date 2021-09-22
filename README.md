@@ -88,7 +88,7 @@ static void List_CollectionChanged(in NotifyCollectionChangedEventArgs<int> e)
 }
 ```
 
-Handling All CollectionChanged event manually is difficult. ObservableCollections has SynchronizedView that transform element for view.
+Handling all `CollectionChanged` event manually is hard. We recommend to use `SynchronizedView` that transform element and handling all collection changed event for view synchronize.
 
 ```csharp
 var list = new ObservableList<int>();
@@ -122,7 +122,7 @@ public partial class DataTable<T> : ComponentBase, IDisposable
     public IReadOnlyList<T> Items { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public Func<T, Cell[]> DataTemplate { get; set; }
+    public Func<T, Cell[]> DataTemplate { get; set; } = default!;
 
     ISynchronizedView<T, Cell[]> view = default!;
 
@@ -139,6 +139,7 @@ public partial class DataTable<T> : ComponentBase, IDisposable
             view = freezedList.CreateView(DataTemplate);
         }
 
+        // TODO: what do.
         view.CollectionStateChanged += async _ =>
         {
             await InvokeAsync(StateHasChanged);
