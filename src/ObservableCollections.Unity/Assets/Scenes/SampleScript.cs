@@ -49,7 +49,7 @@ public class GameObjectFilter : ISynchronizedViewFilter<int, GameObject>
         this.root = root;
     }
 
-    public void OnCollectionChanged(ChangedKind changedKind, int value, GameObject view)
+    public void OnCollectionChanged(ChangedKind changedKind, int value, GameObject view, in NotifyCollectionChangedEventArgs<int> eventArgs)
     {
         if (changedKind == ChangedKind.Add)
         {
