@@ -121,14 +121,14 @@ namespace ObservableCollections
                             {
                                 var v = selector(e.NewItem);
                                 dict.Add(e.NewItem.Key, (e.NewItem.Value, v));
-                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
+                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
                             {
                                 if (dict.Remove(e.OldItem.Key, out var v))
                                 {
-                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, v.Item1), v.Item2));
+                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, v.Item1), v.Item2), e);
                                 }
                             }
                             break;
@@ -136,12 +136,12 @@ namespace ObservableCollections
                             {
                                 if (dict.Remove(e.OldItem.Key, out var oldView))
                                 {
-                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, oldView.Item1), oldView.Item2));
+                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, oldView.Item1), oldView.Item2), e);
                                 }
 
                                 var v = selector(e.NewItem);
                                 dict[e.NewItem.Key] = (e.NewItem.Value, v);
-                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v);
+                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
@@ -150,7 +150,7 @@ namespace ObservableCollections
                                 {
                                     foreach (var item in dict)
                                     {
-                                        filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2));
+                                        filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2), e);
                                     }
                                 }
 

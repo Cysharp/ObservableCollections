@@ -134,7 +134,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 stack.Push(v);
-                                filter.InvokeOnAdd(v);
+                                filter.InvokeOnAdd(v, e);
                             }
                             else
                             {
@@ -142,7 +142,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     stack.Push(v);
-                                    filter.InvokeOnAdd(v);
+                                    filter.InvokeOnAdd(v, e);
                                 }
                             }
                             break;
@@ -151,7 +151,7 @@ namespace ObservableCollections
                             if (e.IsSingleItem)
                             {
                                 var v = stack.Pop();
-                                filter.InvokeOnRemove(v.Item1, v.Item2);
+                                filter.InvokeOnRemove(v.Item1, v.Item2, e);
                             }
                             else
                             {
@@ -159,7 +159,7 @@ namespace ObservableCollections
                                 for (int i = 0; i < len; i++)
                                 {
                                     var v = stack.Pop();
-                                    filter.InvokeOnRemove(v.Item1, v.Item2);
+                                    filter.InvokeOnRemove(v.Item1, v.Item2, e);
                                 }
                             }
                             break;
@@ -168,7 +168,7 @@ namespace ObservableCollections
                             {
                                 foreach (var item in stack)
                                 {
-                                    filter.InvokeOnRemove(item);
+                                    filter.InvokeOnRemove(item, e);
                                 }
                             }
                             stack.Clear();

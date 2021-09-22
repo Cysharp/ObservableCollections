@@ -136,7 +136,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Add(v);
-                                    filter.InvokeOnAdd(v);
+                                    filter.InvokeOnAdd(v, e);
                                 }
                                 else
                                 {
@@ -144,7 +144,7 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         list.Add(v);
-                                        filter.InvokeOnAdd(v);
+                                        filter.InvokeOnAdd(v, e);
                                     }
                                 }
                             }
@@ -155,7 +155,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Insert(e.NewStartingIndex, v);
-                                    filter.InvokeOnAdd(v);
+                                    filter.InvokeOnAdd(v, e);
                                 }
                                 else
                                 {
@@ -166,7 +166,7 @@ namespace ObservableCollections
                                     {
                                         var v = (span[i], selector(span[i]));
                                         newArray[i] = v;
-                                        filter.InvokeOnAdd(v);
+                                        filter.InvokeOnAdd(v, e);
                                     }
                                     list.InsertRange(e.NewStartingIndex, newArray);
                                 }
@@ -177,7 +177,7 @@ namespace ObservableCollections
                             {
                                 var v = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
-                                filter.InvokeOnRemove(v.Item1, v.Item2);
+                                filter.InvokeOnRemove(v.Item1, v.Item2, e);
                             }
                             else
                             {
@@ -185,7 +185,7 @@ namespace ObservableCollections
                                 for (int i = e.OldStartingIndex; i < len; i++)
                                 {
                                     var v = list[i];
-                                    filter.InvokeOnRemove(v.Item1, v.Item2);
+                                    filter.InvokeOnRemove(v.Item1, v.Item2, e);
                                 }
 
                                 list.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
@@ -199,8 +199,8 @@ namespace ObservableCollections
                                 var oldItem = list[e.NewStartingIndex];
                                 list[e.NewStartingIndex] = v;
 
-                                filter.InvokeOnRemove(oldItem);
-                                filter.InvokeOnAdd(v);
+                                filter.InvokeOnRemove(oldItem, e);
+                                filter.InvokeOnAdd(v, e);
                                 break;
                             }
                         case NotifyCollectionChangedAction.Move:
@@ -209,7 +209,7 @@ namespace ObservableCollections
                                 list.RemoveAt(e.OldStartingIndex);
                                 list.Insert(e.NewStartingIndex, removeItem);
 
-                                filter.InvokeOnMove(removeItem);
+                                filter.InvokeOnMove(removeItem, e);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
@@ -217,7 +217,7 @@ namespace ObservableCollections
                             {
                                 foreach (var item in list)
                                 {
-                                    filter.InvokeOnRemove(item);
+                                    filter.InvokeOnRemove(item, e);
                                 }
                             }
                             list.Clear();

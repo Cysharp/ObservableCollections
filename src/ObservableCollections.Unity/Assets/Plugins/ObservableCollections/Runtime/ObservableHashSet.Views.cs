@@ -118,7 +118,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 dict.Add(e.NewItem, v);
-                                filter.InvokeOnAdd(v);
+                                filter.InvokeOnAdd(v, e);
                             }
                             else
                             {
@@ -126,7 +126,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     dict.Add(item, v);
-                                    filter.InvokeOnAdd(v);
+                                    filter.InvokeOnAdd(v, e);
                                 }
                             }
                             break;
@@ -135,7 +135,7 @@ namespace ObservableCollections
                             {
                                 if (dict.Remove(e.OldItem, out var value))
                                 {
-                                    filter.InvokeOnRemove(value.Item1, value.Item2);
+                                    filter.InvokeOnRemove(value.Item1, value.Item2, e);
                                 }
                             }
                             else
@@ -144,7 +144,7 @@ namespace ObservableCollections
                                 {
                                     if (dict.Remove(item, out var value))
                                     {
-                                        filter.InvokeOnRemove(value.Item1, value.Item2);
+                                        filter.InvokeOnRemove(value.Item1, value.Item2, e);
                                     }
                                 }
                             }
@@ -154,7 +154,7 @@ namespace ObservableCollections
                             {
                                 foreach (var item in dict)
                                 {
-                                    filter.InvokeOnRemove(item.Value);
+                                    filter.InvokeOnRemove(item.Value, e);
                                 }
                             }
                             dict.Clear();

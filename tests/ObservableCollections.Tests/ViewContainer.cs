@@ -54,7 +54,7 @@ namespace ObservableCollections.Tests
             return this.filter.Invoke(value, view);
         }
 
-        public void OnCollectionChanged(ChangedKind changedKind, T value, ViewContainer<T> view)
+        public void OnCollectionChanged(ChangedKind changedKind, T value, ViewContainer<T> view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
             CalledOnCollectionChanged.Add((changedKind, value, view));
         }
@@ -94,7 +94,7 @@ namespace ObservableCollections.Tests
             return this.filter.Invoke(value, view);
         }
 
-        public void OnCollectionChanged(ChangedKind changedKind, KeyValuePair<T, T> value, ViewContainer<T> view)
+        public void OnCollectionChanged(ChangedKind changedKind, KeyValuePair<T, T> value, ViewContainer<T> view, in NotifyCollectionChangedEventArgs<KeyValuePair<T, T>> eventArgs)
         {
             CalledOnCollectionChanged.Add((changedKind, value, view));
         }

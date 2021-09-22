@@ -7,7 +7,7 @@ namespace ObservableCollections
         bool IsMatch(T value, TView view);
         void WhenTrue(T value, TView view);
         void WhenFalse(T value, TView view);
-        void OnCollectionChanged(ChangedKind changedKind, T value, TView view);
+        void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs);
     }
 
     public enum ChangedKind
@@ -35,14 +35,14 @@ namespace ObservableCollections
         public bool IsMatch(T value, TView view) => isMatch(value, view);
         public void WhenFalse(T value, TView view) => whenFalse?.Invoke(value, view);
         public void WhenTrue(T value, TView view) => whenTrue?.Invoke(value, view);
-        public void OnCollectionChanged(ChangedKind changedKind, T value, TView view) => onCollectionChanged?.Invoke(changedKind, value, view);
+        public void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs) => onCollectionChanged?.Invoke(changedKind, value, view);
 
         class NullViewFilter : ISynchronizedViewFilter<T, TView>
         {
             public bool IsMatch(T value, TView view) => true;
             public void WhenFalse(T value, TView view) { }
             public void WhenTrue(T value, TView view) { }
-            public void OnCollectionChanged(ChangedKind changedKind, T value, TView view) { }
+            public void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs) { }
         }
     }
 
@@ -68,12 +68,12 @@ namespace ObservableCollections
             return filter == SynchronizedViewFilter<T, TView>.Null;
         }
 
-        internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value)
+        internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            InvokeOnAdd(filter, value.value, value.view);
+            InvokeOnAdd(filter, value.value, value.view, eventArgs);
         }
 
-        internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
+        internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
             if (filter.IsMatch(value, view))
             {
@@ -83,27 +83,27 @@ namespace ObservableCollections
             {
                 filter.WhenFalse(value, view);
             }
-            filter.OnCollectionChanged(ChangedKind.Add, value, view);
+            filter.OnCollectionChanged(ChangedKind.Add, value, view, eventArgs);
         }
 
-        internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value)
+        internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            InvokeOnRemove(filter, value.value, value.view);
+            InvokeOnRemove(filter, value.value, value.view, eventArgs);
         }
 
-        internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
+        internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            filter.OnCollectionChanged(ChangedKind.Remove, value, view);
+            filter.OnCollectionChanged(ChangedKind.Remove, value, view, eventArgs);
         }
 
-        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value)
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            InvokeOnMove(filter, value.value, value.view);
+            InvokeOnMove(filter, value.value, value.view, eventArgs);
         }
 
-        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            filter.OnCollectionChanged(ChangedKind.Move, value, view);
+            filter.OnCollectionChanged(ChangedKind.Move, value, view, eventArgs);
         }
 
         internal static void InvokeOnAttach<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)

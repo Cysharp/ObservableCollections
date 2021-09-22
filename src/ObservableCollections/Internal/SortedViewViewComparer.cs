@@ -128,7 +128,7 @@ namespace ObservableCollections.Internal
                                 var id = identitySelector(value);
                                 dict.Add((view, id), (value, view));
                                 viewMap.Add(id, view);
-                                filter.InvokeOnAdd(value, view);
+                                filter.InvokeOnAdd(value, view, e);
                             }
                             else
                             {
@@ -138,7 +138,7 @@ namespace ObservableCollections.Internal
                                     var id = identitySelector(value);
                                     dict.Add((view, id), (value, view));
                                     viewMap.Add(id, view);
-                                    filter.InvokeOnAdd(value, view);
+                                    filter.InvokeOnAdd(value, view, e);
                                 }
                             }
                         }
@@ -152,7 +152,7 @@ namespace ObservableCollections.Internal
                                 if (viewMap.Remove(id, out var view))
                                 {
                                     dict.Remove((view, id), out var v);
-                                    filter.InvokeOnRemove(v);
+                                    filter.InvokeOnRemove(v, e);
                                 }
                             }
                             else
@@ -163,7 +163,7 @@ namespace ObservableCollections.Internal
                                     if (viewMap.Remove(id, out var view))
                                     {
                                         dict.Remove((view, id), out var v);
-                                        filter.InvokeOnRemove(v);
+                                        filter.InvokeOnRemove(v, e);
                                     }
                                 }
                             }
@@ -177,7 +177,7 @@ namespace ObservableCollections.Internal
                             if (viewMap.Remove(oldKey, out var oldView))
                             {
                                 dict.Remove((oldView, oldKey));
-                                filter.InvokeOnRemove(oldValue, oldView);
+                                filter.InvokeOnRemove(oldValue, oldView, e);
                             }
 
                             var value = e.NewItem;
@@ -186,7 +186,7 @@ namespace ObservableCollections.Internal
                             dict.Add((view, id), (value, view));
                             viewMap.Add(id, view);
 
-                            filter.InvokeOnAdd(value, view);
+                            filter.InvokeOnAdd(value, view, e);
                         }
                         break;
                     case NotifyCollectionChangedAction.Move:
@@ -196,7 +196,7 @@ namespace ObservableCollections.Internal
                             var key = identitySelector(value);
                             if (viewMap.TryGetValue(key, out var view))
                             {
-                                filter.InvokeOnMove(value, view);
+                                filter.InvokeOnMove(value, view, e);
                             }
                         }
                         break;
@@ -205,7 +205,7 @@ namespace ObservableCollections.Internal
                         {
                             foreach (var item in dict)
                             {
-                                filter.InvokeOnRemove(item.Value);
+                                filter.InvokeOnRemove(item.Value, e);
                             }
                         }
                         dict.Clear();
