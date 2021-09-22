@@ -55,29 +55,119 @@ PM> Install-Package [ObservableCollections](https://www.nuget.org/packages/Obser
 create new `ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`.
 
 ```csharp
-// Blazor simple sample.
-public partial class Index : IDisposable
+// Basic sample, use like ObservableCollection<T>.
+// CollectionChanged observes all collection modification
+var list = new ObservableList<int>();
+list.CollectionChanged += List_CollectionChanged;
+
+list.Add(10);
+list.Add(20);
+list.AddRange(new[] { 10, 20, 30 });
+
+static void List_CollectionChanged(in NotifyCollectionChangedEventArgs<int> e)
 {
-    ObservableList<int> list;
-    public ISynchronizedView<int, int> ItemsView { get; set; }
-
-    protected override void OnInitialized()
+    switch (e.Action)
     {
-        list = new ObservableList<int>();
-        ItemsView = list.CreateView(x => x);
-
-        ItemsView.CollectionStateChanged += action =>
-        {
-            InvokeAsync(StateHasChanged);
-        };
-    }
-
-    public void Dispose()
-    {
-        ItemsView.Dispose();
+        case NotifyCollectionChangedAction.Add:
+            if (e.IsSingleItem)
+            {
+                Console.WriteLine(e.NewItem);
+            }
+            else
+            {
+                foreach (var item in e.NewItems)
+                {
+                    Console.WriteLine(item);
+                }
+            }
+            break;
+        // Remove, Replace, Move, Reset
+        default:
+            break;
     }
 }
 ```
+
+Handling All CollectionChanged event manually is difficult. ObservableCollections has SynchronizedView that transform element for view.
+
+```csharp
+var list = new ObservableList<int>();
+var view = list.CreateView(x => x.ToString() + "$");
+
+list.Add(10);
+list.Add(20);
+list.AddRange(new[] { 30, 40, 50 });
+list[1] = 60;
+list.RemoveAt(3);
+
+foreach (var (_, v) in view)
+{
+    // 10$, 60$, 30$, 50$
+    Console.WriteLine(v);
+}
+
+// Dispose view is unsubscribe collection changed event.
+view.Dispose();
+```
+
+Blazor
+---
+
+
+
+```csharp
+public partial class DataTable<T> : ComponentBase, IDisposable
+{
+    [Parameter, EditorRequired]
+    public IReadOnlyList<T> Items { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<T, Cell[]> DataTemplate { get; set; }
+
+    ISynchronizedView<T, Cell[]> view = default!;
+
+    protected override void OnInitialized()
+    {
+        // TODO: CreateSortedView
+        if (Items is IObservableCollection<T> observableCollection)
+        {
+            view = observableCollection.CreateView(DataTemplate);
+        }
+        else
+        {
+            var freezedList = new FreezedList<T>(Items);
+            view = freezedList.CreateView(DataTemplate);
+        }
+
+        view.CollectionStateChanged += async _ =>
+        {
+            await InvokeAsync(StateHasChanged);
+        };
+    }
+    
+    public void Dispose()
+    {
+        // unsubscribe.
+        view.Dispose();
+    }
+}
+
+// .razor, iterate view
+@foreach (var (row, cells) in view)
+{
+    <tr>
+        @foreach (var item in cells)
+        {
+            <td>
+                <CellView Item="item" />
+            </td>
+        }
+    </tr>                    
+}
+```
+
+WPF
+---
 
 ```csharp
 // WPF simple sample.
@@ -101,6 +191,9 @@ protected override void OnClosed(EventArgs e)
     ItemsView.Dispose();
 }
 ```
+
+Unity
+---
 
 ```csharp
 // Unity, with filter sample.
@@ -138,7 +231,7 @@ public class SampleScript : MonoBehaviour
             this.root = root;
         }
 
-        public void OnCollectionChanged(ChangedKind changedKind, int value, GameObject view)
+        public void OnCollectionChanged(ChangedKind changedKind, int value, GameObject view, in NotifyCollectionChangedEventArgs<int> eventArgs)
         {
             if (changedKind == ChangedKind.Add)
             {
@@ -173,6 +266,7 @@ TODO: write more usage...
 View/SoretedView
 ---
 
+
 Filter
 ---
 
@@ -180,9 +274,6 @@ Collections
 ---
 
 Freezed
----
-
-Unity
 ---
 
 
