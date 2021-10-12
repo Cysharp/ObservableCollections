@@ -110,10 +110,13 @@ foreach (var (_, v) in view)
 view.Dispose();
 ```
 
+The basic idea behind using ObservableCollections is to create a View. In order to automate this pipeline, the view can be sortable, filtered, and have side effects on the values when they are changed.
+
 Blazor
 ---
+Since Blazor re-renders the whole thing by StateHasChanged, you may think that Observable collections are unnecessary. However, when you split it into Components, it is beneficial for Component confidence to detect the change and change its own State.
 
-
+The View selector in ObservableCollections is also useful for converting data to a View that represents a Cell, for example, when creating something like a table.
 
 ```csharp
 public partial class DataTable<T> : ComponentBase, IDisposable
@@ -128,18 +131,20 @@ public partial class DataTable<T> : ComponentBase, IDisposable
 
     protected override void OnInitialized()
     {
-        // TODO: CreateSortedView
         if (Items is IObservableCollection<T> observableCollection)
         {
+            // Note: If the table has the ability to sort columns, then it will be automatically sorted using SortedView.
             view = observableCollection.CreateView(DataTemplate);
         }
         else
         {
+            // It is often the case that Items is not Observable.
+            // In that case, FreezedList is provided to create a View with the same API for normal collections.
             var freezedList = new FreezedList<T>(Items);
             view = freezedList.CreateView(DataTemplate);
         }
 
-        // TODO: what do.
+        // View also has a change notification. 
         view.CollectionStateChanged += async _ =>
         {
             await InvokeAsync(StateHasChanged);
@@ -169,6 +174,7 @@ public partial class DataTable<T> : ComponentBase, IDisposable
 
 WPF
 ---
+Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `WithtINotifyCollectionChanged` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
 
 ```csharp
 // WPF simple sample.
@@ -182,7 +188,7 @@ public MainWindow()
     this.DataContext = this;
 
     list = new ObservableList<int>();
-    ItemsView = list.CreateSortedView(x => x, x => x, comparer: Comparer<int>.Default).WithINotifyCollectionChanged();
+    ItemsView = list.CreateView(x => x).WithINotifyCollectionChanged();
 
     BindingOperations.EnableCollectionSynchronization(ItemsView, new object()); // for ui synchronization safety of viewmodel
 }
@@ -193,12 +199,16 @@ protected override void OnClosed(EventArgs e)
 }
 ```
 
+> WPF can not use SoretedView beacuse SortedView can not provide sort event to INotifyCollectionChanged.
+
 Unity
 ---
+In Unity, ObservableCollections and Views are useful as CollectionManagers, since they need to convert T to Prefab for display.
+
+Since we need to have side effects on GameObjects, we will prepare a filter and apply an action on changes.
 
 ```csharp
 // Unity, with filter sample.
-
 public class SampleScript : MonoBehaviour
 {
     public Button prefab;
@@ -246,7 +256,7 @@ public class SampleScript : MonoBehaviour
 
         public bool IsMatch(int value, GameObject view)
         {
-            return value % 2 == 0;
+            return true;
         }
 
         public void WhenTrue(int value, GameObject view)
@@ -262,21 +272,134 @@ public class SampleScript : MonoBehaviour
 }
 ```
 
-TODO: write more usage...
+It is also possible to manage Order by managing indexes inserted from eventArgs, but it is very difficult with many caveats. If you don't have major performance issues, you can foreach the View itself on CollectionStateChanged (like Blazor) and reorder the transforms. If you have such a architecture, you can also use SortedView.
 
 View/SoretedView
 ---
+View can create from `IObservableCollection<T>`, it completely synchronized and thread-safe.
 
+```csharp
+public interface IObservableCollection<T> : IReadOnlyCollection<T>
+{
+    // snip...
+    ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
+}
+```
+
+When reverse = true, foreach view as reverse order(Dictionary, etc. are not supported).
+
+`ISynchronizedView<T, TView>` is `IReadOnlyCollection` and hold both value and view(transformed value when added).
+
+```csharp
+public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
+{
+    object SyncRoot { get; }
+
+    event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
+    event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
+
+    void AttachFilter(ISynchronizedViewFilter<T, TView> filter);
+    void ResetFilter(Action<T, TView>? resetAction);
+    INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged();
+}
+```
+
+
+
+see [filter](#filter) section.
+
+
+
+```csharp
+var view = transform(value);
+If (filter.IsMatch(value, view))
+{
+    filter.WhenTrue(value, view);
+}
+else
+{
+    filter.WhenFalse(value, view);
+}
+AddToCollectionInnerStructure(value, view);
+filter.OnCollectionChanged(ChangeKind.Add, value, view, eventArgs);
+RoutingCollectionChanged(eventArgs);
+CollectionStateChanged();
+```
+
+
+```csharp
+public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
+    where TKey : notnull
+
+public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer)
+    where TKey : notnull
+
+public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView, TCompare>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, Func<T, TCompare> compareSelector, bool ascending = true)
+    where TKey : notnull
+```
+
+> Notice: foreach ObservableCollections and Views are thread-safe but it uses lock at iterating. In other words, the obtained Enumerator must be Dispose. foreach and LINQ are guaranteed to be Dipose, but be careful when you extract the Enumerator by yourself.
 
 Filter
 ---
 
+```csharp
+public interface ISynchronizedViewFilter<T, TView>
+{
+    bool IsMatch(T value, TView view);
+    void WhenTrue(T value, TView view);
+    void WhenFalse(T value, TView view);
+    void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs);
+}
+
+public enum ChangedKind
+{
+    Add, Remove, Move
+}
+```
+
+
 Collections
 ---
+
+```csharp
+public sealed partial class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>> where TKey : notnull
+public sealed partial class ObservableFixedSizeRingBuffer<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
+public sealed partial class ObservableHashSet<T> : IReadOnlySet<T>, IReadOnlyCollection<T>, IObservableCollection<T> where T : notnull
+
+public sealed partial class ObservableHashSet<T> : IReadOnlySet<T>, IReadOnlyCollection<T>, IObservableCollection<T>
+        where T : notnull
+
+public sealed partial class ObservableList<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
+
+public sealed partial class ObservableQueue<T> : IReadOnlyCollection<T>, IObservableCollection<T>
+public sealed partial class ObservableRingBuffer<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
+
+public sealed partial class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
+
+public sealed class RingBuffer<T> : IList<T>, IReadOnlyList<T>
+```
 
 Freezed
 ---
 
+
+```csharp
+public sealed class FreezedList<T> : IReadOnlyList<T>, IFreezedCollection<T>
+public sealed class FreezedDictionary<TKey, TValue> : IReadOnlyDictionary<TKey, TValue>, IFreezedCollection<KeyValuePair<TKey, TValue>> where TKey : notnull
+
+
+public interface IFreezedCollection<T>
+{
+    ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
+    ISortableSynchronizedView<T, TView> CreateSortableView<TView>(Func<T, TView> transform);
+}
+
+public static ISortableSynchronizedView<T, TView> CreateSortableView<T, TView>(this IFreezedCollection<T> source, Func<T, TView> transform, IComparer<T> initialSort)
+public static ISortableSynchronizedView<T, TView> CreateSortableView<T, TView>(this IFreezedCollection<T> source, Func<T, TView> transform, IComparer<TView> initialViewSort)
+public static ISortableSynchronizedView<T, TView> CreateSortableView<T, TView, TCompare>(this IFreezedCollection<T> source, Func<T, TView> transform, Func<T, TCompare> initialCompareSelector, bool ascending = true)
+public static void Sort<T, TView, TCompare>(this ISortableSynchronizedView<T, TView> source, Func<T, TCompare> compareSelector, bool ascending = true)
+```
 
 License
 ---
