@@ -1,23 +1,49 @@
-# ObservableCollections
-[![GitHub Actions](https://github.com/Cysharp/ObservableCollections/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/ObservableCollections/actions) [![Releases](https://img.shields.io/github/release/Cysharp/ObservableCollections.svg)](https://github.com/Cysharp/ObservableCollections/releases)
+# ObservableCollections 🔬
 
-ObservableCollections is a high performance observable collections(`ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`) with synchronized views.
+[![GitHub Actions](https://github.com/Cysharp/ObservableCollections/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/ObservableCollections/actions) [![Releases](https://img.shields.io/github/release/Cysharp/ObservableCollections.svg)](https://github.com/Cysharp/ObservableCollections/releases) [![Nuget](https://img.shields.io/nuget/v/ObservableCollections?label=nuget%20package)
+](https://www.nuget.org/packages/ObservableCollections)
 
-.NET has [`ObservableCollection<T>`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.objectmodel.observablecollection-1), however it has many lacks of features.
+`ObservableCollections` is a .Net library for high performance, generic, observable collections.
 
-It based `INotifyCollectionChanged`, `NotifyCollectionChangedEventHandler` and `NotifyCollectionChangedEventArgs`. There are no generics so everything boxed, allocate memory every time. Also `NotifyCollectionChangedEventArgs` holds all values to `IList` even if it is single value, this also causes allocations. `ObservableCollection<T>` has no Range feature so a lot of wastage occurs when adding multiple values, because it is a single value notification.  Also, it is not thread-safe is hard to do linkage with the notifier.
+Supported collection types:
+- `ObservableList<T>`
+- `ObservableDictionary<TKey, TValue>`
+- `ObservableHashSet<T>`
+- `ObservableQueue<T>`
+- `ObservableStack<T>`
+- `ObservableRingBuffer<T>`
+- `ObservableFixedSizeRingBuffer<T>`
 
-ObservableCollections introduces generics version of `NotifyCollectionChangedEventHandler` and `NotifyCollectionChangedEventArgs`, it using latest C# features(`in`, `readonly ref struct`, `ReadOnlySpan<T>`).
+## Why a new package?
+
+.Net already has [`ObservableCollection<T>`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.objectmodel.observablecollection-1), so why would a new library be necessary? Some reasons: unnecessary memory allocations due to the lack of generic and poor design choices, no support for ranges or batch operations resulting in unnecessary events when inserting multiple items at once, not thread-safe.
+
+### Too much memory allocated
+
+- `ObservableCollection<T>` is based on `INotifyCollectionChanged`, `NotifyCollectionChangedEventHandler` and `NotifyCollectionChangedEventArgs`. These types are not generic, everything boxed and does allocate every time they are used.
+- `NotifyCollectionChangedEventArgs` holds all values in a `IList`, even when only one single item changed, causing too much memory allocation.
+
+## Our solution
+
+### Event arguments never leave the stack
+
+`ObservableCollections` introduces the generic types `NotifyCollectionChangedEventHandler<T>` and `NotifyCollectionChangedEventArgs<T>`, and rely on modern C# and .Net features such as ["in" parameter modifier](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/in-parameter-modifier), [readonly ref struct](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/struct#ref-struct), and [ReadOnlySpan<T>](https://docs.microsoft.com/en-us/dotnet/api/system.readonlyspan-1?view=net-6.0) to safely pass event args by reference and avoid heap allocations.
 
 ```csharp
+// event arg is passed as readonly argument, zero heap allocation
+//                                                          👇
 public delegate void NotifyCollectionChangedEventHandler<T>(in NotifyCollectionChangedEventArgs<T> e);
 
+// ref structs are always allocated on the stack
+//              👇
 public readonly ref struct NotifyCollectionChangedEventArgs<T>
 {
     public readonly NotifyCollectionChangedAction Action;
     public readonly bool IsSingleItem;
     public readonly T NewItem;
     public readonly T OldItem;
+    // ReadOnlySpan is always allocated on the stack, is never promoted to the heap, and cannot be boxed
+    //                 👇
     public readonly ReadOnlySpan<T> NewItems;
     public readonly ReadOnlySpan<T> OldItems;
     public readonly int NewStartingIndex;
@@ -25,7 +51,9 @@ public readonly ref struct NotifyCollectionChangedEventArgs<T>
 }
 ```
 
-Also, use the interface `IObservableCollection<T>` instead of `INotifyCollectionChanged`. This is guaranteed to be thread-safe and can produce a View that is fully synchronized with the collection.
+### Thread-safe interface to publish/subscribe to changes
+
+`ObservableCollections` is based on the generic interface `IObservableCollection<T>` instead of `INotifyCollectionChanged`. This is guaranteed to be thread-safe and can produce a View that is kept in sync with the collection.
 
 ```csharp
 public interface IObservableCollection<T> : IReadOnlyCollection<T>
@@ -34,30 +62,45 @@ public interface IObservableCollection<T> : IReadOnlyCollection<T>
     object SyncRoot { get; }
     ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
 }
-
-// also exists SortedView
-public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer);
-public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer);
 ```
- 
-SynchronizedView helps to separate between Model and View (ViewModel). We will use ObservableCollections as the Model and generate SynchronizedView as the View (ViewModel). This architecture can be applied not only to WPF, but also to Blazor, Unity, etc.
+
+### Synchronized views
+
+The concept of `SynchronizedView` help create a separation between our View and Model (in an MVVM sense). Collections from `ObservableCollections` are used by Model definitions, and a `SynchronizedView` is consumed by Views, through their ViewModels. This architecture applies well to any MVVM context and can be leveraged by WPF, Blazor, Unity, etc.
 
 ![image](https://user-images.githubusercontent.com/46207/131979264-2463403b-0fba-474b-8f49-277c2abe1b05.png)
 
-ObservableCollections has not just a simple list, there are many more data structures. `ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`. `RingBuffer`, especially `FixedSizeRingBuffer`, can be achieved with efficient performance when there is rotation (e.g., displaying up to 1000 logs, where old ones are deleted when new ones are added). Of course, the AddRange allows for efficient batch processing of large numbers of additions.
+In addition a `SynchronizedView` can be sorted and/or filtered by using `CreateSortedView`.
 
-Getting Started
----
-For .NET, use NuGet. For Unity, please read [Unity](#unity) section.
+### Batch insert
 
-PM> Install-Package [ObservableCollections](https://www.nuget.org/packages/ObservableCollections)
+`AddRange` can be used to efficiently insert multiple items at once, and will only generate one single event instead of one per inserted item.
 
-create new `ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`.
+
+## Install
+
+From `dotnet` CLI:
+
+```
+$ dotnet add package ObservableCollections
+```
+
+From PackageManager CLI
+```
+PM> Install-Package ObservableCollections
+```
+
+
+## Usage
+
+### Base example: ObservableList and SynchronizedView
+
+In this example we define a simple `ObservableList<int>` and attach an event handler for `CollectionChanged`.
 
 ```csharp
-// Basic sample, use like ObservableCollection<T>.
-// CollectionChanged observes all collection modification
 var list = new ObservableList<int>();
+
+// CollectionChanged observes all collection modification.
 list.CollectionChanged += List_CollectionChanged;
 
 list.Add(10);
@@ -88,10 +131,11 @@ static void List_CollectionChanged(in NotifyCollectionChangedEventArgs<int> e)
 }
 ```
 
-Handling all `CollectionChanged` event manually is hard. We recommend to use `SynchronizedView` that transform element and handling all collection changed event for view synchronize.
+Supporting all `CollectionChanged` actions manually can be hard and tedious. Instead we can use a `SynchronizedView` that observes changes and stay in sync with the original collection, while applying some transformation if necessary.
 
 ```csharp
 var list = new ObservableList<int>();
+// Create a view that maps 1, 2, 3,... to "1$", "2$", "3$",...
 var view = list.CreateView(x => x.ToString() + "$");
 
 list.Add(10);
@@ -102,21 +146,21 @@ list.RemoveAt(3);
 
 foreach (var (_, v) in view)
 {
-    // 10$, 60$, 30$, 50$
+    // Print 10$, 60$, 30$, 50$
     Console.WriteLine(v);
 }
 
-// Dispose view is unsubscribe collection changed event.
+// Dispose view to unsubscribe from collection changed events.
 view.Dispose();
 ```
 
-The basic idea behind using ObservableCollections is to create a View. In order to automate this pipeline, the view can be sortable, filtered, and have side effects on the values when they are changed.
+One of the base idea behind ObservableCollections is to use SynchronizedView to automate and simplify the data flow Model => ViewModel => View. A SynchronizedView can be automatically sorted, filtered, or trigger side effects when collection items change.
 
-Blazor
----
-Since Blazor re-renders the whole thing by StateHasChanged, you may think that Observable collections are unnecessary. However, when you split it into Components, it is beneficial for Component confidence to detect the change and change its own State.
+### Blazor example: Synchronized table cells
 
-The View selector in ObservableCollections is also useful for converting data to a View that represents a Cell, for example, when creating something like a table.
+Since Blazor re-renders the whole thing based on `StateHasChanged`, you may think observable collections are redundant. However, when splitting a control into smaller components, it can be beneficial to have components react to a collection changes and update they own state.
+
+Creating views from a collection can be very useful when working with tables, for example to convert data to a SynchronizedView to represent a table cell.
 
 ```csharp
 public partial class DataTable<T> : ComponentBase, IDisposable
@@ -138,47 +182,49 @@ public partial class DataTable<T> : ComponentBase, IDisposable
         }
         else
         {
-            // It is often the case that Items is not Observable.
-            // In that case, FreezedList is provided to create a View with the same API for normal collections.
+            // In cases where Items does not implement IObservableCollection, FreezedList can be used as a wrapper.
+            // A freezed list offers the same API as other observable collections.
             var freezedList = new FreezedList<T>(Items);
             view = freezedList.CreateView(DataTemplate);
         }
 
-        // View also has a change notification. 
+        // SynchronizedView also exposes events for changes.
         view.CollectionStateChanged += async _ =>
         {
             await InvokeAsync(StateHasChanged);
         };
     }
-    
+
     public void Dispose()
     {
-        // unsubscribe.
+        // On dispose unsubscribe from sync events
         view.Dispose();
     }
 }
+```
 
-// .razor, iterate view
+```csharp
+// In the .razor file, iterate over 'view'
 @foreach (var (row, cells) in view)
 {
     <tr>
         @foreach (var item in cells)
         {
             <td>
-                <CellView Item="item" />
+                <CellView Item="@item" />
             </td>
         }
-    </tr>                    
+    </tr>
 }
 ```
 
-WPF
----
-Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `WithtINotifyCollectionChanged` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
+### WPF example: Safely work from different threads
+
+Due to the way data binding works in WPF a collection needs to be `IObservable`. In this context `ObservableCollections` high-performance `IObservableCollection<T>` cannot be used directly, and has to be converted by using `WithINotifyCollectionChanged`.
+
+> ⚠️ While observable collections and synchronized views are thread-safe, WPF requires UI changes to be notified from the UI thread. In this case you have to call `BindingOperations.EnableCollectionSynchronization` to bind to the correct thread.
 
 ```csharp
-// WPF simple sample.
-
 ObservableList<int> list;
 public ISynchronizedView<int, int> ItemsView { get; set; }
 
@@ -188,27 +234,30 @@ public MainWindow()
     this.DataContext = this;
 
     list = new ObservableList<int>();
+
+    // Create a SynchronizedView that implements IObservable
     ItemsView = list.CreateView(x => x).WithINotifyCollectionChanged();
 
-    BindingOperations.EnableCollectionSynchronization(ItemsView, new object()); // for ui synchronization safety of viewmodel
+    // Bind to the UI thread
+    BindingOperations.EnableCollectionSynchronization(ItemsView, new object());
 }
 
 protected override void OnClosed(EventArgs e)
 {
+    // Unsubscribe from sync events
     ItemsView.Dispose();
 }
 ```
 
-> WPF can not use SoretedView beacuse SortedView can not provide sort event to INotifyCollectionChanged.
+> ⚠️ SortedView cannot be used in the context of WPF as it does not trigger `INotifyCollectionChanged` for sorting event.
 
-Unity
+### Unity example
 ---
-In Unity, ObservableCollections and Views are useful as CollectionManagers, since they need to convert T to Prefab for display.
+In the context of Unity, Prefabs have to be created to be rendered. Observable collections and synchronized views are useful as `CollectionManagers`, converting the given data of type `T` to Prefab.
 
-Since we need to have side effects on GameObjects, we will prepare a filter and apply an action on changes.
+Using a filter makes it convenient to update `GameObject`. That way we can react to change events and update our game objects as side effects.
 
 ```csharp
-// Unity, with filter sample.
 public class SampleScript : MonoBehaviour
 {
     public Button prefab;
@@ -225,6 +274,8 @@ public class SampleScript : MonoBehaviour
             item.GetComponentInChildren<Text>().text = x.ToString();
             return item.gameObject;
         });
+
+        // Bind a GameObjectFilter to our SynchronizedView. The filter will take care of updating the GameObject.
         view.AttachFilter(new GameObjectFilter(root));
     }
 
@@ -272,23 +323,23 @@ public class SampleScript : MonoBehaviour
 }
 ```
 
-It is also possible to manage Order by managing indexes inserted from eventArgs, but it is very difficult with many caveats. If you don't have major performance issues, you can foreach the View itself on CollectionStateChanged (like Blazor) and reorder the transforms. If you have such a architecture, you can also use SortedView.
+## SynchronizedView
 
-View/SoretedView
----
-View can create from `IObservableCollection<T>`, it completely synchronized and thread-safe.
+A `SynchronizedView` is created from `IObservableCollection<T>.CreateView`. It is completely synchronized and thread-safe.
 
 ```csharp
 public interface IObservableCollection<T> : IReadOnlyCollection<T>
 {
-    // snip...
     ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
 }
 ```
 
-When reverse = true, foreach view as reverse order(Dictionary, etc. are not supported).
+When `reverse = true` the SynchronizedView is enumerated in reverse order (only for sorted collections: no effect for dictionaries and sets).
 
-`ISynchronizedView<T, TView>` is `IReadOnlyCollection` and hold both value and view(transformed value when added).
+`ISynchronizedView<T, TView>` implements `IReadOnlyCollection` and holds two collections:
+1. the original values
+2. the transformed values, aka the "views", as a result of `transform(T value) => TView`
+
 
 ```csharp
 public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
@@ -304,11 +355,24 @@ public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TVi
 }
 ```
 
+### Sorting
 
+While it is possible to control the ordering by managing indexes inserted from event args, that can be difficult and comes with many caveats. Unless you have some major performance concerns, it is simpler to loop over the SynchronizedView itself when a `CollectionStateChanged` event is trigger. Or even better, use `CreateSortedView`.
 
-see [filter](#filter) section.
+```csharp
+public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
+    where TKey : notnull
 
+public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer)
+    where TKey : notnull
 
+public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView, TCompare>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, Func<T, TCompare> compareSelector, bool ascending = true)
+    where TKey : notnull
+```
+
+> ⚠️ Using `foreach` over observable collections and synchronized views is thread-safe but will use locks during iteration. Because of this the obtained Enumerator **must** be Dispose. `foreach` and LINQ guarantee that Dipose is called properly, but be **very careful** if you extract the Enumerator by hand.
+
+### Filters
 
 ```csharp
 var view = transform(value);
@@ -326,23 +390,6 @@ RoutingCollectionChanged(eventArgs);
 CollectionStateChanged();
 ```
 
-
-```csharp
-public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<T> comparer)
-    where TKey : notnull
-
-public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> viewComparer)
-    where TKey : notnull
-
-public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView, TCompare>(this IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, Func<T, TCompare> compareSelector, bool ascending = true)
-    where TKey : notnull
-```
-
-> Notice: foreach ObservableCollections and Views are thread-safe but it uses lock at iterating. In other words, the obtained Enumerator must be Dispose. foreach and LINQ are guaranteed to be Dipose, but be careful when you extract the Enumerator by yourself.
-
-Filter
----
-
 ```csharp
 public interface ISynchronizedViewFilter<T, TView>
 {
@@ -358,9 +405,8 @@ public enum ChangedKind
 }
 ```
 
+## Observable collections
 
-Collections
----
 
 ```csharp
 public sealed partial class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>> where TKey : notnull
@@ -380,14 +426,11 @@ public sealed partial class ObservableStack<T> : IReadOnlyCollection<T>, IObserv
 public sealed class RingBuffer<T> : IList<T>, IReadOnlyList<T>
 ```
 
-Freezed
----
-
+## Freezed collections
 
 ```csharp
 public sealed class FreezedList<T> : IReadOnlyList<T>, IFreezedCollection<T>
 public sealed class FreezedDictionary<TKey, TValue> : IReadOnlyDictionary<TKey, TValue>, IFreezedCollection<KeyValuePair<TKey, TValue>> where TKey : notnull
-
 
 public interface IFreezedCollection<T>
 {
@@ -401,6 +444,6 @@ public static ISortableSynchronizedView<T, TView> CreateSortableView<T, TView, T
 public static void Sort<T, TView, TCompare>(this ISortableSynchronizedView<T, TView> source, Func<T, TCompare> compareSelector, bool ascending = true)
 ```
 
-License
----
+## License
+
 This library is licensed under the MIT License.
