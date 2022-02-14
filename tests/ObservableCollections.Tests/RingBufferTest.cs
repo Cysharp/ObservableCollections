@@ -127,6 +127,46 @@ namespace ObservableCollections.Tests
         }
 
         [Fact]
+        public void Iteration()
+        {
+            var empty = new RingBuffer<int>();
+            empty.ToArray().Should().BeEmpty();
+
+
+            for (int i = 0; i < 10; i++)
+            {
+                var buffer = new RingBuffer<int>();
+                for (int j = 0; j < i; j++)
+                {
+                    buffer.AddLast(j);
+                }
+                buffer.ToArray().Should().Equal(Enumerable.Range(0, i).ToArray());
+            }
+
+            for (int i = 0; i < 10; i++)
+            {
+                var buffer = new RingBuffer<int>();
+                for (int j = 0; j < i; j++)
+                {
+                    buffer.AddFirst(j);
+                }
+                buffer.ToArray().Should().Equal(Enumerable.Range(0, i).Reverse().ToArray());
+            }
+        }
+
+        [Fact]
+        public void RandomIteration()
+        {
+            var buffer = new RingBuffer<int>();
+            buffer.AddFirst(10);
+            buffer.AddLast(20);
+            buffer.AddLast(30);
+            buffer.AddFirst(40);
+
+            buffer.ToArray().Should().Equal(40, 10, 20, 30);
+        }
+
+        [Fact]
         public void BinarySearchTest()
         {
             var empty = new RingBuffer<int>(new int[] { });

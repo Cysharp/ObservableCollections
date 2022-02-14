@@ -157,6 +157,11 @@ namespace ObservableCollections
 
         public RingBufferSpan<T> GetSpan()
         {
+            if (count == 0)
+            {
+                return new RingBufferSpan<T>(Array.Empty<T>(), Array.Empty<T>(), 0);
+            }
+
             var start = head & mask;
             var end = (head + count) & mask;
 
@@ -206,6 +211,8 @@ namespace ObservableCollections
 
         public IEnumerable<T> Reverse()
         {
+            if (count == 0) yield break;
+
             var start = head & mask;
             var end = (head + count) & mask;
 
