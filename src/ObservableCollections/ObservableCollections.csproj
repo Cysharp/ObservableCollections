@@ -10,6 +10,7 @@
         <PackageTags>collection</PackageTags>
         <Description>High performance observable collections and synchronized views, for WPF, Blazor, Unity.</Description>
         <SignAssembly>true</SignAssembly>
+        <IsPackable>true</IsPackable>
     </PropertyGroup>
 
     <ItemGroup Condition="$(TargetFramework) == 'netstandard2.0'">
