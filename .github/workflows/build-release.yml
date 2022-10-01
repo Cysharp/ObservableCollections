@@ -79,7 +79,7 @@ jobs:
       # Store artifacts.
       - uses: actions/upload-artifact@v2
         with:
-          name: ObservableCollections.${{ env.GIT_TAG }}.unitypackage.zip
+          name: ObservableCollections.${{ env.GIT_TAG }}.unitypackage
           path: ./src/ObservableCollections.Unity/ObservableCollections.${{ env.GIT_TAG }}.unitypackage
 
   create-release:
