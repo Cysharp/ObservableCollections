@@ -126,7 +126,7 @@ jobs:
       - name: check directory
         run: ls -l
       - name: check artifacts
-        run: ls -l "./ObservableCollections.${{ env.GIT_TAG }}.unitypackage
+        run: ls -l "./ObservableCollections.${{ env.GIT_TAG }}.unitypackage"
 
   cleanup:
     if: needs.update-packagejson.outputs.is-branch-created == 'true'
