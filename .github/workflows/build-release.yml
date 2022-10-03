@@ -114,6 +114,20 @@ jobs:
           asset_name: ObservableCollections.${{ env.GIT_TAG }}.unitypackage
           asset_content_type: application/octet-stream
 
+  check-artifacts:
+    if: github.event.inputs.dry-run == 'true'
+    needs: [update-packagejson, build-dotnet, build-unity]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: Cysharp/Actions/.github/actions/setup-dotnet@main
+      # Download(All) Artifacts to current directory
+      - uses: actions/download-artifact@v2
+      - name: check directory
+        run: ls -l
+      - name: check artifacts
+        run: ls -l "./ObservableCollections.${{ env.GIT_TAG }}.unitypackage
+
   cleanup:
     if: needs.update-packagejson.outputs.is-branch-created == 'true'
     needs: [update-packagejson, build-unity]
