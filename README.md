@@ -174,7 +174,7 @@ public partial class DataTable<T> : ComponentBase, IDisposable
 
 WPF
 ---
-Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `WithtINotifyCollectionChanged` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
+Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `WithINotifyCollectionChanged` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
 
 ```csharp
 // WPF simple sample.
@@ -199,7 +199,7 @@ protected override void OnClosed(EventArgs e)
 }
 ```
 
-> WPF can not use SoretedView beacuse SortedView can not provide sort event to INotifyCollectionChanged.
+> WPF can not use SortedView because SortedView can not provide sort event to INotifyCollectionChanged.
 
 Unity
 ---
@@ -274,7 +274,7 @@ public class SampleScript : MonoBehaviour
 
 It is also possible to manage Order by managing indexes inserted from eventArgs, but it is very difficult with many caveats. If you don't have major performance issues, you can foreach the View itself on CollectionStateChanged (like Blazor) and reorder the transforms. If you have such a architecture, you can also use SortedView.
 
-View/SoretedView
+View/SortedView
 ---
 View can create from `IObservableCollection<T>`, it completely synchronized and thread-safe.
 
@@ -312,7 +312,7 @@ see [filter](#filter) section.
 
 ```csharp
 var view = transform(value);
-If (filter.IsMatch(value, view))
+if (filter.IsMatch(value, view))
 {
     filter.WhenTrue(value, view);
 }
@@ -338,7 +338,7 @@ public static ISynchronizedView<T, TView> CreateSortedView<T, TKey, TView, TComp
     where TKey : notnull
 ```
 
-> Notice: foreach ObservableCollections and Views are thread-safe but it uses lock at iterating. In other words, the obtained Enumerator must be Dispose. foreach and LINQ are guaranteed to be Dipose, but be careful when you extract the Enumerator by yourself.
+> Notice: foreach ObservableCollections and Views are thread-safe but it uses lock at iterating. In other words, the obtained Enumerator must be Dispose. foreach and LINQ are guaranteed to be Dispose, but be careful when you extract the Enumerator by yourself.
 
 Filter
 ---
