@@ -113,7 +113,6 @@ namespace ObservableCollections
 
         public void Clear()
         {
-            var l = new List<int>();
             lock (SyncRoot)
             {
                 list.Clear();
