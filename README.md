@@ -203,6 +203,16 @@ protected override void OnClosed(EventArgs e)
 
 Unity
 ---
+
+To install in a Unity project, you can use package manager.
+
+- Open Window > Package Manager
+- The "+" button > Add package from git URL
+- Enter the following URL
+    - ```
+      https://github.com/Cysharp/ObservableCollections.git?path=src/ObservableCollections.Unity/Assets/Plugins/ObservableCollections
+      ```
+
 In Unity, ObservableCollections and Views are useful as CollectionManagers, since they need to convert T to Prefab for display.
 
 Since we need to have side effects on GameObjects, we will prepare a filter and apply an action on changes.
