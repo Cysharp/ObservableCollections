@@ -53,14 +53,23 @@ namespace ObservableCollections
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
+            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
             {
                 lock (SyncRoot)
                 {
                     this.filter = filter;
-                    foreach (var (value, view) in list)
+                    for (var i = 0; i < list.Count; i++)
                     {
-                        filter.InvokeOnAttach(value, view);
+                        var (value, view) = list[i];
+                        if (invokeAddEventForCurrentElements)
+                        {
+                            var eventArgs = NotifyCollectionChangedEventArgs<T>.Add(value, i);
+                            filter.InvokeOnAdd(value, view, eventArgs);
+                        }
+                        else
+                        {
+                            filter.InvokeOnAttach(value, view);
+                        }
                     }
                 }
             }
@@ -193,24 +202,24 @@ namespace ObservableCollections
                             break;
                         case NotifyCollectionChangedAction.Replace:
                             // ObservableList does not support replace range
-                            {
-                                var v = (e.NewItem, selector(e.NewItem));
+                        {
+                            var v = (e.NewItem, selector(e.NewItem));
 
-                                var oldItem = list[e.NewStartingIndex];
-                                list[e.NewStartingIndex] = v;
+                            var oldItem = list[e.NewStartingIndex];
+                            list[e.NewStartingIndex] = v;
 
-                                filter.InvokeOnRemove(oldItem, e);
-                                filter.InvokeOnAdd(v, e);
-                                break;
-                            }
+                            filter.InvokeOnRemove(oldItem, e);
+                            filter.InvokeOnAdd(v, e);
+                            break;
+                        }
                         case NotifyCollectionChangedAction.Move:
-                            {
-                                var removeItem = list[e.OldStartingIndex];
-                                list.RemoveAt(e.OldStartingIndex);
-                                list.Insert(e.NewStartingIndex, removeItem);
+                        {
+                            var removeItem = list[e.OldStartingIndex];
+                            list.RemoveAt(e.OldStartingIndex);
+                            list.Insert(e.NewStartingIndex, removeItem);
 
-                                filter.InvokeOnMove(removeItem, e);
-                            }
+                            filter.InvokeOnMove(removeItem, e);
+                        }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             if (!filter.IsNullFilter())

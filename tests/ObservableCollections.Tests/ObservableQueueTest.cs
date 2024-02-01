@@ -80,5 +80,36 @@ namespace ObservableCollections.Tests
             queue.DequeueRange(2);
             filter.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 10), (ChangedKind.Remove, 50), (ChangedKind.Remove, 30));
         }
+        
+        [Fact]
+        public void FilterAndInvokeAddEvent()
+        {
+            var queue = new ObservableQueue<int>();
+            var view = queue.CreateView(x => new ViewContainer<int>(x));
+            var filter = new TestFilter<int>((x, v) => x % 3 == 0);
+
+            queue.Enqueue(10);
+            queue.Enqueue(50);
+            queue.Enqueue(30);
+            queue.Enqueue(20);
+            queue.Enqueue(40);
+
+            view.AttachFilter(filter, true);
+            
+            filter.CalledOnCollectionChanged.Count.Should().Be(5);
+            filter.CalledOnCollectionChanged[0].changedKind.Should().Be(ChangedKind.Add);
+            filter.CalledOnCollectionChanged[0].value.Should().Be(10);
+            filter.CalledOnCollectionChanged[1].changedKind.Should().Be(ChangedKind.Add);
+            filter.CalledOnCollectionChanged[1].value.Should().Be(50);
+            filter.CalledOnCollectionChanged[2].changedKind.Should().Be(ChangedKind.Add);
+            filter.CalledOnCollectionChanged[2].value.Should().Be(30);
+            filter.CalledOnCollectionChanged[3].changedKind.Should().Be(ChangedKind.Add);
+            filter.CalledOnCollectionChanged[3].value.Should().Be(20);
+            filter.CalledOnCollectionChanged[4].changedKind.Should().Be(ChangedKind.Add);
+            filter.CalledOnCollectionChanged[4].value.Should().Be(40);
+
+            filter.CalledWhenTrue.Count.Should().Be(1);
+            filter.CalledWhenFalse.Count.Should().Be(4);
+        }   
     }
 }

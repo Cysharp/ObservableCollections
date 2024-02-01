@@ -28,7 +28,7 @@ namespace ObservableCollections
         event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
-        void AttachFilter(ISynchronizedViewFilter<T, TView> filter);
+        void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForInitialElements = false);
         void ResetFilter(Action<T, TView>? resetAction);
         INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged();
     }

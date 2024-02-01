@@ -49,7 +49,7 @@ namespace ObservableCollections.Internal
             }
             else
             {
-                var array = ArrayPool<T>.Shared.Rent(count);
+                var array = ArrayPool<T>.Shared.Rent(16);
 
                 var i = 0;
                 foreach (var item in source)
@@ -75,8 +75,8 @@ namespace ObservableCollections.Internal
             if (array.Length == index)
             {
                 ArrayPool<T>.Shared.Return(array, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
+                array = ArrayPool<T>.Shared.Rent(index * 2);
             }
-            array = ArrayPool<T>.Shared.Rent(index * 2);
         }
 
         public void Dispose()

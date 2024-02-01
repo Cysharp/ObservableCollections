@@ -154,5 +154,36 @@ namespace ObservableCollections.Tests
                 .OrderBy(x => x.Value)
                 .Should().Equal((ChangedKind.Remove, -1090), (ChangedKind.Remove, -100), (ChangedKind.Remove, -53), (ChangedKind.Remove, -40), (ChangedKind.Remove, -34));
         }
+        
+        [Fact]
+        public void FilterAndInvokeAddEvent()
+        {
+            var dict = new ObservableDictionary<int, int>();
+            var view1 = dict.CreateView(x => new ViewContainer<int>(x.Value));
+            var filter1 = new TestFilter2<int>((x, v) => x.Value % 2 == 0);
+
+            dict.Add(10, -12); // 0
+            dict.Add(50, -53); // 1
+            dict.Add(30, -34); // 2
+            dict.Add(20, -25); // 3
+            dict.Add(40, -40); // 4
+            
+            view1.AttachFilter(filter1, true);
+
+            filter1.CalledOnCollectionChanged.Count.Should().Be(5);
+            filter1.CalledOnCollectionChanged[0].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[0].value.Key.Should().Be(10);
+            filter1.CalledOnCollectionChanged[1].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[1].value.Key.Should().Be(50);
+            filter1.CalledOnCollectionChanged[2].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[2].value.Key.Should().Be(30);
+            filter1.CalledOnCollectionChanged[3].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[3].value.Key.Should().Be(20);
+            filter1.CalledOnCollectionChanged[4].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[4].value.Key.Should().Be(40);
+
+            filter1.CalledWhenTrue.Count.Should().Be(3);
+            filter1.CalledWhenFalse.Count.Should().Be(2);
+        }   
     }
 }

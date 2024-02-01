@@ -38,14 +38,22 @@ namespace ObservableCollections.Internal
             }
         }
 
-        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
+        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
         {
             lock (SyncRoot)
             {
                 this.filter = filter;
-                foreach (var (value, view) in list)
+                for (var i = 0; i < list.Count; i++)
                 {
-                    filter.InvokeOnAttach(value, view);
+                    var (value, view) = list[i];
+                    if (invokeAddEventForCurrentElements)
+                    {
+                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                    }
+                    else
+                    {
+                        filter.InvokeOnAttach(value, view);
+                    }
                 }
             }
         }
@@ -133,14 +141,22 @@ namespace ObservableCollections.Internal
             }
         }
 
-        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
+        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
         {
             lock (SyncRoot)
             {
                 this.filter = filter;
-                foreach (var (value, view) in array)
+                for (var i = 0; i < array.Length; i++)
                 {
-                    filter.InvokeOnAttach(value, view);
+                    var (value, view) = array[i];
+                    if (invokeAddEventForCurrentElements)
+                    {
+                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                    }
+                    else
+                    {
+                        filter.InvokeOnAttach(value, view);
+                    }
                 }
             }
         }
@@ -178,7 +194,6 @@ namespace ObservableCollections.Internal
 
         public void Dispose()
         {
-
         }
 
         public void Sort(IComparer<T> comparer)
