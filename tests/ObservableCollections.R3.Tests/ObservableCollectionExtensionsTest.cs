@@ -132,4 +132,43 @@ public class ObservableCollectionExtensionsTest
         collection.Move(1, 2);
         events.Count.Should().Be(1);
     }
+
+    [Fact]
+    public void ObserveCountChanged()
+    {
+        var events = new List<int>();
+        var collection = new ObservableList<int>([111, 222, 333]);
+
+        using var _ = collection.ObserveCountChanged().Subscribe(count => events.Add(count));
+
+        events.Should().BeEmpty();
+        
+        collection.Add(444);
+        events[0].Should().Be(4);
+
+        collection.Remove(111);
+        events[1].Should().Be(3);
+        
+        collection.Move(0, 1);
+        events.Count.Should().Be(2);
+
+        collection[0] = 999;
+        events.Count.Should().Be(2);
+        
+        collection.Clear();
+        events[2].Should().Be(0);
+        
+        collection.Clear();
+        events.Count.Should().Be(3);
+    }
+
+    [Fact]
+    public void ObserveCountChanged_NotifyCurrent()
+    {
+        var events = new List<int>();
+        var collection = new ObservableList<int>([111, 222, 333]);
+
+        var subscription = collection.ObserveCountChanged(notifyCurrentCount: true).Subscribe(count => events.Add(count));
+        events[0].Should().Be(3);
+    }
 }

@@ -36,6 +36,11 @@ public static class ObservableCollectionR3Extensions
     {
         return new ObservableCollectionReset<T>(source, cancellationToken);
     }
+
+    public static Observable<int> ObserveCountChanged<T>(this IObservableCollection<T> source, bool notifyCurrentCount = false, CancellationToken cancellationToken = default)
+    {
+        return new ObservableCollectionCountChanged<T>(source, notifyCurrentCount, cancellationToken);
+    }
 }
 
 sealed class ObservableCollectionAdd<T>(IObservableCollection<T> collection, CancellationToken cancellationToken)
@@ -179,6 +184,49 @@ sealed class ObservableCollectionReset<T>(IObservableCollection<T> collection, C
         }
     }
 }
+
+sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collection, bool notifyCurrentCount, CancellationToken cancellationToken)
+    : Observable<int>
+{
+    protected override IDisposable SubscribeCore(Observer<int> observer)
+    {
+        return new _ObservableCollectionCountChanged(collection, notifyCurrentCount, observer, cancellationToken);
+    }
+    
+    sealed class _ObservableCollectionCountChanged : ObservableCollectionObserverBase<T, int>
+    {
+        readonly IObservableCollection<T> collection;
+        int countPrev;
+
+        public _ObservableCollectionCountChanged(
+            IObservableCollection<T> collection,
+            bool notifyCurrentCount,
+            Observer<int> observer,
+            CancellationToken cancellationToken) : base(collection, observer, cancellationToken)
+        {
+            this.collection = collection;
+            this.countPrev = collection.Count;
+            if (notifyCurrentCount)
+            {
+                observer.OnNext(collection.Count);
+            }
+        }
+
+        protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
+        {
+            switch (eventArgs.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                case NotifyCollectionChangedAction.Remove:
+                case NotifyCollectionChangedAction.Reset when countPrev != collection.Count:
+                    observer.OnNext(collection.Count);
+                    break;
+            }
+            countPrev = collection.Count;
+        }
+    }
+}
+
 
 abstract class ObservableCollectionObserverBase<T, TEvent> : IDisposable
 {
