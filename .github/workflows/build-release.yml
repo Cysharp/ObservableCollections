@@ -13,22 +13,11 @@ on:
         type: boolean
 
 jobs:
-  update-packagejson:
-    uses: Cysharp/Actions/.github/workflows/update-packagejson.yaml@main
-    with:
-      file-path: ./src/ObservableCollections.Unity/Assets/Plugins/ObservableCollections/package.json
-      tag: ${{ inputs.tag }}
-      dry-run: ${{ inputs.dry-run }}
-
   build-dotnet:
-    needs: [update-packagejson]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - run: echo ${{ needs.update-packagejson.outputs.sha }}
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.update-packagejson.outputs.sha }}
       - uses: Cysharp/Actions/.github/actions/setup-dotnet@main
       # build and pack
       - run: dotnet build ObservableCollection.WithoutSandbox.slnf -c Release -p:Version=${{ inputs.tag }}
@@ -40,58 +29,14 @@ jobs:
           name: nuget
           path: ./publish/
 
-  build-unity:
-    needs: [update-packagejson]
-    strategy:
-      matrix:
-        unity: ["2019.4.25f1"]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - run: echo ${{ needs.update-packagejson.outputs.sha }}
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.update-packagejson.outputs.sha }}
-      # Execute scripts: Export Package
-      # /opt/Unity/Editor/Unity -quit -batchmode -nographics -silent-crashes -logFile -projectPath . -executeMethod PackageExporter.Export
-      - name: Build Unity (.unitypacakge)
-        uses: Cysharp/Actions/.github/actions/unity-builder@main
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        with:
-          projectPath: src/ObservableCollections.Unity
-          unityVersion: ${{ matrix.unity }}
-          targetPlatform: StandaloneLinux64
-          buildMethod: PackageExporter.Export
-
-      - uses: Cysharp/Actions/.github/actions/check-metas@main # check meta files
-        with:
-          directory: src/ObservableCollections.Unity
-
-      # Store artifacts.
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ObservableCollections.${{ inputs.tag }}.unitypackage
-          path: ./src/ObservableCollections.Unity/ObservableCollections.${{ inputs.tag }}.unitypackage
-
   # release
   create-release:
-    needs: [update-packagejson, build-unity]
+    needs: [build-dotnet]
     uses: Cysharp/Actions/.github/workflows/create-release.yaml@main
     with:
-      commit-id: ${{ needs.update-packagejson.outputs.sha }}
+      commit-id: ${{ github.sha }}
       dry-run: ${{ inputs.dry-run }}
       tag: ${{ inputs.tag }}
       nuget-push: true
-      release-upload: true
-      release-asset-path: ./ObservableCollections.${{ inputs.tag }}.unitypackage/ObservableCollections.${{ inputs.tag }}.unitypackage
+      release-upload: false
     secrets: inherit
-
-  cleanup:
-    if: ${{ needs.update-packagejson.outputs.is-branch-created == 'true' }}
-    needs: [update-packagejson, build-unity]
-    uses: Cysharp/Actions/.github/workflows/clean-packagejson-branch.yaml@main
-    with:
-      branch: ${{ needs.update-packagejson.outputs.branch-name }}
