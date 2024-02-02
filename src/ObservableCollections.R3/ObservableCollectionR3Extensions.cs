@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 using System.Threading;
 using R3;
 
-namespace ObservableCollections.R3;
+namespace ObservableCollections;
 
 public readonly record struct CollectionAddEvent<T>(int Index, T Value);
 public readonly record struct CollectionRemoveEvent<T>(int Index, T Value);
