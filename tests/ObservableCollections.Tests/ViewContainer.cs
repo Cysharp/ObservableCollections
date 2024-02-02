@@ -35,7 +35,7 @@ namespace ObservableCollections.Tests
         readonly Func<T, ViewContainer<T>, bool> filter;
         public List<(T, ViewContainer<T>)> CalledWhenTrue = new();
         public List<(T, ViewContainer<T>)> CalledWhenFalse = new();
-        public List<(ChangedKind changedKind, T value, ViewContainer<T> view)> CalledOnCollectionChanged = new();
+        public List<(ChangedKind changedKind, T value, ViewContainer<T> view, int index, int oldIndex)> CalledOnCollectionChanged = new();
 
         public TestFilter(Func<T, ViewContainer<T>, bool> filter)
         {
@@ -56,7 +56,7 @@ namespace ObservableCollections.Tests
 
         public void OnCollectionChanged(ChangedKind changedKind, T value, ViewContainer<T> view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            CalledOnCollectionChanged.Add((changedKind, value, view));
+            CalledOnCollectionChanged.Add((changedKind, value, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));
         }
 
         public void WhenTrue(T value, ViewContainer<T> view)

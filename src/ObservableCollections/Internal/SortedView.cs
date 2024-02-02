@@ -12,7 +12,7 @@ namespace ObservableCollections.Internal
         readonly IObservableCollection<T> source;
         readonly Func<T, TView> transform;
         readonly Func<T, TKey> identitySelector;
-        readonly SortedDictionary<(T Value, TKey Key), (T Value, TView View)> dict;
+        readonly SortedList<(T Value, TKey Key), (T Value, TView View)> list;
 
         ISynchronizedViewFilter<T, TView> filter;
 
@@ -29,13 +29,13 @@ namespace ObservableCollections.Internal
             this.filter = SynchronizedViewFilter<T, TView>.Null;
             lock (source.SyncRoot)
             {
-                var dict = new SortedDictionary<(T, TKey), (T, TView)>(new Comparer(comparer));
+                var dict = new Dictionary<(T, TKey), (T, TView)>(source.Count);
                 foreach (var v in source)
                 {
                     dict.Add((v, identitySelector(v)), (v, transform(v)));
                 }
 
-                this.dict = dict;
+                this.list = new SortedList<(T Value, TKey Key), (T Value, TView View)>(dict, new Comparer(comparer));
                 this.source.CollectionChanged += SourceCollectionChanged;
             }
         }
@@ -46,7 +46,7 @@ namespace ObservableCollections.Internal
             {
                 lock (SyncRoot)
                 {
-                    return dict.Count;
+                    return list.Count;
                 }
             }
         }
@@ -56,7 +56,7 @@ namespace ObservableCollections.Internal
             lock (SyncRoot)
             {
                 this.filter = filter;
-                foreach (var (_, (value, view)) in dict)
+                foreach (var (_, (value, view)) in list)
                 {
                     filter.InvokeOnAttach(value, view);
                 }
@@ -70,7 +70,7 @@ namespace ObservableCollections.Internal
                 this.filter = SynchronizedViewFilter<T, TView>.Null;
                 if (resetAction != null)
                 {
-                    foreach (var (_, (value, view)) in dict)
+                    foreach (var (_, (value, view)) in list)
                     {
                         resetAction(value, view);
                     }
@@ -90,7 +90,7 @@ namespace ObservableCollections.Internal
         {
             lock (SyncRoot)
             {
-                foreach (var item in dict)
+                foreach (var item in list)
                 {
                     if (filter.IsMatch(item.Value.Value, item.Value.View))
                     {
@@ -114,83 +114,101 @@ namespace ObservableCollections.Internal
                 switch (e.Action)
                 {
                     case NotifyCollectionChangedAction.Add:
+                    {
+                        // Add, Insert
+                        if (e.IsSingleItem)
                         {
-                            // Add, Insert
-                            if (e.IsSingleItem)
+                            var value = e.NewItem;
+                            var view = transform(value);
+                            var id = identitySelector(value);
+                            list.Add((value, id), (value, view));
+                            var index = list.IndexOfKey((value, id));
+                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
+                        }
+                        else
+                        {
+                            foreach (var value in e.NewItems)
                             {
-                                var value = e.NewItem;
                                 var view = transform(value);
                                 var id = identitySelector(value);
-                                dict.Add((value, id), (value, view));
-                                filter.InvokeOnAdd(value, view, e);
-                            }
-                            else
-                            {
-                                foreach (var value in e.NewItems)
-                                {
-                                    var view = transform(value);
-                                    var id = identitySelector(value);
-                                    dict.Add((value, id), (value, view));
-                                    filter.InvokeOnAdd(value, view, e);
-                                }
+                                list.Add((value, id), (value, view));
+                                var index = list.IndexOfKey((value, id));
+                                filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
                             }
                         }
+                    }
                         break;
                     case NotifyCollectionChangedAction.Remove:
+                    {
+                        if (e.IsSingleItem)
                         {
-                            if (e.IsSingleItem)
+                            var value = e.OldItem;
+                            var id = identitySelector(value);
+                            var key = (value, id);
+                            if (list.TryGetValue(key, out var v))
                             {
-                                var value = e.OldItem;
-                                var id = identitySelector(value);
-                                dict.Remove((value, id), out var v);
-                                filter.InvokeOnRemove(v.Value, v.View, e);
+                                var index = list.IndexOfKey(key);
+                                list.RemoveAt(index);
+                                filter.InvokeOnRemove(v.Value, v.View, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, index));
                             }
-                            else
+                        }
+                        else
+                        {
+                            foreach (var value in e.OldItems)
                             {
-                                foreach (var value in e.OldItems)
+                                var id = identitySelector(value);
+                                var key = (value, id);
+                                if (list.TryGetValue(key, out var v))
                                 {
-                                    var id = identitySelector(value);
-                                    dict.Remove((value, id), out var v);
-                                    filter.InvokeOnRemove(v.Value, v.View, e);
+                                    var index = list.IndexOfKey((value, id));
+                                    list.RemoveAt(index);
+                                    filter.InvokeOnRemove(v.Value, v.View, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, index));
                                 }
                             }
                         }
+                    }
                         break;
                     case NotifyCollectionChangedAction.Replace:
                         // ReplaceRange is not supported in all ObservableCollections collections
                         // Replace is remove old item and insert new item.
+                    {
+                        var oldValue = e.OldItem;
+                        var oldKey = (oldValue, identitySelector(oldValue));
+                        if (list.TryGetValue(oldKey, out var o))
                         {
-                            var oldValue = e.OldItem;
-                            dict.Remove((oldValue, identitySelector(oldValue)), out var oldView);
-
-                            var value = e.NewItem;
-                            var view = transform(value);
-                            var id = identitySelector(value);
-                            dict.Add((value, id), (value, view));
-
-                            filter.InvokeOnRemove(oldView, e);
-                            filter.InvokeOnAdd(value, view, e);
+                            var oldIndex = list.IndexOfKey(oldKey);
+                            list.RemoveAt(oldIndex);
+                            filter.InvokeOnRemove(o, NotifyCollectionChangedEventArgs<T>.Remove(oldValue, oldIndex));
                         }
+
+                        var value = e.NewItem;
+                        var view = transform(value);
+                        var id = identitySelector(value);
+                        list.Add((value, id), (value, view));
+                        var newIndex = list.IndexOfKey((value, id)); 
+
+                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, newIndex));
+                    }
                         break;
                     case NotifyCollectionChangedAction.Move:
+                    {
+                        // Move(index change) does not affect sorted list.
+                        var oldValue = e.OldItem;
+                        if (list.TryGetValue((oldValue, identitySelector(oldValue)), out var view))
                         {
-                            // Move(index change) does not affect sorted list.
-                            var oldValue = e.OldItem;
-                            if (dict.TryGetValue((oldValue, identitySelector(oldValue)), out var view))
-                            {
-                                filter.InvokeOnMove(view, e);
-                            }
+                            filter.InvokeOnMove(view, e);
                         }
+                    }
                         break;
                     case NotifyCollectionChangedAction.Reset:
                         if (!filter.IsNullFilter())
                         {
-                            foreach (var item in dict)
+                            foreach (var item in list)
                             {
                                 filter.InvokeOnRemove(item.Value, e);
                             }
                         }
-                        dict.Clear();
+                        list.Clear();
                         break;
                     default:
                         break;
