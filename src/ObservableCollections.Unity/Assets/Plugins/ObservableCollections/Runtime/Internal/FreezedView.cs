@@ -114,7 +114,7 @@ namespace ObservableCollections.Internal
         public event Action<NotifyCollectionChangedAction> CollectionStateChanged;
         public event NotifyCollectionChangedEventHandler<T> RoutingCollectionChanged;
 
-        public object SyncRoot { get; } = new();
+        public object SyncRoot { get; } = new object();
 
         public FreezedSortableView(IEnumerable<T> source, Func<T, TView> selector)
         {
