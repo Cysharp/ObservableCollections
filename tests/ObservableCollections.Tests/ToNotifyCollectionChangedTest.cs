@@ -8,13 +8,13 @@ public class ToNotifyCollectionChangedTest
         var list = new ObservableList<int>();
 
         list.Add(10);
-        list.Add(50);
+        list.Add(20);
         list.Add(30);
 
         var notify = list.CreateView(x => $"${x}").ToNotifyCollectionChanged();
 
-        list.Add(20);
         list.Add(40);
+        list.Add(50);
 
         using var e = notify.GetEnumerator();
         e.MoveNext().Should().BeTrue();

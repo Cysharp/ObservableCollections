@@ -13,10 +13,12 @@ namespace ObservableCollections.Internal
         static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new("Count");
 
         readonly ISynchronizedView<T, TView> parent;
+        readonly ISynchronizedViewFilter<T, TView> currentFilter;
 
         public NotifyCollectionChangedSynchronizedView(ISynchronizedView<T, TView> parent)
         {
             this.parent = parent;
+            currentFilter = parent.CurrentFilter;
             parent.AttachFilter(this);
         }
 
@@ -52,13 +54,13 @@ namespace ObservableCollections.Internal
 
         IEnumerator IEnumerable.GetEnumerator() => parent.GetEnumerator();
 
-        public bool IsMatch(T value, TView view) => parent.CurrentFilter.IsMatch(value, view);
-        public void WhenTrue(T value, TView view) => parent.CurrentFilter.WhenTrue(value, view);
-        public void WhenFalse(T value, TView view) => parent.CurrentFilter.WhenFalse(value, view);
+        public bool IsMatch(T value, TView view) => currentFilter.IsMatch(value, view);
+        public void WhenTrue(T value, TView view) => currentFilter.WhenTrue(value, view);
+        public void WhenFalse(T value, TView view) => currentFilter.WhenFalse(value, view);
 
         public void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            parent.CurrentFilter.OnCollectionChanged(changedKind, value, view, in eventArgs);
+            currentFilter.OnCollectionChanged(changedKind, value, view, in eventArgs);
 
             switch (changedKind)
             {
