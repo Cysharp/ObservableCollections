@@ -195,7 +195,6 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
     
     sealed class _ObservableCollectionCountChanged : ObservableCollectionObserverBase<T, int>
     {
-        readonly IObservableCollection<T> collection;
         int countPrev;
 
         public _ObservableCollectionCountChanged(
@@ -204,7 +203,6 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
             Observer<int> observer,
             CancellationToken cancellationToken) : base(collection, observer, cancellationToken)
         {
-            this.collection = collection;
             this.countPrev = collection.Count;
             if (notifyCurrentCount)
             {
