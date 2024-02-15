@@ -14,7 +14,7 @@ namespace ObservableCollections
             // reverse is no used.
             return new View<TView>(this, transform);
         }
-        
+
         class View<TView> : ISynchronizedView<KeyValuePair<TKey, TValue>, TView>
         {
             readonly ObservableDictionary<TKey, TValue> source;
@@ -38,6 +38,11 @@ namespace ObservableCollections
             public object SyncRoot { get; }
             public event NotifyCollectionChangedEventHandler<KeyValuePair<TKey, TValue>>? RoutingCollectionChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
+
+            public ISynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView> CurrentFilter
+            {
+                get { lock (SyncRoot) return filter; }
+            }
 
             public int Count
             {
@@ -91,7 +96,7 @@ namespace ObservableCollections
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView> WithINotifyCollectionChanged()
+            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
             {
                 lock (SyncRoot)
                 {
