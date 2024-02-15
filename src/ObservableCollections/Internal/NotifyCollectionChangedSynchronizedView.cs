@@ -6,37 +6,21 @@ using System.ComponentModel;
 
 namespace ObservableCollections.Internal
 {
-    internal class NotifyCollectionChangedSynchronizedView<T, TView> : INotifyCollectionChangedSynchronizedView<T, TView>
+    internal class NotifyCollectionChangedSynchronizedView<T, TView> :
+        INotifyCollectionChangedSynchronizedView<TView>,
+        ISynchronizedViewFilter<T, TView>
     {
+        static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new("Count");
+
         readonly ISynchronizedView<T, TView> parent;
-        static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new PropertyChangedEventArgs("Count");
+        readonly ISynchronizedViewFilter<T, TView> currentFilter;
 
         public NotifyCollectionChangedSynchronizedView(ISynchronizedView<T, TView> parent)
         {
             this.parent = parent;
-            this.parent.RoutingCollectionChanged += Parent_RoutingCollectionChanged;
+            currentFilter = parent.CurrentFilter;
+            parent.AttachFilter(this);
         }
-
-        private void Parent_RoutingCollectionChanged(in NotifyCollectionChangedEventArgs<T> e)
-        {
-            CollectionChanged?.Invoke(this, e.ToStandardEventArgs());
-
-            switch (e.Action)
-            {
-                // add, remove, reset will change the count.
-                case NotifyCollectionChangedAction.Add:
-                case NotifyCollectionChangedAction.Remove:
-                case NotifyCollectionChangedAction.Reset:
-                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
-                    break;
-                case NotifyCollectionChangedAction.Replace:
-                case NotifyCollectionChangedAction.Move:
-                default:
-                    break;
-            }
-        }
-
-        public object SyncRoot => parent.SyncRoot;
 
         public int Count => parent.Count;
 
@@ -55,16 +39,43 @@ namespace ObservableCollections.Internal
             remove { parent.RoutingCollectionChanged -= value; }
         }
 
-        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false) => parent.AttachFilter(filter, invokeAddEventForCurrentElements);
-        public void ResetFilter(Action<T, TView>? resetAction) => parent.ResetFilter(resetAction);
-        public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged() => this;
         public void Dispose()
         {
-            this.parent.RoutingCollectionChanged -= Parent_RoutingCollectionChanged;
             parent.Dispose();
         }
 
-        public IEnumerator<(T, TView)> GetEnumerator() => parent.GetEnumerator();
+        public IEnumerator<TView> GetEnumerator()
+        {
+            foreach (var (value, view) in parent)
+            {
+                yield return view;
+            }
+        }
+
         IEnumerator IEnumerable.GetEnumerator() => parent.GetEnumerator();
+
+        public bool IsMatch(T value, TView view) => currentFilter.IsMatch(value, view);
+        public void WhenTrue(T value, TView view) => currentFilter.WhenTrue(value, view);
+        public void WhenFalse(T value, TView view) => currentFilter.WhenFalse(value, view);
+
+        public void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
+        {
+            currentFilter.OnCollectionChanged(changedKind, value, view, in eventArgs);
+
+            switch (changedKind)
+            {
+                case ChangedKind.Add:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, view, eventArgs.NewStartingIndex));
+                    return;
+                case ChangedKind.Remove:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, view, eventArgs.OldStartingIndex));
+                    break;
+                case ChangedKind.Move:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
+            }
+        }
     }
 }

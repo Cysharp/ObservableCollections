@@ -24,13 +24,14 @@ namespace ObservableCollections
     public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
     {
         object SyncRoot { get; }
+        ISynchronizedViewFilter<T, TView> CurrentFilter { get; }
 
         event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
         void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForInitialElements = false);
         void ResetFilter(Action<T, TView>? resetAction);
-        INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged();
+        INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged();
     }
 
     public interface ISortableSynchronizedView<T, TView> : ISynchronizedView<T, TView>
@@ -44,7 +45,7 @@ namespace ObservableCollections
     //{
     //}
 
-    public interface INotifyCollectionChangedSynchronizedView<T, TView> : ISynchronizedView<T, TView>, INotifyCollectionChanged, INotifyPropertyChanged
+    public interface INotifyCollectionChangedSynchronizedView<out TView> : IReadOnlyCollection<TView>, INotifyCollectionChanged, INotifyPropertyChanged
     {
     }
 

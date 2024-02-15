@@ -16,6 +16,11 @@ namespace ObservableCollections
 
         sealed class View<TView> : ISynchronizedView<T, TView>
         {
+            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            {
+                get { lock (SyncRoot) return filter; }
+            }
+
             readonly ObservableHashSet<T> source;
             readonly Func<T, TView> selector;
             readonly Dictionary<T, (T, TView)> dict;
@@ -85,7 +90,7 @@ namespace ObservableCollections
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
             {
                 lock (SyncRoot)
                 {

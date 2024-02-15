@@ -16,6 +16,14 @@ namespace ObservableCollections
 
         sealed class View<TView> : ISynchronizedView<T, TView>
         {
+            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            {
+                get
+                {
+                    lock (SyncRoot) { return filter; }
+                }
+            }
+
             readonly ObservableList<T> source;
             readonly Func<T, TView> selector;
             readonly bool reverse;
@@ -89,7 +97,7 @@ namespace ObservableCollections
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
             {
                 lock (SyncRoot)
                 {

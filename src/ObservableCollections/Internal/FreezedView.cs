@@ -15,6 +15,11 @@ namespace ObservableCollections.Internal
 
         ISynchronizedViewFilter<T, TView> filter;
 
+        public ISynchronizedViewFilter<T, TView> CurrentFilter
+        {
+            get { lock (SyncRoot) return filter; }
+        }
+
         public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
         public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
 
@@ -107,7 +112,7 @@ namespace ObservableCollections.Internal
 
         }
 
-        public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
         {
             return new NotifyCollectionChangedSynchronizedView<T, TView>(this);
         }
@@ -118,6 +123,11 @@ namespace ObservableCollections.Internal
         readonly (T, TView)[] array;
 
         ISynchronizedViewFilter<T, TView> filter;
+
+        public ISynchronizedViewFilter<T, TView> CurrentFilter
+        {
+            get { lock (SyncRoot) return filter; }
+        }
 
         public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
         public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
@@ -206,7 +216,7 @@ namespace ObservableCollections.Internal
             Array.Sort(array, new TViewComparer(viewComparer));
         }
 
-        public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
         {
             return new NotifyCollectionChangedSynchronizedView<T, TView>(this);
         }

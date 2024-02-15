@@ -28,6 +28,11 @@ namespace ObservableCollections
 
             public object SyncRoot { get; }
 
+            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            {
+                get { lock (SyncRoot) return filter; }
+            }
+
             public View(ObservableQueue<T> source, Func<T, TView> selector, bool reverse)
             {
                 this.source = source;
@@ -89,7 +94,7 @@ namespace ObservableCollections
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
             {
                 lock (SyncRoot)
                 {

@@ -2,13 +2,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
 
 namespace ObservableCollections.Internal
 {
     internal class SortedView<T, TKey, TView> : ISynchronizedView<T, TView>
         where TKey : notnull
     {
+        public ISynchronizedViewFilter<T, TView> CurrentFilter
+        {
+            get { lock (SyncRoot) return filter; }
+        }
+
         readonly IObservableCollection<T> source;
         readonly Func<T, TView> transform;
         readonly Func<T, TKey> identitySelector;
@@ -85,7 +89,7 @@ namespace ObservableCollections.Internal
             }
         }
 
-        public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
         {
             lock (SyncRoot)
             {
@@ -192,7 +196,7 @@ namespace ObservableCollections.Internal
                         var view = transform(value);
                         var id = identitySelector(value);
                         list.Add((value, id), (value, view));
-                        var newIndex = list.IndexOfKey((value, id)); 
+                        var newIndex = list.IndexOfKey((value, id));
 
                         filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, newIndex));
                     }

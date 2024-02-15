@@ -62,7 +62,6 @@ namespace ObservableCollections
 
         public event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
 
-
         public void Add(T item)
         {
             lock (SyncRoot)

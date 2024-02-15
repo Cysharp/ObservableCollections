@@ -22,6 +22,11 @@ namespace ObservableCollections.Internal
 
         public object SyncRoot { get; } = new object();
 
+        public ISynchronizedViewFilter<T, TView> CurrentFilter
+        {
+            get { lock (SyncRoot) return filter; }
+        }
+
         public SortedViewViewComparer(IObservableCollection<T> source, Func<T, TKey> identitySelector, Func<T, TView> transform, IComparer<TView> comparer)
         {
             this.source = source;
@@ -89,7 +94,7 @@ namespace ObservableCollections.Internal
             }
         }
 
-        public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged()
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
         {
             lock (SyncRoot)
             {
@@ -146,7 +151,7 @@ namespace ObservableCollections.Internal
                                 var id = identitySelector(value);
                                 list.Add((view, id), (value, view));
                                 viewMap.Add(id, view);
-                                var index = list.IndexOfKey((view, id));                                            
+                                var index = list.IndexOfKey((view, id));
                                 filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
                             }
                         }
