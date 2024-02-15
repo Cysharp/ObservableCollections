@@ -52,7 +52,7 @@ namespace ObservableCollections.Internal
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => parent.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public bool IsMatch(T value, TView view) => currentFilter.IsMatch(value, view);
         public void WhenTrue(T value, TView view) => currentFilter.WhenTrue(value, view);
