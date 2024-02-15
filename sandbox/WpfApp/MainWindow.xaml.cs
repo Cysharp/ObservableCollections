@@ -23,7 +23,7 @@ namespace WpfApp
     public partial class MainWindow : Window
     {
         ObservableList<int> list;
-        public ISynchronizedView<int, int> ItemsView { get; set; }
+        public INotifyCollectionChangedSynchronizedView<int> ItemsView { get; set; }
 
         public MainWindow()
         {
@@ -35,7 +35,7 @@ namespace WpfApp
 
             list = new ObservableList<int>();
             list.AddRange(new[] { 1, 10, 188 });
-            ItemsView = list.CreateSortedView(x => x, x => x, comparer: Comparer<int>.Default).WithINotifyCollectionChanged();
+            ItemsView = list.CreateSortedView(x => x, x => x, comparer: Comparer<int>.Default).ToNotifyCollectionChanged();
 
 
             BindingOperations.EnableCollectionSynchronization(ItemsView, new object());
