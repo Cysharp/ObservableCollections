@@ -1,7 +1,7 @@
 # ObservableCollections
 [![GitHub Actions](https://github.com/Cysharp/ObservableCollections/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/ObservableCollections/actions) [![Releases](https://img.shields.io/github/release/Cysharp/ObservableCollections.svg)](https://github.com/Cysharp/ObservableCollections/releases)
 
-ObservableCollections is a high performance observable collections(`ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`) with synchronized views.
+ObservableCollections is a high performance observable collections(`ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`) with synchronized views and Observe Extension for [R3](https://github.com/Cysharp/R3).
 
 .NET has [`ObservableCollection<T>`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.objectmodel.observablecollection-1), however it has many lacks of features.
 
@@ -45,6 +45,16 @@ SynchronizedView helps to separate between Model and View (ViewModel). We will u
 ![image](https://user-images.githubusercontent.com/46207/131979264-2463403b-0fba-474b-8f49-277c2abe1b05.png)
 
 ObservableCollections has not just a simple list, there are many more data structures. `ObservableList<T>`, `ObservableDictionary<TKey, TValue>`, `ObservableHashSet<T>`, `ObservableQueue<T>`, `ObservableStack<T>`, `ObservableRingBuffer<T>`, `ObservableFixedSizeRingBuffer<T>`. `RingBuffer`, especially `FixedSizeRingBuffer`, can be achieved with efficient performance when there is rotation (e.g., displaying up to 1000 logs, where old ones are deleted when new ones are added). Of course, the AddRange allows for efficient batch processing of large numbers of additions.
+
+If you want to handle each change event with Rx, you can monitor it with the following method by combining it with [R3](https://github.com/Cysharp/R3):
+
+```csharp
+Observable<CollectionAddEvent<T>> IObservableCollection<T>.ObserveAdd()
+Observable<CollectionRemoveEvent<T>> IObservableCollection<T>.ObserveRemove()
+Observable<CollectionReplaceEvent<T>> IObservableCollection<T>.ObserveReplace() 
+Observable<CollectionMoveEvent<T>> IObservableCollection<T>.ObserveMove() 
+Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
+```
 
 Getting Started
 ---
@@ -112,6 +122,30 @@ view.Dispose();
 
 The basic idea behind using ObservableCollections is to create a View. In order to automate this pipeline, the view can be sortable, filtered, and have side effects on the values when they are changed.
 
+Reactive Extensions with R3
+---
+Once the R3 extension package is installed, you can subscribe to `ObserveAdd`, `ObserveRemove`, `ObserveReplace`, `ObserveMove`, and `ObserveReset` events as Rx, allowing you to compose events individually.
+
+PM> Install-Package [ObservableCollections.R3](https://www.nuget.org/packages/ObservableCollections.R3)
+
+```csharp
+using R3;
+using ObservableCollections;
+
+var list = new ObservableList<int>();
+list.ObserveAdd()
+    .Subscribe(x =>
+    {
+        Console.WriteLine(x);
+    });
+
+list.Add(10);
+list.Add(20);
+list.AddRange(new[] { 10, 20, 30 });
+```
+
+Since it is not supported by dotnet/reactive, please use the Rx library [R3](https://github.com/Cysharp/R3).
+
 Blazor
 ---
 Since Blazor re-renders the whole thing by StateHasChanged, you may think that Observable collections are unnecessary. However, when you split it into Components, it is beneficial for Component confidence to detect the change and change its own State.
@@ -174,7 +208,7 @@ public partial class DataTable<T> : ComponentBase, IDisposable
 
 WPF
 ---
-Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `WithINotifyCollectionChanged` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
+Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `ToNotifyCollectionChanged()` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
 
 ```csharp
 // WPF simple sample.
@@ -188,7 +222,7 @@ public MainWindow()
     this.DataContext = this;
 
     list = new ObservableList<int>();
-    ItemsView = list.CreateView(x => x).WithINotifyCollectionChanged();
+    ItemsView = list.CreateView(x => x).ToNotifyCollectionChanged();
 
     BindingOperations.EnableCollectionSynchronization(ItemsView, new object()); // for ui synchronization safety of viewmodel
 }
@@ -203,9 +237,7 @@ protected override void OnClosed(EventArgs e)
 
 Unity
 ---
-
-In Unity projects, you can installing `ObservableCollections` with [NugetForUnity](https://github.com/GlitchEnzo/NuGetForUnity).
-
+In Unity projects, you can installing `ObservableCollections` with [NugetForUnity](https://github.com/GlitchEnzo/NuGetForUnity). If R3 integration is required, similarly install `ObservableCollections.R3` via NuGetForUnity.
 
 In Unity, ObservableCollections and Views are useful as CollectionManagers, since they need to convert T to Prefab for display.
 

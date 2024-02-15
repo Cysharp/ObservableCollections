@@ -20,11 +20,11 @@ jobs:
       - uses: actions/checkout@v3
       - uses: Cysharp/Actions/.github/actions/setup-dotnet@main
       # build and pack
-      - run: dotnet build ObservableCollection.WithoutSandbox.slnf -c Release -p:Version=${{ inputs.tag }}
-      - run: dotnet test ObservableCollection.WithoutSandbox.slnf -c Release --no-build
-      - run: dotnet pack ObservableCollection.WithoutSandbox.slnf -c Release --no-build -p:Version=${{ inputs.tag }} -o ./publish
+      - run: dotnet build -c Release -p:Version=${{ inputs.tag }}
+      - run: dotnet test -c Release --no-build
+      - run: dotnet pack -c Release --no-build -p:Version=${{ inputs.tag }} -o ./publish
       # Store artifacts.
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         with:
           name: nuget
           path: ./publish/

@@ -1,7 +1,31 @@
 ﻿using System;
+using R3;
 using System.Linq;
 using ObservableCollections;
-  
+
+
+
+
+var list = new ObservableList<int>();
+list.ObserveAdd()
+    .Subscribe(x =>
+    {
+        Console.WriteLine(x);
+    });
+
+list.Add(10);
+list.Add(20);
+list.AddRange(new[] { 10, 20, 30 });
+
+
+return;
+
+
+
+
+
+
+
 var models = new ObservableList<int>(Enumerable.Range(0, 10));
 
 var viewModels = models.CreateView(x => new ViewModel
