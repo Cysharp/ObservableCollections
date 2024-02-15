@@ -1,24 +1,66 @@
-﻿using ObservableCollections;
-using System;
-using System.Collections.Specialized;
+﻿using System;
+using System.Linq;
+using ObservableCollections;
+  
+var models = new ObservableList<int>(Enumerable.Range(0, 10));
 
-
-// Basic sample, use like ObservableCollection<T>.
-// CollectionChanged observes all collection modification
-var list = new ObservableList<int>();
-var view = list.CreateView(x => x.ToString() + "$");
-
-list.Add(10);
-list.Add(20);
-list.AddRange(new[] { 30, 40, 50 });
-list[1] = 60;
-list.RemoveAt(3);
-
-foreach (var (_, v) in view)
+var viewModels = models.CreateView(x => new ViewModel
 {
-    // 10$, 60$, 30$, 50$
-    Console.WriteLine(v);
+    Id = x,
+    Value = "@" + x
+});
+
+viewModels.AttachFilter(new HogeFilter(), true);
+
+models.Add(100);
+
+foreach (var (x, xs) in viewModels)
+{
+    System.Console.WriteLine(xs.Value);
 }
 
-// Dispose view is unsubscribe collection changed event.
-view.Dispose();
+class ViewModel
+{
+    public int Id { get; set; }
+    public string Value { get; set; }
+}
+
+class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
+{
+    public bool IsMatch(int value, ViewModel view)
+    {
+        return value % 2 == 0;
+    }
+
+    public void WhenTrue(int value, ViewModel view)
+    {
+        view.Value = $"@{value} (even)";
+    }
+
+    public void WhenFalse(int value, ViewModel view)
+    {
+        view.Value = $"@{value} (odd)";
+    }
+
+    public void OnCollectionChanged(
+        ChangedKind changedKind, 
+        int value, 
+        ViewModel view,
+        in NotifyCollectionChangedEventArgs<int> eventArgs)
+    {
+        switch (changedKind)
+        {
+            case ChangedKind.Add:
+                view.Value += " Add";
+                break;
+            case ChangedKind.Remove:
+                view.Value += " Remove";
+                break;
+            case ChangedKind.Move:
+                view.Value += $" Move {eventArgs.OldStartingIndex} {eventArgs.NewStartingIndex}";
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
+        }
+    }
+}

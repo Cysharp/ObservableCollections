@@ -218,5 +218,28 @@ namespace ObservableCollections.Tests
             filter2.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 21), (ChangedKind.Remove, 30), (ChangedKind.Remove, 44), (ChangedKind.Remove, 45), (ChangedKind.Remove, 66), (ChangedKind.Remove, 90), (ChangedKind.Remove, 100), (ChangedKind.Remove, 101), (ChangedKind.Remove, 9999));
             filter3.CalledOnCollectionChanged.Select(x => (x.changedKind, x.value)).Should().Equal((ChangedKind.Remove, 21), (ChangedKind.Remove, 30), (ChangedKind.Remove, 44), (ChangedKind.Remove, 45), (ChangedKind.Remove, 66), (ChangedKind.Remove, 90), (ChangedKind.Remove, 100), (ChangedKind.Remove, 101), (ChangedKind.Remove, 9999));
         }
+
+        [Fact]
+        public void FilterAndInvokeAddEvent()
+        {
+            var list = new ObservableList<int>();
+            var view1 = list.CreateView(x => new ViewContainer<int>(x));
+            list.AddRange(new[] { 10, 21, 30, 44 });
+
+            var filter1 = new TestFilter<int>((x, v) => x % 2 == 0);
+            view1.AttachFilter(filter1, true);
+            
+            filter1.CalledOnCollectionChanged[0].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[0].value.Should().Be(10);
+            filter1.CalledOnCollectionChanged[1].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[1].value.Should().Be(21);
+            filter1.CalledOnCollectionChanged[2].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[2].value.Should().Be(30);
+            filter1.CalledOnCollectionChanged[3].changedKind.Should().Be(ChangedKind.Add);
+            filter1.CalledOnCollectionChanged[3].value.Should().Be(44);
+
+            filter1.CalledWhenTrue.Count.Should().Be(3);
+            filter1.CalledWhenFalse.Count.Should().Be(1);
+        }   
     }
 }

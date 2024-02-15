@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-#if (NETSTANDARD2_0 || NET_STANDARD_2_0 || NET_4_6) && !UNITY_2021_1_OR_NEWER
+#if NETSTANDARD2_0 || NET_STANDARD_2_0 || NET_4_6
 
 namespace System.Diagnostics.CodeAnalysis
 {

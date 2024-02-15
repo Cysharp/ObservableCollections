@@ -51,14 +51,21 @@ namespace ObservableCollections.Internal
             }
         }
 
-        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
+        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
         {
             lock (SyncRoot)
             {
                 this.filter = filter;
                 foreach (var (_, (value, view)) in dict)
                 {
-                    filter.InvokeOnAttach(value, view);
+                    if (invokeAddEventForCurrentElements)
+                    {
+                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, -1));
+                    }
+                    else
+                    {
+                        filter.InvokeOnAttach(value, view);
+                    }
                 }
             }
         }

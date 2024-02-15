@@ -55,14 +55,23 @@ namespace ObservableCollections
                 this.source.CollectionChanged -= SourceCollectionChanged;
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView> filter)
+            public void AttachFilter(ISynchronizedViewFilter<KeyValuePair<TKey, TValue>, TView> filter, bool invokeAddEventForCurrentElements = false)
             {
                 lock (SyncRoot)
                 {
                     this.filter = filter;
                     foreach (var v in dict)
                     {
-                        filter.InvokeOnAttach(new KeyValuePair<TKey, TValue>(v.Key, v.Value.Item1), v.Value.Item2);
+                        var value = new KeyValuePair<TKey, TValue>(v.Key, v.Value.Item1);
+                        var view = v.Value.Item2;
+                        if (invokeAddEventForCurrentElements)
+                        {
+                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>.Add(value, -1));
+                        }
+                        else
+                        {
+                            filter.InvokeOnAttach(value, view);
+                        }
                     }
                 }
             }
@@ -118,44 +127,44 @@ namespace ObservableCollections
                     switch (e.Action)
                     {
                         case NotifyCollectionChangedAction.Add:
-                            {
-                                var v = selector(e.NewItem);
-                                dict.Add(e.NewItem.Key, (e.NewItem.Value, v));
-                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
-                            }
+                        {
+                            var v = selector(e.NewItem);
+                            dict.Add(e.NewItem.Key, (e.NewItem.Value, v));
+                            filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
+                        }
                             break;
                         case NotifyCollectionChangedAction.Remove:
+                        {
+                            if (dict.Remove(e.OldItem.Key, out var v))
                             {
-                                if (dict.Remove(e.OldItem.Key, out var v))
-                                {
-                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, v.Item1), v.Item2), e);
-                                }
+                                filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, v.Item1), v.Item2), e);
                             }
+                        }
                             break;
                         case NotifyCollectionChangedAction.Replace:
+                        {
+                            if (dict.Remove(e.OldItem.Key, out var oldView))
                             {
-                                if (dict.Remove(e.OldItem.Key, out var oldView))
-                                {
-                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, oldView.Item1), oldView.Item2), e);
-                                }
-
-                                var v = selector(e.NewItem);
-                                dict[e.NewItem.Key] = (e.NewItem.Value, v);
-                                filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
+                                filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, oldView.Item1), oldView.Item2), e);
                             }
+
+                            var v = selector(e.NewItem);
+                            dict[e.NewItem.Key] = (e.NewItem.Value, v);
+                            filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
+                        }
                             break;
                         case NotifyCollectionChangedAction.Reset:
+                        {
+                            if (!filter.IsNullFilter())
                             {
-                                if (!filter.IsNullFilter())
+                                foreach (var item in dict)
                                 {
-                                    foreach (var item in dict)
-                                    {
-                                        filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2), e);
-                                    }
+                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2), e);
                                 }
-
-                                dict.Clear();
                             }
+
+                            dict.Clear();
+                        }
                             break;
                         case NotifyCollectionChangedAction.Move: // ObservableDictionary have no Move operation.
                         default:

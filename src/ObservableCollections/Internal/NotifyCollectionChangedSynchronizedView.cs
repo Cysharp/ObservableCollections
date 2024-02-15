@@ -55,7 +55,7 @@ namespace ObservableCollections.Internal
             remove { parent.RoutingCollectionChanged -= value; }
         }
 
-        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter) => parent.AttachFilter(filter);
+        public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false) => parent.AttachFilter(filter, invokeAddEventForCurrentElements);
         public void ResetFilter(Action<T, TView>? resetAction) => parent.ResetFilter(resetAction);
         public INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged() => this;
         public void Dispose()
