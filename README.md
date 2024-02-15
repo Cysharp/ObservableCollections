@@ -203,6 +203,10 @@ protected override void OnClosed(EventArgs e)
 
 Unity
 ---
+
+In Unity projects, you can installing `ObservableCollections` with [NugetForUnity](https://github.com/GlitchEnzo/NuGetForUnity).
+
+
 In Unity, ObservableCollections and Views are useful as CollectionManagers, since they need to convert T to Prefab for display.
 
 Since we need to have side effects on GameObjects, we will prepare a filter and apply an action on changes.
