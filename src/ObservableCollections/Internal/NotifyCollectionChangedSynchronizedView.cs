@@ -66,9 +66,11 @@ namespace ObservableCollections.Internal
             {
                 case ChangedKind.Add:
                     CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, view, eventArgs.NewStartingIndex));
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
                     return;
                 case ChangedKind.Remove:
                     CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, view, eventArgs.OldStartingIndex));
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
                     break;
                 case ChangedKind.Move:
                     CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));

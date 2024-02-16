@@ -44,7 +44,7 @@ foreach (var (x, xs) in viewModels)
 class ViewModel
 {
     public int Id { get; set; }
-    public string Value { get; set; }
+    public string Value { get; set; } = default!;
 }
 
 class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
@@ -65,8 +65,8 @@ class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
     }
 
     public void OnCollectionChanged(
-        ChangedKind changedKind, 
-        int value, 
+        ChangedKind changedKind,
+        int value,
         ViewModel view,
         in NotifyCollectionChangedEventArgs<int> eventArgs)
     {
