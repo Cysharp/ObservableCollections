@@ -11,7 +11,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\ObservableCollections.R3\ObservableCollections.R3.csproj" />
         <ProjectReference Include="..\..\src\ObservableCollections\ObservableCollections.csproj" />
-		<PackageReference Include="R3" Version="0.1.23" />
+		<PackageReference Include="R3" Version="1.0.0" />
     </ItemGroup>
 
 </Project>

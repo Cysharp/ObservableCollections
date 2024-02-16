@@ -18,7 +18,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="R3" Version="0.1.23" />
+		<PackageReference Include="R3" Version="1.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
