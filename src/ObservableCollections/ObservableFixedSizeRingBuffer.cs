@@ -56,6 +56,8 @@ namespace ObservableCollections
             }
         }
 
+        public int Capacity => capacity;
+
         public int Count
         {
             get
