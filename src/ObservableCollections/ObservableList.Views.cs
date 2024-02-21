@@ -210,34 +210,28 @@ namespace ObservableCollections
                             break;
                         case NotifyCollectionChangedAction.Replace:
                             // ObservableList does not support replace range
-                        {
-                            var v = (e.NewItem, selector(e.NewItem));
+                            {
+                                var v = (e.NewItem, selector(e.NewItem));
 
-                            var oldItem = list[e.NewStartingIndex];
-                            list[e.NewStartingIndex] = v;
+                                var oldItem = list[e.NewStartingIndex];
+                                list[e.NewStartingIndex] = v;
 
-                            filter.InvokeOnRemove(oldItem, e);
-                            filter.InvokeOnAdd(v, e);
-                            break;
-                        }
+                                filter.InvokeOnRemove(oldItem, e);
+                                filter.InvokeOnAdd(v, e);
+                                break;
+                            }
                         case NotifyCollectionChangedAction.Move:
-                        {
-                            var removeItem = list[e.OldStartingIndex];
-                            list.RemoveAt(e.OldStartingIndex);
-                            list.Insert(e.NewStartingIndex, removeItem);
+                            {
+                                var removeItem = list[e.OldStartingIndex];
+                                list.RemoveAt(e.OldStartingIndex);
+                                list.Insert(e.NewStartingIndex, removeItem);
 
-                            filter.InvokeOnMove(removeItem, e);
-                        }
+                                filter.InvokeOnMove(removeItem, e);
+                            }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in list)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             list.Clear();
+                            filter.InvokeOnClear(e);
                             break;
                         default:
                             break;

@@ -75,6 +75,10 @@ namespace ObservableCollections.Internal
                 case ChangedKind.Move:
                     CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));
                     break;
+                case ChangedKind.Clear:
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
             }

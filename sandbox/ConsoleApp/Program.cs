@@ -81,6 +81,9 @@ class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
             case ChangedKind.Move:
                 view.Value += $" Move {eventArgs.OldStartingIndex} {eventArgs.NewStartingIndex}";
                 break;
+            case ChangedKind.Clear:
+                view.Value += $" Clear";
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
         }
