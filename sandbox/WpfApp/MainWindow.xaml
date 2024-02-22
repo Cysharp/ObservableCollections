@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:WpfApp"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
+    <!--<Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition />
             <ColumnDefinition />
@@ -16,5 +16,9 @@
         
         <Button Grid.Column="1" Click="Button_Click">Insert</Button>
 
-    </Grid>
+    </Grid>-->
+    <StackPanel>
+        <ListBox ItemsSource="{Binding ItemsView}" />
+        <Button Content="Clear" Command="{Binding ClearCommand}" />
+    </StackPanel>
 </Window>
