@@ -71,8 +71,7 @@ namespace ObservableCollections
                         var (value, view) = list[i];
                         if (invokeAddEventForCurrentElements)
                         {
-                            var eventArgs = NotifyCollectionChangedEventArgs<T>.Add(value, i);
-                            filter.InvokeOnAdd(value, view, eventArgs);
+                            filter.InvokeOnAdd(value, view, i);
                         }
                         else
                         {
@@ -153,15 +152,16 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Add(v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, e.NewStartingIndex);
                                 }
                                 else
                                 {
+                                    var i = e.NewStartingIndex;
                                     foreach (var item in e.NewItems)
                                     {
                                         var v = (item, selector(item));
                                         list.Add(v);
-                                        filter.InvokeOnAdd(v, e);
+                                        filter.InvokeOnAdd(v, i++);
                                     }
                                 }
                             }
@@ -172,18 +172,18 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Insert(e.NewStartingIndex, v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, e.NewStartingIndex);
                                 }
                                 else
                                 {
                                     // inefficient copy, need refactoring
                                     var newArray = new (T, TView)[e.NewItems.Length];
                                     var span = e.NewItems;
-                                    for (int i = 0; i < span.Length; i++)
+                                    for (var i = 0; i < span.Length; i++)
                                     {
                                         var v = (span[i], selector(span[i]));
                                         newArray[i] = v;
-                                        filter.InvokeOnAdd(v, e);
+                                        filter.InvokeOnAdd(v, e.NewStartingIndex + i);
                                     }
                                     list.InsertRange(e.NewStartingIndex, newArray);
                                 }
@@ -194,15 +194,15 @@ namespace ObservableCollections
                             {
                                 var v = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
-                                filter.InvokeOnRemove(v.Item1, v.Item2, e);
+                                filter.InvokeOnRemove(v, e.OldStartingIndex);
                             }
                             else
                             {
                                 var len = e.OldStartingIndex + e.OldItems.Length;
-                                for (int i = e.OldStartingIndex; i < len; i++)
+                                for (var i = e.OldStartingIndex; i < len; i++)
                                 {
                                     var v = list[i];
-                                    filter.InvokeOnRemove(v.Item1, v.Item2, e);
+                                    filter.InvokeOnRemove(v, e.OldStartingIndex + i);
                                 }
 
                                 list.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
@@ -212,12 +212,9 @@ namespace ObservableCollections
                             // ObservableList does not support replace range
                         {
                             var v = (e.NewItem, selector(e.NewItem));
-
-                            var oldItem = list[e.NewStartingIndex];
+                            var ov = (e.OldItem, selector(e.OldItem));
                             list[e.NewStartingIndex] = v;
-
-                            filter.InvokeOnRemove(oldItem, e);
-                            filter.InvokeOnAdd(v, e);
+                            filter.InvokeOnReplace(v, ov, e.NewStartingIndex);
                             break;
                         }
                         case NotifyCollectionChangedAction.Move:
@@ -226,18 +223,12 @@ namespace ObservableCollections
                             list.RemoveAt(e.OldStartingIndex);
                             list.Insert(e.NewStartingIndex, removeItem);
 
-                            filter.InvokeOnMove(removeItem, e);
+                            filter.InvokeOnMove(removeItem, e.NewStartingIndex, e.OldStartingIndex);
                         }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in list)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             list.Clear();
+                            filter.InvokeOnReset();
                             break;
                         default:
                             break;

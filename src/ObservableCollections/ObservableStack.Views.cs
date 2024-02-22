@@ -63,18 +63,16 @@ namespace ObservableCollections
                 lock (SyncRoot)
                 {
                     this.filter = filter;
-                    var i = 0;
                     foreach (var (value, view) in stack)
                     {
                         if (invokeAddEventForCurrentElements)
                         {
-                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                            filter.InvokeOnAdd(value, view, 0);
                         }
                         else
                         {
                             filter.InvokeOnAttach(value, view);
                         }
-                        i++;
                     }
                 }
             }
@@ -148,7 +146,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 stack.Push(v);
-                                filter.InvokeOnAdd(v, e);
+                                filter.InvokeOnAdd(v, 0);
                             }
                             else
                             {
@@ -156,7 +154,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     stack.Push(v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, 0);
                                 }
                             }
                             break;
@@ -165,7 +163,7 @@ namespace ObservableCollections
                             if (e.IsSingleItem)
                             {
                                 var v = stack.Pop();
-                                filter.InvokeOnRemove(v.Item1, v.Item2, e);
+                                filter.InvokeOnRemove(v.Item1, v.Item2, 0);
                             }
                             else
                             {
@@ -173,19 +171,13 @@ namespace ObservableCollections
                                 for (int i = 0; i < len; i++)
                                 {
                                     var v = stack.Pop();
-                                    filter.InvokeOnRemove(v.Item1, v.Item2, e);
+                                    filter.InvokeOnRemove(v.Item1, v.Item2, 0);
                                 }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in stack)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             stack.Clear();
+                            filter.InvokeOnReset();
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:

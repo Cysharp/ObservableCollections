@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 
 namespace ObservableCollections.Tests
 {
@@ -12,7 +13,7 @@ namespace ObservableCollections.Tests
 
         public T Value { get; }
 
-        public static implicit operator ViewContainer<T>(T value) => new ViewContainer<T>(value);
+        public static implicit operator ViewContainer<T>(T value) => new(value);
 
         public override int GetHashCode()
         {
@@ -35,7 +36,7 @@ namespace ObservableCollections.Tests
         readonly Func<T, ViewContainer<T>, bool> filter;
         public List<(T, ViewContainer<T>)> CalledWhenTrue = new();
         public List<(T, ViewContainer<T>)> CalledWhenFalse = new();
-        public List<(ChangedKind changedKind, T value, ViewContainer<T> view, int index, int oldIndex)> CalledOnCollectionChanged = new();
+        public List<SynchronizedViewChangedEventArgs<T, ViewContainer<T>>> CalledOnCollectionChanged = new();
 
         public TestFilter(Func<T, ViewContainer<T>, bool> filter)
         {
@@ -54,9 +55,9 @@ namespace ObservableCollections.Tests
             return this.filter.Invoke(value, view);
         }
 
-        public void OnCollectionChanged(ChangedKind changedKind, T value, ViewContainer<T> view, in NotifyCollectionChangedEventArgs<T> eventArgs)
+        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, ViewContainer<T>> args)
         {
-            CalledOnCollectionChanged.Add((changedKind, value, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));
+            CalledOnCollectionChanged.Add(args);
         }
 
         public void WhenTrue(T value, ViewContainer<T> view)
@@ -75,7 +76,7 @@ namespace ObservableCollections.Tests
         readonly Func<KeyValuePair<T, T>, ViewContainer<T>, bool> filter;
         public List<(KeyValuePair<T, T>, ViewContainer<T>)> CalledWhenTrue = new();
         public List<(KeyValuePair<T, T>, ViewContainer<T>)> CalledWhenFalse = new();
-        public List<(ChangedKind changedKind, KeyValuePair<T, T> value, ViewContainer<T> view)> CalledOnCollectionChanged = new();
+        public List<SynchronizedViewChangedEventArgs<KeyValuePair<T, T>, ViewContainer<T>>> CalledOnCollectionChanged = new();
 
         public TestFilter2(Func<KeyValuePair<T, T>, ViewContainer<T>, bool> filter)
         {
@@ -94,9 +95,9 @@ namespace ObservableCollections.Tests
             return this.filter.Invoke(value, view);
         }
 
-        public void OnCollectionChanged(ChangedKind changedKind, KeyValuePair<T, T> value, ViewContainer<T> view, in NotifyCollectionChangedEventArgs<KeyValuePair<T, T>> eventArgs)
+        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<KeyValuePair<T, T>, ViewContainer<T>> args)
         {
-            CalledOnCollectionChanged.Add((changedKind, value, view));
+            CalledOnCollectionChanged.Add(args);
         }
 
         public void WhenTrue(KeyValuePair<T, T> value, ViewContainer<T> view)

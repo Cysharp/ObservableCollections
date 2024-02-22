@@ -68,13 +68,12 @@ namespace ObservableCollections
                     {
                         if (invokeAddEventForCurrentElements)
                         {
-                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                            filter.InvokeOnAdd(value, view, i++);
                         }
                         else
                         {
                             filter.InvokeOnAttach(value, view);
                         }
-                        i++;
                     }
                 }
             }
@@ -148,15 +147,16 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 queue.Enqueue(v);
-                                filter.InvokeOnAdd(v, e);
+                                filter.InvokeOnAdd(v, e.NewStartingIndex);
                             }
                             else
                             {
+                                var i = e.NewStartingIndex;
                                 foreach (var item in e.NewItems)
                                 {
                                     var v = (item, selector(item));
                                     queue.Enqueue(v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, i++);
                                 }
                             }
                             break;
@@ -165,7 +165,7 @@ namespace ObservableCollections
                             if (e.IsSingleItem)
                             {
                                 var v = queue.Dequeue();
-                                filter.InvokeOnRemove(v.Item1, v.Item2, e);
+                                filter.InvokeOnRemove(v.Item1, v.Item2, 0);
                             }
                             else
                             {
@@ -173,19 +173,13 @@ namespace ObservableCollections
                                 for (int i = 0; i < len; i++)
                                 {
                                     var v = queue.Dequeue();
-                                    filter.InvokeOnRemove(v.Item1, v.Item2, e);
+                                    filter.InvokeOnRemove(v.Item1, v.Item2, 0);
                                 }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in queue)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             queue.Clear();
+                            filter.InvokeOnReset();
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:

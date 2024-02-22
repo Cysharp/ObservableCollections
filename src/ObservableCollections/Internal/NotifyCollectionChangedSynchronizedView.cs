@@ -58,25 +58,30 @@ namespace ObservableCollections.Internal
         public void WhenTrue(T value, TView view) => currentFilter.WhenTrue(value, view);
         public void WhenFalse(T value, TView view) => currentFilter.WhenFalse(value, view);
 
-        public void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
+        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
         {
-            currentFilter.OnCollectionChanged(changedKind, value, view, in eventArgs);
+            currentFilter.OnCollectionChanged(args);
 
-            switch (changedKind)
+            switch (args.Action)
             {
-                case ChangedKind.Add:
-                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, view, eventArgs.NewStartingIndex));
-                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
-                    return;
-                case ChangedKind.Remove:
-                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, view, eventArgs.OldStartingIndex));
+                case NotifyCollectionChangedAction.Add:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, args.NewView, args.NewViewIndex));
                     PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
                     break;
-                case ChangedKind.Move:
-                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));
+                case NotifyCollectionChangedAction.Remove:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, args.OldView, args.OldViewIndex));
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
+                case NotifyCollectionChangedAction.Reset:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, args.NewView, args.OldView, args.NewViewIndex));
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, args.NewView, args.NewViewIndex, args.OldViewIndex));
+                    break;
             }
         }
     }

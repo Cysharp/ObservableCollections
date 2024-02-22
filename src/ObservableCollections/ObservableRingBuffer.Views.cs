@@ -69,7 +69,7 @@ namespace ObservableCollections
                         var (value, view) = ringBuffer[i];
                         if (invokeAddEventForCurrentElements)
                         {
-                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                            filter.InvokeOnAdd(value, view, i);
                         }
                         else
                         {
@@ -154,7 +154,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     ringBuffer.AddFirst(v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, 0);
                                 }
                                 else
                                 {
@@ -162,7 +162,7 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         ringBuffer.AddFirst(v);
-                                        filter.InvokeOnAdd(v, e);
+                                        filter.InvokeOnAdd(v, 0);
                                     }
                                 }
                             }
@@ -173,7 +173,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     ringBuffer.AddLast(v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, ringBuffer.Count - 1);
                                 }
                                 else
                                 {
@@ -181,7 +181,7 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         ringBuffer.AddLast(v);
-                                        filter.InvokeOnAdd(v, e);
+                                        filter.InvokeOnAdd(v, ringBuffer.Count - 1);
                                     }
                                 }
                             }
@@ -194,14 +194,14 @@ namespace ObservableCollections
                                 if (e.IsSingleItem)
                                 {
                                     var v = ringBuffer.RemoveFirst();
-                                    filter.InvokeOnRemove(v, e);
+                                    filter.InvokeOnRemove(v, 0);
                                 }
                                 else
                                 {
                                     for (int i = 0; i < e.OldItems.Length; i++)
                                     {
                                         var v = ringBuffer.RemoveFirst();
-                                        filter.InvokeOnRemove(v, e);
+                                        filter.InvokeOnRemove(v, 0);
                                     }
                                 }
                             }
@@ -210,39 +210,32 @@ namespace ObservableCollections
                                 // RemoveLast
                                 if (e.IsSingleItem)
                                 {
+                                    var index = ringBuffer.Count - 1;
                                     var v = ringBuffer.RemoveLast();
-                                    filter.InvokeOnRemove(v, e);
+                                    filter.InvokeOnRemove(v, index);
                                 }
                                 else
                                 {
                                     for (int i = 0; i < e.OldItems.Length; i++)
                                     {
+                                        var index = ringBuffer.Count - 1;
                                         var v = ringBuffer.RemoveLast();
-                                        filter.InvokeOnRemove(v, e);
+                                        filter.InvokeOnRemove(v, index);
                                     }
                                 }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in ringBuffer)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             ringBuffer.Clear();
+                            filter.InvokeOnReset();
                             break;
                         case NotifyCollectionChangedAction.Replace:
                             // range is not supported
                             {
+                                var ov = ringBuffer[e.OldStartingIndex];
                                 var v = (e.NewItem, selector(e.NewItem));
-
-                                var oldItem = ringBuffer[e.NewStartingIndex];
                                 ringBuffer[e.NewStartingIndex] = v;
-
-                                filter.InvokeOnRemove(oldItem, e);
-                                filter.InvokeOnAdd(v, e);
+                                filter.InvokeOnReplace(v, ov, e.NewStartingIndex);
                                 break;
                             }
                         case NotifyCollectionChangedAction.Move:

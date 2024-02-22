@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Specialized;
 using R3;
 using System.Linq;
 using ObservableCollections;
@@ -64,25 +65,26 @@ class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
         view.Value = $"@{value} (odd)";
     }
 
-    public void OnCollectionChanged(
-        ChangedKind changedKind,
-        int value,
-        ViewModel view,
-        in NotifyCollectionChangedEventArgs<int> eventArgs)
+    public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<int, ViewModel> eventArgs)
     {
-        switch (changedKind)
+        switch (eventArgs.Action)
         {
-            case ChangedKind.Add:
-                view.Value += " Add";
+            case NotifyCollectionChangedAction.Add:
+                eventArgs.NewView.Value += " Add";
                 break;
-            case ChangedKind.Remove:
-                view.Value += " Remove";
+            case NotifyCollectionChangedAction.Remove:
+                eventArgs.OldView.Value += " Remove";
                 break;
-            case ChangedKind.Move:
-                view.Value += $" Move {eventArgs.OldStartingIndex} {eventArgs.NewStartingIndex}";
+            case NotifyCollectionChangedAction.Move:
+                eventArgs.NewView.Value += $" Move {eventArgs.OldViewIndex} {eventArgs.NewViewIndex}";
+                break;
+            case NotifyCollectionChangedAction.Replace:
+                eventArgs.NewView.Value += $" Replace {eventArgs.NewViewIndex}";
+                break;
+            case NotifyCollectionChangedAction.Reset:
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
+                throw new ArgumentOutOfRangeException(nameof(eventArgs.Action), eventArgs.Action, null);
         }
     }
 }

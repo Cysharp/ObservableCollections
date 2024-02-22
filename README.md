@@ -278,15 +278,15 @@ public class SampleScript : MonoBehaviour
             this.root = root;
         }
 
-        public void OnCollectionChanged(ChangedKind changedKind, int value, GameObject view, in NotifyCollectionChangedEventArgs<int> eventArgs)
+        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<int, GameObject> eventArgs)
         {
-            if (changedKind == ChangedKind.Add)
+            if (eventArgs.Action == NotifyCollectionChangedAction.Add)
             {
-                view.transform.SetParent(root.transform);
+                eventArgs.NewView.transform.SetParent(root.transform);
             }
-            else if (changedKind == ChangedKind.Remove)
+            else if (NotifyCollectionChangedAction.Remove)
             {
-                GameObject.Destroy(view);
+                GameObject.Destroy(eventArgs.OldView);
             }
         }
 
@@ -336,7 +336,7 @@ public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TVi
 
     void AttachFilter(ISynchronizedViewFilter<T, TView> filter);
     void ResetFilter(Action<T, TView>? resetAction);
-    INotifyCollectionChangedSynchronizedView<T, TView> WithINotifyCollectionChanged();
+    INotifyCollectionChangedSynchronizedView<T, TView> ToNotifyCollectionChanged();
 }
 ```
 
@@ -385,12 +385,18 @@ public interface ISynchronizedViewFilter<T, TView>
     bool IsMatch(T value, TView view);
     void WhenTrue(T value, TView view);
     void WhenFalse(T value, TView view);
-    void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs);
+    void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> eventArgs);
 }
 
-public enum ChangedKind
+public readonly struct SynchronizedViewChangedEventArgs<T, TView>
 {
-    Add, Remove, Move
+    public readonly NotifyCollectionChangedAction Action = action;
+    public readonly T NewValue = newValue;
+    public readonly T OldValue = oldValue;
+    public readonly TView NewView = newView;
+    public readonly TView OldView = oldView;
+    public readonly int NewViewIndex = newViewIndex;
+    public readonly int OldViewIndex = oldViewIndex;
 }
 ```
 

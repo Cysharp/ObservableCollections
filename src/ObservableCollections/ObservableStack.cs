@@ -45,9 +45,8 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var index = stack.Count;
                 stack.Push(item);
-                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, index));
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, 0));
             }
         }
 
