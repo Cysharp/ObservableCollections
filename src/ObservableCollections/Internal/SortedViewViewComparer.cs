@@ -65,11 +65,12 @@ namespace ObservableCollections.Internal
             lock (SyncRoot)
             {
                 this.filter = filter;
+                var i = 0;
                 foreach (var (_, (value, view)) in list)
                 {
                     if (invokeAddEventForCurrentElements)
                     {
-                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, -1));
+                        filter.InvokeOnAdd(value, view, i++);
                     }
                     else
                     {
@@ -141,7 +142,7 @@ namespace ObservableCollections.Internal
                             list.Add((view, id), (value, view));
                             viewMap.Add(id, view);
                             var index = list.IndexOfKey((view, id));
-                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
+                            filter.InvokeOnAdd(value, view, index);
                         }
                         else
                         {
@@ -152,7 +153,7 @@ namespace ObservableCollections.Internal
                                 list.Add((view, id), (value, view));
                                 viewMap.Add(id, view);
                                 var index = list.IndexOfKey((view, id));
-                                filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
+                                filter.InvokeOnAdd(value, view, index);
                             }
                         }
                         break;
@@ -170,7 +171,7 @@ namespace ObservableCollections.Internal
                                 {
                                     var index = list.IndexOfKey(key);
                                     list.RemoveAt(index);
-                                    filter.InvokeOnRemove(v, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, index));
+                                    filter.InvokeOnRemove(v, index);
                                 }
                             }
                         }
@@ -186,7 +187,7 @@ namespace ObservableCollections.Internal
                                     {
                                         var index = list.IndexOfKey((view, id));
                                         list.RemoveAt(index);
-                                        filter.InvokeOnRemove(v, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, index));
+                                        filter.InvokeOnRemove(v, index);
                                     }
                                 }
                             }
@@ -216,24 +217,25 @@ namespace ObservableCollections.Internal
                         viewMap.Add(id, view);
 
                         var index = list.IndexOfKey((view, id));
-                        filter.InvokeOnReplace(value, view, NotifyCollectionChangedEventArgs<T>.Replace(e.NewItem, e.OldItem, index, oldIndex));
+                        filter.InvokeOnReplace(value, view, oldValue, oldView, index, oldIndex);
                         break;
                     }
                     case NotifyCollectionChangedAction.Move:
                         // Move(index change) does not affect soreted dict.
                     {
                         var value = e.OldItem;
-                        var key = identitySelector(value);
-                        if (viewMap.TryGetValue(key, out var view))
+                        var id = identitySelector(value);
+                        if (viewMap.TryGetValue(id, out var view))
                         {
-                            filter.InvokeOnMove(value, view, e);
+                            var index = list.IndexOfKey((view, id));
+                            filter.InvokeOnMove(value, view, index, index);
                         }
                         break;
                     }
                     case NotifyCollectionChangedAction.Reset:
                         list.Clear();
                         viewMap.Clear();
-                        filter.InvokeOnReset(e);
+                        filter.InvokeOnReset();
                         break;
                     default:
                         break;

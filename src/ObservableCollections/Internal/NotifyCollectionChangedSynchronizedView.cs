@@ -58,17 +58,29 @@ namespace ObservableCollections.Internal
         public void WhenTrue(T value, TView view) => currentFilter.WhenTrue(value, view);
         public void WhenFalse(T value, TView view) => currentFilter.WhenFalse(value, view);
 
-        public void OnCollectionChanged(NotifyCollectionChangedAction changedAction, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
+        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
         {
-            currentFilter.OnCollectionChanged(changedAction, value, view, in eventArgs);
-            CollectionChanged?.Invoke(this, eventArgs.ToStandardEventArgs());
+            currentFilter.OnCollectionChanged(args);
 
-            switch (changedAction)
+            switch (args.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                case NotifyCollectionChangedAction.Remove:
-                case NotifyCollectionChangedAction.Reset:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, args.NewView, args.NewViewIndex));
                     PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, args.OldView, args.OldViewIndex));
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, args.NewView, args.OldView, args.NewViewIndex));
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, args.NewView, args.NewViewIndex, args.OldViewIndex));
                     break;
             }
         }

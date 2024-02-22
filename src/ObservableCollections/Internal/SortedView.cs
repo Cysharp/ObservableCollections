@@ -60,11 +60,12 @@ namespace ObservableCollections.Internal
             lock (SyncRoot)
             {
                 this.filter = filter;
+                var i = 0;
                 foreach (var (_, (value, view)) in list)
                 {
                     if (invokeAddEventForCurrentElements)
                     {
-                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, -1));
+                        filter.InvokeOnAdd(value, view, i++);
                     }
                     else
                     {
@@ -134,7 +135,7 @@ namespace ObservableCollections.Internal
                             var id = identitySelector(value);
                             list.Add((value, id), (value, view));
                             var index = list.IndexOfKey((value, id));
-                            filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
+                            filter.InvokeOnAdd(value, view, index);
                         }
                         else
                         {
@@ -144,7 +145,7 @@ namespace ObservableCollections.Internal
                                 var id = identitySelector(value);
                                 list.Add((value, id), (value, view));
                                 var index = list.IndexOfKey((value, id));
-                                filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
+                                filter.InvokeOnAdd(value, view, index);
                             }
                         }
                     }
@@ -160,7 +161,7 @@ namespace ObservableCollections.Internal
                             {
                                 var index = list.IndexOfKey(key);
                                 list.RemoveAt(index);
-                                filter.InvokeOnRemove(v.Value, v.View, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, index));
+                                filter.InvokeOnRemove(v.Value, v.View, index);
                             }
                         }
                         else
@@ -173,7 +174,7 @@ namespace ObservableCollections.Internal
                                 {
                                     var index = list.IndexOfKey((value, id));
                                     list.RemoveAt(index);
-                                    filter.InvokeOnRemove(v.Value, v.View, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, index));
+                                    filter.InvokeOnRemove(v.Value, v.View, index);
                                 }
                             }
                         }
@@ -198,22 +199,24 @@ namespace ObservableCollections.Internal
                         list.Add((value, id), (value, view));
                         var newIndex = list.IndexOfKey((value, id));
 
-                        filter.InvokeOnReplace(value, view, NotifyCollectionChangedEventArgs<T>.Replace(e.NewItem, e.OldItem, newIndex, oldIndex));
+                        filter.InvokeOnReplace((value, view), o, newIndex, oldIndex: oldIndex);
                     }
                         break;
                     case NotifyCollectionChangedAction.Move:
                     {
                         // Move(index change) does not affect sorted list.
                         var oldValue = e.OldItem;
-                        if (list.TryGetValue((oldValue, identitySelector(oldValue)), out var view))
+                        var oldKey = (oldValue, identitySelector(oldValue));
+                        if (list.TryGetValue(oldKey, out var v))
                         {
-                            filter.InvokeOnMove(view, e);
+                            var index = list.IndexOfKey(oldKey);
+                            filter.InvokeOnMove(v, index, index);
                         }
                     }
                         break;
                     case NotifyCollectionChangedAction.Reset:
                         list.Clear();
-                        filter.InvokeOnReset(e);
+                        filter.InvokeOnReset();
                         break;
                     default:
                         break;

@@ -53,7 +53,7 @@ namespace ObservableCollections.Internal
                     var (value, view) = list[i];
                     if (invokeAddEventForCurrentElements)
                     {
-                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                        filter.InvokeOnAdd(value, view, i);
                     }
                     else
                     {
@@ -161,7 +161,7 @@ namespace ObservableCollections.Internal
                     var (value, view) = array[i];
                     if (invokeAddEventForCurrentElements)
                     {
-                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, i));
+                        filter.InvokeOnAdd(value, view, i);
                     }
                     else
                     {

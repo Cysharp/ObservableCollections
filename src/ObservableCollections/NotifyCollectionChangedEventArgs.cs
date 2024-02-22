@@ -42,48 +42,6 @@ namespace ObservableCollections
             OldStartingIndex = oldStartingIndex;
         }
 
-        public NotifyCollectionChangedEventArgs ToStandardEventArgs()
-        {
-            switch (Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    if (IsSingleItem)
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, NewItem, NewStartingIndex);
-                    }
-                    else
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, NewItems.ToArray(), NewStartingIndex);
-                    }
-                case NotifyCollectionChangedAction.Remove:
-                    if (IsSingleItem)
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, OldItem, OldStartingIndex);
-                    }
-                    else
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, OldItems.ToArray(), OldStartingIndex);
-                    }
-                case NotifyCollectionChangedAction.Replace:
-                    if (IsSingleItem)
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, NewItem, OldItem, NewStartingIndex);
-                    }
-                    else
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, NewItems.ToArray(), OldItems.ToArray(), NewStartingIndex);
-                    }
-                case NotifyCollectionChangedAction.Move:
-                    {
-                        return new NotifyCollectionChangedEventArgs(Action, OldItem, NewStartingIndex, OldStartingIndex);
-                    }
-                case NotifyCollectionChangedAction.Reset:
-                    return new NotifyCollectionChangedEventArgs(Action);
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
         public static NotifyCollectionChangedEventArgs<T> Add(T newItem, int newStartingIndex)
         {
             return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Add, true, newItem: newItem, newStartingIndex: newStartingIndex);

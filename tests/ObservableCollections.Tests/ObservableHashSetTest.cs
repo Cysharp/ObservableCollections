@@ -70,12 +70,12 @@ namespace ObservableCollections.Tests
             set.Add(33);
             set.AddRange(new[] { 98 });
 
-            filter.CalledOnCollectionChanged.Select(x => (x.changedAction, x.value)).Should().Equal((NotifyCollectionChangedAction.Add, 33), (NotifyCollectionChangedAction.Add, 98));
+            filter.CalledOnCollectionChanged.Select(x => (x.Action, x.NewValue)).Should().Equal((NotifyCollectionChangedAction.Add, 33), (NotifyCollectionChangedAction.Add, 98));
             filter.Clear();
 
             set.Remove(10);
             set.RemoveRange(new[] { 50, 30 });
-            filter.CalledOnCollectionChanged.Select(x => (x.changedAction, x.value)).Should().Equal((NotifyCollectionChangedAction.Remove, 10), (NotifyCollectionChangedAction.Remove, 50), (NotifyCollectionChangedAction.Remove, 30));
+            filter.CalledOnCollectionChanged.Select(x => (x.Action, x.OldValue)).Should().Equal((NotifyCollectionChangedAction.Remove, 10), (NotifyCollectionChangedAction.Remove, 50), (NotifyCollectionChangedAction.Remove, 30));
         }
         
         [Fact]
@@ -93,16 +93,16 @@ namespace ObservableCollections.Tests
 
             view.AttachFilter(filter, true);
             filter.CalledOnCollectionChanged.Count.Should().Be(5);
-            filter.CalledOnCollectionChanged[0].changedAction.Should().Be(NotifyCollectionChangedAction.Add);
-            filter.CalledOnCollectionChanged[0].value.Should().Be(10);
-            filter.CalledOnCollectionChanged[1].changedAction.Should().Be(NotifyCollectionChangedAction.Add);
-            filter.CalledOnCollectionChanged[1].value.Should().Be(50);
-            filter.CalledOnCollectionChanged[2].changedAction.Should().Be(NotifyCollectionChangedAction.Add);
-            filter.CalledOnCollectionChanged[2].value.Should().Be(30);
-            filter.CalledOnCollectionChanged[3].changedAction.Should().Be(NotifyCollectionChangedAction.Add);
-            filter.CalledOnCollectionChanged[3].value.Should().Be(20);
-            filter.CalledOnCollectionChanged[4].changedAction.Should().Be(NotifyCollectionChangedAction.Add);
-            filter.CalledOnCollectionChanged[4].value.Should().Be(40);
+            filter.CalledOnCollectionChanged[0].Action.Should().Be(NotifyCollectionChangedAction.Add);
+            filter.CalledOnCollectionChanged[0].NewValue.Should().Be(10);
+            filter.CalledOnCollectionChanged[1].Action.Should().Be(NotifyCollectionChangedAction.Add);
+            filter.CalledOnCollectionChanged[1].NewValue.Should().Be(50);
+            filter.CalledOnCollectionChanged[2].Action.Should().Be(NotifyCollectionChangedAction.Add);
+            filter.CalledOnCollectionChanged[2].NewValue.Should().Be(30);
+            filter.CalledOnCollectionChanged[3].Action.Should().Be(NotifyCollectionChangedAction.Add);
+            filter.CalledOnCollectionChanged[3].NewValue.Should().Be(20);
+            filter.CalledOnCollectionChanged[4].Action.Should().Be(NotifyCollectionChangedAction.Add);
+            filter.CalledOnCollectionChanged[4].NewValue.Should().Be(40);
 
             filter.CalledWhenTrue.Count.Should().Be(1);
             filter.CalledWhenFalse.Count.Should().Be(4);

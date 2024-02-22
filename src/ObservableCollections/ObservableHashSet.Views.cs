@@ -65,7 +65,7 @@ namespace ObservableCollections
                     {
                         if (invokeAddEventForCurrentElements)
                         {
-                            filter.InvokeOnAdd((value, view), NotifyCollectionChangedEventArgs<T>.Add(value, -1));
+                            filter.InvokeOnAdd((value, view), -1);
                         }
                         else
                         {
@@ -130,15 +130,16 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 dict.Add(e.NewItem, v);
-                                filter.InvokeOnAdd(v, e);
+                                filter.InvokeOnAdd(v, -1);
                             }
                             else
                             {
+                                var i = e.NewStartingIndex;
                                 foreach (var item in e.NewItems)
                                 {
                                     var v = (item, selector(item));
                                     dict.Add(item, v);
-                                    filter.InvokeOnAdd(v, e);
+                                    filter.InvokeOnAdd(v, i++);
                                 }
                             }
                             break;
@@ -147,7 +148,7 @@ namespace ObservableCollections
                             {
                                 if (dict.Remove(e.OldItem, out var value))
                                 {
-                                    filter.InvokeOnRemove(value.Item1, value.Item2, e);
+                                    filter.InvokeOnRemove(value, -1);
                                 }
                             }
                             else
@@ -156,14 +157,14 @@ namespace ObservableCollections
                                 {
                                     if (dict.Remove(item, out var value))
                                     {
-                                        filter.InvokeOnRemove(value.Item1, value.Item2, e);
+                                        filter.InvokeOnRemove(value, -1);
                                     }
                                 }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             dict.Clear();
-                            filter.InvokeOnReset(e);
+                            filter.InvokeOnReset();
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:
