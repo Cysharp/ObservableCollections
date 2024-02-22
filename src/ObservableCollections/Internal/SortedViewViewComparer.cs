@@ -217,7 +217,7 @@ namespace ObservableCollections.Internal
                         viewMap.Add(id, view);
 
                         var index = list.IndexOfKey((view, id));
-                        filter.InvokeOnReplace(value, view, oldValue, oldView, index, oldIndex);
+                        filter.InvokeOnReplace(value, view, oldValue, oldView!, index, oldIndex);
                         break;
                     }
                     case NotifyCollectionChangedAction.Move:
