@@ -148,27 +148,17 @@ namespace ObservableCollections
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         {
-                            if (dict.Remove(e.OldItem.Key, out var oldView))
-                            {
-                                filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(e.OldItem.Key, oldView.Item1), oldView.Item2), e);
-                            }
-
                             var v = selector(e.NewItem);
+                            dict.Remove(e.OldItem.Key);
                             dict[e.NewItem.Key] = (e.NewItem.Value, v);
-                            filter.InvokeOnAdd(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
+                            
+                            filter.InvokeOnReplace(new KeyValuePair<TKey, TValue>(e.NewItem.Key, e.NewItem.Value), v, e);
                         }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                         {
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in dict)
-                                {
-                                    filter.InvokeOnRemove((new KeyValuePair<TKey, TValue>(item.Key, item.Value.Item1), item.Value.Item2), e);
-                                }
-                            }
-
                             dict.Clear();
+                            filter.InvokeOnReset(e);
                         }
                             break;
                         case NotifyCollectionChangedAction.Move: // ObservableDictionary have no Move operation.

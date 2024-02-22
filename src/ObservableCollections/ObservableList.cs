@@ -10,7 +10,7 @@ namespace ObservableCollections
     public sealed partial class ObservableList<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
     {
         readonly List<T> list;
-        public object SyncRoot { get; } = new object();
+        public object SyncRoot { get; } = new();
 
         public ObservableList()
         {
@@ -42,7 +42,7 @@ namespace ObservableCollections
                 {
                     var oldValue = list[index];
                     list[index] = value;
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Replace(value, oldValue, index));
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Replace(value, oldValue, index, index));
                 }
             }
         }

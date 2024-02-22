@@ -41,7 +41,7 @@ namespace ObservableCollections
                 {
                     var oldValue = buffer[index];
                     buffer[index] = value;
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Replace(value, oldValue, index));
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Replace(value, oldValue, index, index));
                 }
             }
         }

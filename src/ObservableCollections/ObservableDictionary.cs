@@ -51,8 +51,8 @@ namespace ObservableCollections
                         dictionary[key] = value;
                         CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>.Replace(
                             new KeyValuePair<TKey, TValue>(key, value),
-                            new KeyValuePair<TKey, TValue>(key, oldValue),
-                            -1));
+                            new KeyValuePair<TKey, TValue>(key, oldValue!),
+                            -1, -1));
                     }
                     else
                     {

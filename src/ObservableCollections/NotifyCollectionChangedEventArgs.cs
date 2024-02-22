@@ -104,14 +104,14 @@ namespace ObservableCollections
             return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Remove, false, oldItems: oldItems, oldStartingIndex: oldStartingIndex);
         }
 
-        public static NotifyCollectionChangedEventArgs<T> Replace(T newItem, T oldItem, int startingIndex)
+        public static NotifyCollectionChangedEventArgs<T> Replace(T newItem, T oldItem, int newStartingIndex, int oldStartingIndex)
         {
-            return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, true, newItem: newItem, oldItem: oldItem, newStartingIndex: startingIndex, oldStartingIndex: startingIndex);
+            return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, true, newItem: newItem, oldItem: oldItem, newStartingIndex: newStartingIndex, oldStartingIndex: oldStartingIndex);
         }
 
-        public static NotifyCollectionChangedEventArgs<T> Replace(ReadOnlySpan<T> newItems, ReadOnlySpan<T> oldItems, int startingIndex)
+        public static NotifyCollectionChangedEventArgs<T> Replace(ReadOnlySpan<T> newItems, ReadOnlySpan<T> oldItems, int newStartingIndex, int oldStartingIndex)
         {
-            return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, false, newItems: newItems, oldItems: oldItems, newStartingIndex: startingIndex, oldStartingIndex: startingIndex);
+            return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, false, newItems: newItems, oldItems: oldItems, newStartingIndex: newStartingIndex, oldStartingIndex: oldStartingIndex);
         }
 
         public static NotifyCollectionChangedEventArgs<T> Move(T changedItem, int newStartingIndex, int oldStartingIndex)

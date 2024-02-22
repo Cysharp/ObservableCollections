@@ -224,25 +224,15 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in ringBuffer)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             ringBuffer.Clear();
+                            filter.InvokeOnReset(e);
                             break;
                         case NotifyCollectionChangedAction.Replace:
                             // range is not supported
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
-
-                                var oldItem = ringBuffer[e.NewStartingIndex];
                                 ringBuffer[e.NewStartingIndex] = v;
-
-                                filter.InvokeOnRemove(oldItem, e);
-                                filter.InvokeOnAdd(v, e);
+                                filter.InvokeOnReplace(v, e);
                                 break;
                             }
                         case NotifyCollectionChangedAction.Move:

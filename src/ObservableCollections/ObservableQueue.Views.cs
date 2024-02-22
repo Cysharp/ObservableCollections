@@ -178,14 +178,8 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in queue)
-                                {
-                                    filter.InvokeOnRemove(item, e);
-                                }
-                            }
                             queue.Clear();
+                            filter.InvokeOnReset(e);
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:

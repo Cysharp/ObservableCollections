@@ -185,11 +185,11 @@ namespace ObservableCollections.Internal
                     {
                         var oldValue = e.OldItem;
                         var oldKey = (oldValue, identitySelector(oldValue));
+                        var oldIndex = -1;
                         if (list.TryGetValue(oldKey, out var o))
                         {
-                            var oldIndex = list.IndexOfKey(oldKey);
+                            oldIndex = list.IndexOfKey(oldKey);
                             list.RemoveAt(oldIndex);
-                            filter.InvokeOnRemove(o, NotifyCollectionChangedEventArgs<T>.Remove(oldValue, oldIndex));
                         }
 
                         var value = e.NewItem;
@@ -198,7 +198,7 @@ namespace ObservableCollections.Internal
                         list.Add((value, id), (value, view));
                         var newIndex = list.IndexOfKey((value, id));
 
-                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, newIndex));
+                        filter.InvokeOnReplace(value, view, NotifyCollectionChangedEventArgs<T>.Replace(e.NewItem, e.OldItem, newIndex, oldIndex));
                     }
                         break;
                     case NotifyCollectionChangedAction.Move:
@@ -212,14 +212,8 @@ namespace ObservableCollections.Internal
                     }
                         break;
                     case NotifyCollectionChangedAction.Reset:
-                        if (!filter.IsNullFilter())
-                        {
-                            foreach (var item in list)
-                            {
-                                filter.InvokeOnRemove(item.Value, e);
-                            }
-                        }
                         list.Clear();
+                        filter.InvokeOnReset(e);
                         break;
                     default:
                         break;

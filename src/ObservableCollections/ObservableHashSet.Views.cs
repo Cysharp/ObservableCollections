@@ -162,14 +162,8 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            if (!filter.IsNullFilter())
-                            {
-                                foreach (var item in dict)
-                                {
-                                    filter.InvokeOnRemove(item.Value, e);
-                                }
-                            }
                             dict.Clear();
+                            filter.InvokeOnReset(e);
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:

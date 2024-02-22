@@ -198,14 +198,14 @@ namespace ObservableCollections.Internal
                     {
                         var oldValue = e.OldItem;
                         var oldId = identitySelector(oldValue);
+                        var oldIndex = -1;
                         if (viewMap.Remove(oldId, out var oldView))
                         {
                             var oldKey = (oldView, oldId);
                             if (list.TryGetValue(oldKey, out var v))
                             {
-                                var oldIndex = list.IndexOfKey(oldKey);
+                                oldIndex = list.IndexOfKey(oldKey);
                                 list.RemoveAt(oldIndex);
-                                filter.InvokeOnRemove(oldValue, oldView, NotifyCollectionChangedEventArgs<T>.Remove(v.Value, oldIndex));
                             }
                         }
 
@@ -216,7 +216,7 @@ namespace ObservableCollections.Internal
                         viewMap.Add(id, view);
 
                         var index = list.IndexOfKey((view, id));
-                        filter.InvokeOnAdd(value, view, NotifyCollectionChangedEventArgs<T>.Add(value, index));
+                        filter.InvokeOnReplace(value, view, NotifyCollectionChangedEventArgs<T>.Replace(e.NewItem, e.OldItem, index, oldIndex));
                         break;
                     }
                     case NotifyCollectionChangedAction.Move:
@@ -231,15 +231,9 @@ namespace ObservableCollections.Internal
                         break;
                     }
                     case NotifyCollectionChangedAction.Reset:
-                        if (!filter.IsNullFilter())
-                        {
-                            foreach (var item in list)
-                            {
-                                filter.InvokeOnRemove(item.Value, e);
-                            }
-                        }
                         list.Clear();
                         viewMap.Clear();
+                        filter.InvokeOnReset(e);
                         break;
                     default:
                         break;

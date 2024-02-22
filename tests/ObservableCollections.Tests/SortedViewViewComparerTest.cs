@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Specialized;
 
 namespace ObservableCollections.Tests;
 
@@ -49,21 +50,19 @@ public class SortedViewViewComparerTest
         sortedView.AttachFilter(filter);
         
         list.Add(20);
-        filter.CalledOnCollectionChanged[0].changedKind.Should().Be(ChangedKind.Add);
+        filter.CalledOnCollectionChanged[0].changedAction.Should().Be(NotifyCollectionChangedAction.Add);
         filter.CalledOnCollectionChanged[0].value.Should().Be(20);
         filter.CalledOnCollectionChanged[0].index.Should().Be(1);
 
         list.Remove(20);
-        filter.CalledOnCollectionChanged[1].changedKind.Should().Be(ChangedKind.Remove);
+        filter.CalledOnCollectionChanged[1].changedAction.Should().Be(NotifyCollectionChangedAction.Remove);
         filter.CalledOnCollectionChanged[1].value.Should().Be(20);
         filter.CalledOnCollectionChanged[1].oldIndex.Should().Be(1);
 
         list[1] = 999; // from 10(at 0 in original) to 999
-        filter.CalledOnCollectionChanged[2].changedKind.Should().Be(ChangedKind.Remove);
-        filter.CalledOnCollectionChanged[2].value.Should().Be(10);
+        filter.CalledOnCollectionChanged[2].changedAction.Should().Be(NotifyCollectionChangedAction.Replace);
+        filter.CalledOnCollectionChanged[2].value.Should().Be(999);
+        filter.CalledOnCollectionChanged[2].index.Should().Be(1);
         filter.CalledOnCollectionChanged[2].oldIndex.Should().Be(0);
-        filter.CalledOnCollectionChanged[3].changedKind.Should().Be(ChangedKind.Add);
-        filter.CalledOnCollectionChanged[3].value.Should().Be(999);
-        filter.CalledOnCollectionChanged[3].index.Should().Be(1);
     }
 }

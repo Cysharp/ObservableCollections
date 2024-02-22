@@ -58,25 +58,18 @@ namespace ObservableCollections.Internal
         public void WhenTrue(T value, TView view) => currentFilter.WhenTrue(value, view);
         public void WhenFalse(T value, TView view) => currentFilter.WhenFalse(value, view);
 
-        public void OnCollectionChanged(ChangedKind changedKind, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
+        public void OnCollectionChanged(NotifyCollectionChangedAction changedAction, T value, TView view, in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            currentFilter.OnCollectionChanged(changedKind, value, view, in eventArgs);
+            currentFilter.OnCollectionChanged(changedAction, value, view, in eventArgs);
+            CollectionChanged?.Invoke(this, eventArgs.ToStandardEventArgs());
 
-            switch (changedKind)
+            switch (changedAction)
             {
-                case ChangedKind.Add:
-                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, view, eventArgs.NewStartingIndex));
-                    PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
-                    return;
-                case ChangedKind.Remove:
-                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, view, eventArgs.OldStartingIndex));
+                case NotifyCollectionChangedAction.Add:
+                case NotifyCollectionChangedAction.Remove:
+                case NotifyCollectionChangedAction.Reset:
                     PropertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
                     break;
-                case ChangedKind.Move:
-                    CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, view, eventArgs.NewStartingIndex, eventArgs.OldStartingIndex));
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(changedKind), changedKind, null);
             }
         }
     }
