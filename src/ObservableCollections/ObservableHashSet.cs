@@ -185,7 +185,10 @@ namespace ObservableCollections
 
         public bool TryGetValue(T equalValue, [MaybeNullWhen(false)] out T actualValue)
         {
-            return set.TryGetValue(equalValue, out actualValue);
+            lock(SyncRoot)
+            {
+                return set.TryGetValue(equalValue, out actualValue);
+            }
         }
 
 #endif
