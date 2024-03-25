@@ -212,7 +212,7 @@ namespace ObservableCollections
                             // ObservableList does not support replace range
                         {
                             var v = (e.NewItem, selector(e.NewItem));
-                            var ov = (e.OldItem, selector(e.OldItem));
+                            var ov = (e.OldItem, list[e.OldStartingIndex].Item2);
                             list[e.NewStartingIndex] = v;
                             filter.InvokeOnReplace(v, ov, e.NewStartingIndex);
                             break;
