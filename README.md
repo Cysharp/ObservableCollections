@@ -214,7 +214,7 @@ Because of data binding in WPF, it is important that the collection is Observabl
 // WPF simple sample.
 
 ObservableList<int> list;
-public ISynchronizedView<int, int> ItemsView { get; set; }
+public INotifyCollectionChangedSynchronizedView<int> ItemsView { get; set; }
 
 public MainWindow()
 {
