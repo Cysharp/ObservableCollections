@@ -28,6 +28,7 @@ jobs:
         with:
           name: nuget
           path: ./publish/
+          retention-days: 1
 
   # release
   create-release:
