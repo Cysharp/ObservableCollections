@@ -74,8 +74,10 @@ namespace ObservableCollections.Internal
         {
             if (array.Length == index)
             {
+                var newArray = ArrayPool<T>.Shared.Rent(index * 2);
+                Array.Copy(array, newArray, index);
                 ArrayPool<T>.Shared.Return(array, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
-                array = ArrayPool<T>.Shared.Rent(index * 2);
+                array = newArray;
             }
         }
 
