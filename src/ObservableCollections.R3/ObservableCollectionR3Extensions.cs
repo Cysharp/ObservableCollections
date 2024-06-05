@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading;
 using R3;
@@ -9,6 +10,13 @@ public readonly record struct CollectionAddEvent<T>(int Index, T Value);
 public readonly record struct CollectionRemoveEvent<T>(int Index, T Value);
 public readonly record struct CollectionReplaceEvent<T>(int Index, T OldValue, T NewValue);
 public readonly record struct CollectionMoveEvent<T>(int OldIndex, int NewIndex, T Value);
+
+public readonly record struct DictionaryAddEvent<TKey, TValue>(TKey Key, TValue Value);
+
+public readonly record struct DictionaryRemoveEvent<TKey, TValue>(TKey Key, TValue Value);
+
+public readonly record struct DictionaryReplaceEvent<TKey, TValue>(TKey Key, TValue OldValue, TValue NewValue);
+
 
 public static class ObservableCollectionR3Extensions
 {
@@ -40,6 +48,26 @@ public static class ObservableCollectionR3Extensions
     public static Observable<int> ObserveCountChanged<T>(this IObservableCollection<T> source, bool notifyCurrentCount = false, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionCountChanged<T>(source, notifyCurrentCount, cancellationToken);
+    }
+}
+
+public static class ObservableDictionaryR3Extensions
+{
+    public static Observable<DictionaryAddEvent<TKey, TValue>> ObserveDictionaryAdd<TKey, TValue>(this IReadOnlyObservableDictionary<TKey, TValue> source,
+        CancellationToken cancellationToken = default)
+    {
+        return new ObservableDictionaryAdd<TKey, TValue>(source, cancellationToken);
+    }
+
+    public static Observable<DictionaryRemoveEvent<TKey, TValue>> ObserveDictionaryRemove<TKey, TValue>(this IReadOnlyObservableDictionary<TKey, TValue> source,
+        CancellationToken cancellationToken = default)
+    {
+        return new ObservableDictionaryRemove<TKey, TValue>(source, cancellationToken);
+    }
+    public static Observable<DictionaryReplaceEvent<TKey, TValue>> ObserveDictionaryReplace<TKey, TValue>(this IReadOnlyObservableDictionary<TKey, TValue> source,
+        CancellationToken cancellationToken = default)
+    {
+        return new ObservableDictionaryReplace<TKey, TValue>(source, cancellationToken);
     }
 }
 
@@ -225,6 +253,110 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
     }
 }
 
+sealed class ObservableDictionaryAdd<TKey, TValue>(
+    IReadOnlyObservableDictionary<TKey, TValue> dictionary,
+    CancellationToken cancellationToken) : Observable<DictionaryAddEvent<TKey, TValue>>
+{
+    protected override IDisposable SubscribeCore(Observer<DictionaryAddEvent<TKey, TValue>> observer)
+    {
+        return new _DictionaryCollectionAdd(dictionary, observer, cancellationToken);
+    }
+
+    sealed class _DictionaryCollectionAdd(
+        IObservableCollection<KeyValuePair<TKey, TValue>> collection,
+        Observer<DictionaryAddEvent<TKey, TValue>> observer,
+        CancellationToken cancellationToken) :
+        ObservableCollectionObserverBase<KeyValuePair<TKey, TValue>, DictionaryAddEvent<TKey, TValue>>(collection,
+            observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>> eventArgs)
+        {
+            if (eventArgs.Action == NotifyCollectionChangedAction.Add)
+            {
+                if (eventArgs.IsSingleItem)
+                {
+                    observer.OnNext(
+                        new DictionaryAddEvent<TKey, TValue>(eventArgs.NewItem.Key, eventArgs.NewItem.Value));
+                }
+                else
+                {
+                    var i = eventArgs.NewStartingIndex;
+                    foreach (var item in eventArgs.NewItems)
+                    {
+                        observer.OnNext(new DictionaryAddEvent<TKey, TValue>(item.Key, item.Value));
+                    }
+                }
+            }
+        }
+    }
+}
+
+sealed class ObservableDictionaryRemove<TKey, TValue>(
+    IReadOnlyObservableDictionary<TKey, TValue> dictionary,
+    CancellationToken cancellationToken) : Observable<DictionaryRemoveEvent<TKey, TValue>>
+{
+    protected override IDisposable SubscribeCore(Observer<DictionaryRemoveEvent<TKey, TValue>> observer)
+    {
+        return new _DictionaryCollectionRemove(dictionary, observer, cancellationToken);
+    }
+
+    sealed class _DictionaryCollectionRemove(
+        IObservableCollection<KeyValuePair<TKey, TValue>> collection,
+        Observer<DictionaryRemoveEvent<TKey, TValue>> observer,
+        CancellationToken cancellationToken) :
+        ObservableCollectionObserverBase<KeyValuePair<TKey, TValue>, DictionaryRemoveEvent<TKey, TValue>>(collection,
+            observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>> eventArgs)
+        {
+            if (eventArgs.Action == NotifyCollectionChangedAction.Remove)
+            {
+                if (eventArgs.IsSingleItem)
+                {
+                    observer.OnNext(
+                        new DictionaryRemoveEvent<TKey, TValue>(eventArgs.OldItem.Key, eventArgs.OldItem.Value));
+                }
+                else
+                {
+                    var i = eventArgs.NewStartingIndex;
+                    foreach (var item in eventArgs.NewItems)
+                    {
+                        observer.OnNext(new DictionaryRemoveEvent<TKey, TValue>(item.Key, item.Value));
+                    }
+                }
+            }
+        }
+    }
+}
+
+sealed class ObservableDictionaryReplace<TKey, TValue>(
+    IReadOnlyObservableDictionary<TKey, TValue> dictionary,
+    CancellationToken cancellationToken) : Observable<DictionaryReplaceEvent<TKey, TValue>>
+{
+    protected override IDisposable SubscribeCore(Observer<DictionaryReplaceEvent<TKey, TValue>> observer)
+    {
+        return new _DictionaryCollectionReplace(dictionary, observer, cancellationToken);
+    }
+
+    sealed class _DictionaryCollectionReplace(
+        IObservableCollection<KeyValuePair<TKey, TValue>> collection,
+        Observer<DictionaryReplaceEvent<TKey, TValue>> observer,
+        CancellationToken cancellationToken) :
+        ObservableCollectionObserverBase<KeyValuePair<TKey, TValue>, DictionaryReplaceEvent<TKey, TValue>>(collection,
+            observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<KeyValuePair<TKey, TValue>> eventArgs)
+        {
+            if (eventArgs.Action == NotifyCollectionChangedAction.Replace)
+            {
+                observer.OnNext(new DictionaryReplaceEvent<TKey, TValue>(
+                    eventArgs.NewItem.Key,
+                    eventArgs.OldItem.Value,
+                    eventArgs.NewItem.Value));
+            }
+        }
+    }
+}
 
 abstract class ObservableCollectionObserverBase<T, TEvent> : IDisposable
 {
