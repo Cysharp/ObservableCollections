@@ -82,24 +82,11 @@ namespace ObservableCollections.Internal
         {
             lock (SyncRoot)
             {
-                if (!reverse)
+                foreach (var item in reverse ? list.AsEnumerable().Reverse() : list)
                 {
-                    foreach (var item in list)
+                    if (filter.IsMatch(item.Item1, item.Item2))
                     {
-                        if (filter.IsMatch(item.Item1, item.Item2))
-                        {
-                            yield return item;
-                        }
-                    }
-                }
-                else
-                {
-                    foreach (var item in list.AsEnumerable().Reverse())
-                    {
-                        if (filter.IsMatch(item.Item1, item.Item2))
-                        {
-                            yield return item;
-                        }
+                        yield return item;
                     }
                 }
             }

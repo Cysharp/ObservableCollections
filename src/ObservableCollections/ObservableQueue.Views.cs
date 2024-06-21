@@ -105,24 +105,11 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    if (!reverse)
+                    foreach (var item in reverse ? queue.AsEnumerable().Reverse() : queue)
                     {
-                        foreach (var item in queue)
+                        if (filter.IsMatch(item.Item1, item.Item2))
                         {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in queue.AsEnumerable().Reverse())
-                        {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
+                            yield return item;
                         }
                     }
                 }

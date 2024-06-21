@@ -106,24 +106,11 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    if (!reverse)
+                    foreach (var item in reverse ? ringBuffer.AsEnumerable().Reverse() : ringBuffer)
                     {
-                        foreach (var item in ringBuffer)
+                        if (filter.IsMatch(item.Item1, item.Item2))
                         {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in ringBuffer.AsEnumerable().Reverse())
-                        {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
+                            yield return item;
                         }
                     }
                 }
