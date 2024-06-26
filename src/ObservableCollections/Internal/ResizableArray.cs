@@ -33,8 +33,10 @@ namespace ObservableCollections.Internal
         [MethodImpl(MethodImplOptions.NoInlining)]
         void EnsureCapacity()
         {
-            var newArray = array.AsSpan().ToArray();
-            ArrayPool<T>.Shared.Return(array!, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
+            var oldArray = array!;
+            var newArray = ArrayPool<T>.Shared.Rent(oldArray.Length * 2);
+            Array.Copy(oldArray, newArray, oldArray.Length);
+            ArrayPool<T>.Shared.Return(oldArray, RuntimeHelpersEx.IsReferenceOrContainsReferences<T>());
             array = newArray;
         }
 
