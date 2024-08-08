@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net6.0-windows</TargetFramework>
+		<LangVersion>12</LangVersion>
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
@@ -10,7 +11,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="R3Extensions.WPF" Version="1.0.4" />
+		<PackageReference Include="R3Extensions.WPF" Version="1.0.4" />
 	</ItemGroup>
 
 	<ItemGroup>

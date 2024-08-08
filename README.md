@@ -206,9 +206,9 @@ public partial class DataTable<T> : ComponentBase, IDisposable
 }
 ```
 
-WPF
+WPF/Avalonia
 ---
-Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `ToNotifyCollectionChanged()` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. `BindingOperations.EnableCollectionSynchronization` to work safely with change notifications from different threads.
+Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `ToNotifyCollectionChanged()` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. To`ToNotifyCollectionChanged(IColllectionEventDispatcher)` allows multi thread changed.
 
 ```csharp
 // WPF simple sample.
@@ -222,9 +222,12 @@ public MainWindow()
     this.DataContext = this;
 
     list = new ObservableList<int>();
-    ItemsView = list.CreateView(x => x).ToNotifyCollectionChanged();
 
-    BindingOperations.EnableCollectionSynchronization(ItemsView, new object()); // for ui synchronization safety of viewmodel
+    // for ui synchronization safety of viewmodel
+    ItemsView = list.CreateView(x => x).ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
+
+    // if collection is changed only from ui-thread, can use this overload
+    // ItemsView = list.CreateView(x => x).ToNotifyCollectionChanged();
 }
 
 protected override void OnClosed(EventArgs e)
@@ -234,6 +237,22 @@ protected override void OnClosed(EventArgs e)
 ```
 
 > WPF can not use SortedView because SortedView can not provide sort event to INotifyCollectionChanged.
+
+`SynchronizationContextCollectionEventDispatcher.Current` is default implementation of `IColllectionEventDispatcher`, it is used `SynchronizationContext.Current` for dispatche ui thread. You can create custom `ICollectionEventDispatcher` to use custom dispatcher object. For example use WPF Dispatcher:
+
+```csharp
+public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDispatcher
+{
+    public void Post(CollectionEventDispatcherEventArgs ev)
+    {
+        dispatcher.InvokeAsync(() =>
+        {
+            // notify in dispatcher
+            ev.Invoke();
+        });
+    }
+}
+```
 
 Unity
 ---

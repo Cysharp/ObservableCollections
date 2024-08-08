@@ -19,6 +19,7 @@
     </Grid>-->
     <StackPanel>
         <ListBox ItemsSource="{Binding ItemsView}" />
+        <Button Content="Add" Command="{Binding AddCommand}" />
         <Button Content="Clear" Command="{Binding ClearCommand}" />
     </StackPanel>
 </Window>

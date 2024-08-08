@@ -100,7 +100,15 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView>(this);
+                    return new NotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView>(this, null);
+                }
+            }
+
+            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                lock (SyncRoot)
+                {
+                    return new NotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView>(this, collectionEventDispatcher);
                 }
             }
 

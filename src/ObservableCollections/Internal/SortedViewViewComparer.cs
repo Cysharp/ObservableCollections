@@ -99,7 +99,15 @@ namespace ObservableCollections.Internal
         {
             lock (SyncRoot)
             {
-                return new NotifyCollectionChangedSynchronizedView<T, TView>(this);
+                return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
+            }
+        }
+
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            lock (SyncRoot)
+            {
+                return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
             }
         }
 

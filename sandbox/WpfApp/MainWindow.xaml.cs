@@ -2,6 +2,7 @@
 using R3;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -16,6 +17,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace WpfApp
 {
@@ -42,7 +44,7 @@ namespace WpfApp
 
             this.DataContext = new ViewModel();
 
-
+            // Dispatcher.BeginInvoke(
 
 
             //list = new ObservableList<int>();
@@ -73,6 +75,7 @@ namespace WpfApp
     {
         private ObservableList<int> observableList { get; } = new ObservableList<int>();
         public INotifyCollectionChangedSynchronizedView<int> ItemsView { get; }
+        public ReactiveCommand<Unit> AddCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> ClearCommand { get; } = new ReactiveCommand<Unit>();
 
         public ViewModel()
@@ -80,15 +83,37 @@ namespace WpfApp
             observableList.Add(1);
             observableList.Add(2);
 
-            ItemsView = observableList.CreateView(x => x).ToNotifyCollectionChanged();
+            ItemsView = observableList.CreateView(x => x).ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
 
-            BindingOperations.EnableCollectionSynchronization(ItemsView, new object());
+
+            // ItemsView = observableList.CreateView(x => x).ToNotifyCollectionChanged();
+
+            // BindingOperations.EnableCollectionSynchronization(ItemsView, new object());
+
+            AddCommand.Subscribe(_ =>
+            {
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    observableList.Add(Random.Shared.Next());
+                });
+            });
 
             // var iii = 10;
             ClearCommand.Subscribe(_ =>
             {
                 // observableList.Add(iii++);
                 observableList.Clear();
+            });
+        }
+    }
+
+    public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDispatcher
+    {
+        public void Post(CollectionEventDispatcherEventArgs ev)
+        {
+            dispatcher.InvokeAsync(() =>
+            {
+                ev.Invoke();
             });
         }
     }

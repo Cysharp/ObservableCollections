@@ -114,7 +114,12 @@ namespace ObservableCollections.Internal
 
         public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
         {
-            return new NotifyCollectionChangedSynchronizedView<T, TView>(this);
+            return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
+        }
+
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
         }
     }
 
@@ -218,7 +223,12 @@ namespace ObservableCollections.Internal
 
         public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
         {
-            return new NotifyCollectionChangedSynchronizedView<T, TView>(this);
+            return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
+        }
+
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
         }
 
         class TComparer : IComparer<(T, TView)>

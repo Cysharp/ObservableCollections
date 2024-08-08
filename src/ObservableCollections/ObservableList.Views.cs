@@ -100,7 +100,15 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this);
+                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
+                }
+            }
+
+            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                lock (SyncRoot)
+                {
+                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
                 }
             }
 
@@ -210,21 +218,21 @@ namespace ObservableCollections
                             break;
                         case NotifyCollectionChangedAction.Replace:
                             // ObservableList does not support replace range
-                        {
-                            var v = (e.NewItem, selector(e.NewItem));
-                            var ov = (e.OldItem, list[e.OldStartingIndex].Item2);
-                            list[e.NewStartingIndex] = v;
-                            filter.InvokeOnReplace(v, ov, e.NewStartingIndex);
-                            break;
-                        }
+                            {
+                                var v = (e.NewItem, selector(e.NewItem));
+                                var ov = (e.OldItem, list[e.OldStartingIndex].Item2);
+                                list[e.NewStartingIndex] = v;
+                                filter.InvokeOnReplace(v, ov, e.NewStartingIndex);
+                                break;
+                            }
                         case NotifyCollectionChangedAction.Move:
-                        {
-                            var removeItem = list[e.OldStartingIndex];
-                            list.RemoveAt(e.OldStartingIndex);
-                            list.Insert(e.NewStartingIndex, removeItem);
+                            {
+                                var removeItem = list[e.OldStartingIndex];
+                                list.RemoveAt(e.OldStartingIndex);
+                                list.Insert(e.NewStartingIndex, removeItem);
 
-                            filter.InvokeOnMove(removeItem, e.NewStartingIndex, e.OldStartingIndex);
-                        }
+                                filter.InvokeOnMove(removeItem, e.NewStartingIndex, e.OldStartingIndex);
+                            }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             list.Clear();

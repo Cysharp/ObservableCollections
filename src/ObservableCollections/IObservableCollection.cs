@@ -37,6 +37,7 @@ namespace ObservableCollections
         void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForInitialElements = false);
         void ResetFilter(Action<T, TView>? resetAction);
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged();
+        INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
     }
 
     public interface ISortableSynchronizedView<T, TView> : ISynchronizedView<T, TView>
