@@ -206,7 +206,7 @@ public partial class DataTable<T> : ComponentBase, IDisposable
 }
 ```
 
-WPF/Avalonia
+WPF(XAML based UI platforms)
 ---
 Because of data binding in WPF, it is important that the collection is Observable. ObservableCollections high-performance `IObservableCollection<T>` cannot be bind to WPF. Call `ToNotifyCollectionChanged()` to convert it to `INotifyCollectionChanged`. Also, although ObservableCollections and Views are thread-safe, the WPF UI does not support change notifications from different threads. To`ToNotifyCollectionChanged(IColllectionEventDispatcher)` allows multi thread changed.
 
