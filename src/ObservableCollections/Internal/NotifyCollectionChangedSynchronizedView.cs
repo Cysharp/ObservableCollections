@@ -135,7 +135,7 @@ namespace ObservableCollections.Internal
 
     internal class ListNotifyCollectionChangedSynchronizedView<T, TView>
         : NotifyCollectionChangedSynchronizedView<T, TView>
-        , IList<TView>
+        , IList<TView>, IReadOnlyList<TView>
         , IList
     {
         readonly ObservableList<T>.View<TView> view;
@@ -158,7 +158,7 @@ namespace ObservableCollections.Internal
             set => throw new NotSupportedException();
         }
 
-        object? IList.this[int index] 
+        object? IList.this[int index]
         {
             get
             {
