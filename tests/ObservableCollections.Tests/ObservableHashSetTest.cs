@@ -106,6 +106,22 @@ namespace ObservableCollections.Tests
 
             filter.CalledWhenTrue.Count.Should().Be(1);
             filter.CalledWhenFalse.Count.Should().Be(4);
-        }   
+        }
+
+        [Fact]
+        public void IndexOutOfRange()
+        {
+            // https://github.com/Cysharp/ObservableCollections/pull/51
+            static IEnumerable<int> Range(int count)
+            {
+                foreach (var i in Enumerable.Range(0, count))
+                {
+                    yield return i;
+                }
+            }
+
+            var set = new ObservableHashSet<int>();
+            set.AddRange(Range(20));
+        }
     }
 }
