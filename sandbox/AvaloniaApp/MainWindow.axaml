@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="AvaloniaApp.MainWindow"
+        Title="AvaloniaApp">
+	<StackPanel>
+		<ListBox ItemsSource="{Binding ItemsView}" x:CompileBindings="False" />
+		<Button Content="Add" Command="{Binding AddCommand}" x:CompileBindings="False" />
+		<Button Content="Clear" Command="{Binding ClearCommand}"  x:CompileBindings="False" />
+	</StackPanel>
+</Window>
