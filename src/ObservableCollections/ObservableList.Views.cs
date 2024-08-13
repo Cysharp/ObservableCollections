@@ -14,7 +14,7 @@ namespace ObservableCollections
             return new View<TView>(this, transform, reverse);
         }
 
-        sealed class View<TView> : ISynchronizedView<T, TView>
+        internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
             public ISynchronizedViewFilter<T, TView> CurrentFilter
             {
@@ -27,7 +27,7 @@ namespace ObservableCollections
             readonly ObservableList<T> source;
             readonly Func<T, TView> selector;
             readonly bool reverse;
-            readonly List<(T, TView)> list;
+            internal readonly List<(T, TView)> list; // be careful to use
 
             ISynchronizedViewFilter<T, TView> filter;
 
@@ -100,7 +100,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
+                    return new ListNotifyCollectionChangedSynchronizedView<T, TView>(this, null);
                 }
             }
 
@@ -108,7 +108,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
+                    return new ListNotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
                 }
             }
 

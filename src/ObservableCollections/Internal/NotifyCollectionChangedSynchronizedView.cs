@@ -132,4 +132,152 @@ namespace ObservableCollections.Internal
             }
         }
     }
+
+    internal class ListNotifyCollectionChangedSynchronizedView<T, TView>
+        : NotifyCollectionChangedSynchronizedView<T, TView>
+        , IList<TView>
+        , IList
+    {
+        readonly ObservableList<T>.View<TView> view;
+
+        public ListNotifyCollectionChangedSynchronizedView(ObservableList<T>.View<TView> parent, ICollectionEventDispatcher? eventDispatcher)
+            : base(parent, eventDispatcher)
+        {
+            this.view = parent;
+        }
+
+        public TView this[int index]
+        {
+            get
+            {
+                lock (view.SyncRoot)
+                {
+                    return view.list[index].Item2;
+                }
+            }
+            set => throw new NotSupportedException();
+        }
+
+        object? IList.this[int index] 
+        {
+            get
+            {
+                return this[index];
+            }
+            set => throw new NotSupportedException();
+        }
+
+        static bool IsCompatibleObject(object? value)
+        {
+            return (value is T) || (value == null && default(T) == null);
+        }
+
+        public bool IsReadOnly => true;
+
+        public bool IsFixedSize => false;
+
+        public bool IsSynchronized => true;
+
+        public object SyncRoot => view.SyncRoot;
+
+        public void Add(TView item)
+        {
+            throw new NotSupportedException();
+        }
+
+        public int Add(object? value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Clear()
+        {
+            throw new NotSupportedException();
+        }
+
+        public bool Contains(TView item)
+        {
+            lock (view.SyncRoot)
+            {
+                foreach (var listItem in view.list)
+                {
+                    if (EqualityComparer<TView>.Default.Equals(listItem.Item2, item))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public bool Contains(object? value)
+        {
+            if (IsCompatibleObject(value))
+            {
+                return Contains((TView)value!);
+            }
+            return false;
+        }
+
+        public void CopyTo(TView[] array, int arrayIndex)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void CopyTo(Array array, int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int IndexOf(TView item)
+        {
+            lock (view.SyncRoot)
+            {
+                var index = 0;
+                foreach (var listItem in view.list)
+                {
+                    if (EqualityComparer<TView>.Default.Equals(listItem.Item2, item))
+                    {
+                        return index;
+                    }
+                    index++;
+                }
+            }
+            return -1;
+        }
+
+        public int IndexOf(object? item)
+        {
+            if (IsCompatibleObject(item))
+            {
+                return IndexOf((TView)item!);
+            }
+            return -1;
+        }
+
+        public void Insert(int index, TView item)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Insert(int index, object? value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Remove(TView item)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Remove(object? value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(int index)
+        {
+            throw new NotSupportedException();
+        }
+    }
 }

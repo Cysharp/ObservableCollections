@@ -1,5 +1,6 @@
 ﻿using ObservableCollections.Internal;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -15,11 +16,11 @@ namespace ObservableCollections
         ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
     }
 
-    public interface IReadOnlyObservableDictionary<TKey, TValue> : 
+    public interface IReadOnlyObservableDictionary<TKey, TValue> :
         IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>>
     {
     }
-    
+
     public interface IFreezedCollection<T>
     {
         ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
