@@ -15,6 +15,11 @@ namespace ObservableCollections
         ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
     }
 
+    public interface IReadOnlyObservableList<T> :
+        IReadOnlyList<T>, IObservableCollection<T>
+    {
+    }
+
     public interface IReadOnlyObservableDictionary<TKey, TValue> : 
         IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>>
     {
