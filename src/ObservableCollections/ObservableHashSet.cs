@@ -264,5 +264,16 @@ namespace ObservableCollections
         {
             return GetEnumerator();
         }
+
+        public IEqualityComparer<T> Comparer
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return set.Comparer;
+                }
+            }
+        }
     }
 }

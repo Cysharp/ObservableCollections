@@ -224,5 +224,16 @@ namespace ObservableCollections
         {
             return GetEnumerator();
         }
+
+        public IEqualityComparer<TKey> Comparer
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return dictionary.Comparer;
+                }
+            }
+        }
     }
 }
