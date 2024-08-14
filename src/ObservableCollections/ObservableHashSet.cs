@@ -14,23 +14,23 @@ namespace ObservableCollections
         readonly HashSet<T> set;
         public object SyncRoot { get; } = new object();
 
-        public ObservableHashSet()
+        public ObservableHashSet(IEqualityComparer<T>? comparer = null)
         {
-            this.set = new HashSet<T>();
+            this.set = new HashSet<T>(comparer: comparer);
         }
 
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
 
-        public ObservableHashSet(int capacity)
+        public ObservableHashSet(int capacity, IEqualityComparer<T>? comparer = null)
         {
-            this.set = new HashSet<T>(capacity);
+            this.set = new HashSet<T>(capacity: capacity, comparer: comparer);
         }
 
 #endif
 
-        public ObservableHashSet(IEnumerable<T> collection)
+        public ObservableHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer = null)
         {
-            this.set = new HashSet<T>(collection);
+            this.set = new HashSet<T>(collection: collection, comparer: comparer);
         }
 
         public event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
