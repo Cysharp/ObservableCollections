@@ -18,12 +18,56 @@ namespace ObservableCollections
             this.dictionary = new Dictionary<TKey, TValue>();
         }
 
+        public ObservableDictionary(int capacity)
+        {
+            this.dictionary = new Dictionary<TKey, TValue>(capacity);
+        }
+
+        public ObservableDictionary(IEqualityComparer<TKey>? comparer)
+        {
+            this.dictionary = new Dictionary<TKey, TValue>(comparer);
+        }
+
+        public ObservableDictionary(int capacity, IEqualityComparer<TKey>? comparer)
+        {
+            this.dictionary = new Dictionary<TKey, TValue>(capacity, comparer);
+        }
+
         public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection)
         {
 #if NET6_0_OR_GREATER
             this.dictionary = new Dictionary<TKey, TValue>(collection);
 #else
-            this.dictionary = new Dictionary<TKey, TValue>();
+            if (collection.TryGetNonEnumeratedCount(out var count))
+            {
+                this.dictionary = new Dictionary<TKey, TValue>(count);
+            }
+            else
+            {
+                this.dictionary = new Dictionary<TKey, TValue>();
+            }
+
+            foreach (var item in collection)
+            {
+                dictionary.Add(item.Key, item.Value);
+            }
+#endif
+        }
+
+        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer)
+        {
+#if NET6_0_OR_GREATER
+            this.dictionary = new Dictionary<TKey, TValue>(collection, comparer);
+#else
+            if (collection.TryGetNonEnumeratedCount(out var count))
+            {
+                this.dictionary = new Dictionary<TKey, TValue>(count, comparer);
+            }
+            else
+            {
+                this.dictionary = new Dictionary<TKey, TValue>(comparer);
+            }
+
             foreach (var item in collection)
             {
                 dictionary.Add(item.Key, item.Value);

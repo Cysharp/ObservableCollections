@@ -19,6 +19,11 @@ namespace ObservableCollections
             this.set = new HashSet<T>();
         }
 
+        public ObservableHashSet(IEqualityComparer<T>? comparer)
+        {
+            this.set = new HashSet<T>(comparer);
+        }
+
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
 
         public ObservableHashSet(int capacity)
@@ -26,11 +31,21 @@ namespace ObservableCollections
             this.set = new HashSet<T>(capacity);
         }
 
+        public ObservableHashSet(int capacity, IEqualityComparer<T>? comparer)
+        {
+            this.set = new HashSet<T>(capacity, comparer);
+        }
+
 #endif
 
         public ObservableHashSet(IEnumerable<T> collection)
         {
             this.set = new HashSet<T>(collection);
+        }
+
+        public ObservableHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer)
+        {
+            this.set = new HashSet<T>(collection, comparer);
         }
 
         public event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
