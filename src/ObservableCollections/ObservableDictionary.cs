@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace ObservableCollections
 {
@@ -13,12 +14,27 @@ namespace ObservableCollections
         readonly Dictionary<TKey, TValue> dictionary;
         public object SyncRoot { get; } = new object();
 
-        public ObservableDictionary(IEqualityComparer<TKey>? comparer = null)
+        public ObservableDictionary()
+        {
+            this.dictionary = new Dictionary<TKey, TValue>();
+        }
+
+        public ObservableDictionary(IEqualityComparer<TKey>? comparer)
         {
             this.dictionary = new Dictionary<TKey, TValue>(comparer: comparer);
         }
 
-        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer = null)
+        public ObservableDictionary(int capacity, IEqualityComparer<TKey>? comparer)
+        {
+            this.dictionary = new Dictionary<TKey, TValue>(capacity, comparer: comparer);
+        }
+
+        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection)
+            : this(collection, null)
+        {
+        }
+
+        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer)
         {
 #if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
             this.dictionary = new Dictionary<TKey, TValue>(collection: collection, comparer: comparer);
