@@ -1,11 +1,117 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 
 namespace ObservableCollections.Internal
 {
+    internal class SynchronizedViewList<T, TView> : ISynchronizedViewList<TView>
+    {
+        readonly ISynchronizedView<T, TView> parent;
+        readonly List<TView> listView;
+        readonly Func<T, TView> selector;
+
+        public SynchronizedViewList(ISynchronizedView<T, TView> parent, Func<T, TView> selector)
+        {
+            this.parent = parent;
+            this.selector = selector;
+            parent.RoutingCollectionChanged += Parent_RoutingCollectionChanged; // TODO: -=
+        }
+
+        private void Parent_RoutingCollectionChanged(in NotifyCollectionChangedEventArgs<T> e)
+        {
+            // call in parent.lock.
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    if (e.IsSingleItem)
+                    {
+                        // parent.CurrentFilter.IsMatch(
+                        
+                        var item = selector(e.NewItem);
+
+                        
+
+
+                        if (e.NewStartingIndex != -1)
+                        {
+                            listView.Insert(e.NewStartingIndex, selector(e.NewItem));
+                        }
+                        else // dict is -1
+                        {
+                            listView.Add(selector(e.NewItem));
+                        }
+                    }
+                    else
+                    {
+                        if (e.NewStartingIndex != -1)
+                        {
+                            var array = ArrayPool<TView>.Shared.Rent(e.NewItems.Length);
+                            try
+                            {
+                                var i = 0;
+                                foreach (var item in e.NewItems)
+                                {
+                                    array[i++] = selector(item);
+                                }
+
+                                listView.InsertRange(e.NewStartingIndex, array.Take(e.NewItems.Length));
+                            }
+                            finally
+                            {
+                                ArrayPool<TView>.Shared.Return(array, true);
+                            }
+                        }
+                        else
+                        {
+                            foreach (var item in e.NewItems)
+                            {
+                                listView.Add(selector(item));
+                            }
+                        }
+                    }
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    break;
+                default:
+                    break;
+            }
+
+            // throw new NotImplementedException();
+        }
+
+        public TView this[int index] => throw new NotImplementedException();
+
+        public int Count => throw new NotImplementedException();
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerator<TView> GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+
+
+
     internal class NotifyCollectionChangedSynchronizedView<T, TView> :
         INotifyCollectionChangedSynchronizedView<TView>,
         ISynchronizedViewFilter<T, TView>

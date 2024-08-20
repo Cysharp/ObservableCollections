@@ -73,8 +73,8 @@ namespace ObservableCollections
         {
             return filter == SynchronizedViewFilter<T, TView>.Null;
         }
-        
-        
+
+
         internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, int index)
         {
             filter.InvokeOnAdd(value.value, value.view, index);
@@ -138,6 +138,11 @@ namespace ObservableCollections
             {
                 filter.WhenFalse(value, view);
             }
+        }
+
+        internal static bool IsMatch<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T, TView) value)
+        {
+            return filter.IsMatch(value);
         }
     }
 }

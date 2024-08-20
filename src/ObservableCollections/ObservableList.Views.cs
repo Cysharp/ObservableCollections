@@ -27,7 +27,8 @@ namespace ObservableCollections
             readonly ObservableList<T> source;
             readonly Func<T, TView> selector;
             readonly bool reverse;
-            internal readonly List<(T, TView)> list; // be careful to use
+            readonly List<(T, TView)> list;
+            int filteredCount;
 
             ISynchronizedViewFilter<T, TView> filter;
 
@@ -46,6 +47,7 @@ namespace ObservableCollections
                 lock (source.SyncRoot)
                 {
                     this.list = source.list.Select(x => (x, selector(x))).ToList();
+                    this.filteredCount = list.Count;
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
             }
@@ -56,7 +58,7 @@ namespace ObservableCollections
                 {
                     lock (SyncRoot)
                     {
-                        return list.Count;
+                        return filteredCount;
                     }
                 }
             }
@@ -160,6 +162,10 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Add(v);
+                                    if (filter.IsMatch(v))
+                                    {
+                                        filteredCount++;
+                                    }
                                     filter.InvokeOnAdd(v, e.NewStartingIndex);
                                 }
                                 else
@@ -169,6 +175,10 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         list.Add(v);
+                                        if (filter.IsMatch(v))
+                                        {
+                                            filteredCount++;
+                                        }
                                         filter.InvokeOnAdd(v, i++);
                                     }
                                 }

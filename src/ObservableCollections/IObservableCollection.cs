@@ -57,6 +57,10 @@ namespace ObservableCollections
     //{
     //}
 
+    public interface ISynchronizedViewList<out TView> : IReadOnlyList<TView>, IDisposable
+    {
+    }
+
     public interface INotifyCollectionChangedSynchronizedView<out TView> : IReadOnlyCollection<TView>, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable
     {
     }
