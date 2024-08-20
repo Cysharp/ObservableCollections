@@ -171,7 +171,7 @@ namespace ObservableCollections
             }
         }
 
-        public bool TryPeek([MaybeNullWhen(false)] T result)
+        public bool TryPeek([MaybeNullWhen(false)] out T result)
         {
             lock (SyncRoot)
             {
