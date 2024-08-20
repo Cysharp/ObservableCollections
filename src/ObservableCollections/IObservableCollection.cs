@@ -37,6 +37,9 @@ namespace ObservableCollections
         object SyncRoot { get; }
         ISynchronizedViewFilter<T, TView> CurrentFilter { get; }
 
+        // TODO: add
+        event Action<SynchronizedViewChangedEventArgs<T,TView>>? ViewChanged;
+        // TODO: remove
         event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 

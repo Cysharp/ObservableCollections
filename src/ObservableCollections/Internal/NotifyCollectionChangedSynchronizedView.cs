@@ -12,75 +12,62 @@ namespace ObservableCollections.Internal
     {
         readonly ISynchronizedView<T, TView> parent;
         readonly List<TView> listView;
-        readonly Func<T, TView> selector;
 
-        public SynchronizedViewList(ISynchronizedView<T, TView> parent, Func<T, TView> selector)
+        public SynchronizedViewList(ISynchronizedView<T, TView> parent)
         {
             this.parent = parent;
-            this.selector = selector;
-            parent.RoutingCollectionChanged += Parent_RoutingCollectionChanged; // TODO: -=
+            // TODO:add
+            parent.ViewChanged += Parent_ViewChanged;
         }
 
-        private void Parent_RoutingCollectionChanged(in NotifyCollectionChangedEventArgs<T> e)
+        private void Parent_ViewChanged(SynchronizedViewChangedEventArgs<T, TView> e)
         {
-            // call in parent.lock.
+            // event is called inside lock(parent.SyncRoot)
+            // TODO: invoke in ICollectionEventDispatcher?
+
             switch (e.Action)
             {
-                case NotifyCollectionChangedAction.Add:
-                    if (e.IsSingleItem)
+                case NotifyCollectionChangedAction.Add: // Add or Insert
+                    if (e.NewViewIndex == -1)
                     {
-                        // parent.CurrentFilter.IsMatch(
-                        
-                        var item = selector(e.NewItem);
-
-                        
-
-
-                        if (e.NewStartingIndex != -1)
-                        {
-                            listView.Insert(e.NewStartingIndex, selector(e.NewItem));
-                        }
-                        else // dict is -1
-                        {
-                            listView.Add(selector(e.NewItem));
-                        }
+                        listView.Add(e.NewView);
                     }
                     else
                     {
-                        if (e.NewStartingIndex != -1)
-                        {
-                            var array = ArrayPool<TView>.Shared.Rent(e.NewItems.Length);
-                            try
-                            {
-                                var i = 0;
-                                foreach (var item in e.NewItems)
-                                {
-                                    array[i++] = selector(item);
-                                }
-
-                                listView.InsertRange(e.NewStartingIndex, array.Take(e.NewItems.Length));
-                            }
-                            finally
-                            {
-                                ArrayPool<TView>.Shared.Return(array, true);
-                            }
-                        }
-                        else
-                        {
-                            foreach (var item in e.NewItems)
-                            {
-                                listView.Add(selector(item));
-                            }
-                        }
+                        listView.Insert(e.NewViewIndex, e.NewView);
                     }
                     break;
-                case NotifyCollectionChangedAction.Remove:
+                case NotifyCollectionChangedAction.Remove: // Remove
+                    if (e.OldViewIndex == -1) // can't gurantee correct remove if index is not provided
+                    {
+                        listView.Remove(e.OldView);
+                    }
+                    else
+                    {
+                        listView.RemoveAt(e.OldViewIndex);
+                    }
                     break;
-                case NotifyCollectionChangedAction.Replace:
+                case NotifyCollectionChangedAction.Replace: // Indexer
+                    if (e.NewViewIndex == -1)
+                    {
+                    }
+                    else
+                    {
+                        listView[e.NewViewIndex] = e.NewView;
+                    }
+
                     break;
-                case NotifyCollectionChangedAction.Move:
+                case NotifyCollectionChangedAction.Move: //Remove and Insert
+                    if (e.NewViewIndex == -1)
+                    {
+                    }
+                    else
+                    {
+                        listView.RemoveAt(e.OldViewIndex);
+                        listView.Insert(e.NewViewIndex, e.NewView);
+                    }
                     break;
-                case NotifyCollectionChangedAction.Reset:
+                case NotifyCollectionChangedAction.Reset: // Clear
                     break;
                 default:
                     break;
@@ -88,6 +75,7 @@ namespace ObservableCollections.Internal
 
             // throw new NotImplementedException();
         }
+
 
         public TView this[int index] => throw new NotImplementedException();
 
