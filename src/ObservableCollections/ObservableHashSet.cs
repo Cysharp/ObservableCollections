@@ -19,18 +19,33 @@ namespace ObservableCollections
             this.set = new HashSet<T>();
         }
 
+        public ObservableHashSet(IEqualityComparer<T>? comparer)
+        {
+            this.set = new HashSet<T>(comparer: comparer);
+        }
+
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
 
         public ObservableHashSet(int capacity)
         {
-            this.set = new HashSet<T>(capacity);
+            this.set = new HashSet<T>(capacity: capacity);
+        }
+
+        public ObservableHashSet(int capacity, IEqualityComparer<T>? comparer)
+        {
+            this.set = new HashSet<T>(capacity: capacity, comparer: comparer);
         }
 
 #endif
 
         public ObservableHashSet(IEnumerable<T> collection)
         {
-            this.set = new HashSet<T>(collection);
+            this.set = new HashSet<T>(collection: collection);
+        }
+
+        public ObservableHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer)
+        {
+            this.set = new HashSet<T>(collection: collection, comparer: comparer);
         }
 
         public event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
@@ -185,7 +200,7 @@ namespace ObservableCollections
 
         public bool TryGetValue(T equalValue, [MaybeNullWhen(false)] out T actualValue)
         {
-            lock(SyncRoot)
+            lock (SyncRoot)
             {
                 return set.TryGetValue(equalValue, out actualValue);
             }
@@ -263,6 +278,17 @@ namespace ObservableCollections
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public IEqualityComparer<T> Comparer
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return set.Comparer;
+                }
+            }
         }
     }
 }
