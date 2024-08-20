@@ -13,17 +13,17 @@ namespace ObservableCollections
         readonly Dictionary<TKey, TValue> dictionary;
         public object SyncRoot { get; } = new object();
 
-        public ObservableDictionary()
+        public ObservableDictionary(IEqualityComparer<TKey>? comparer = null)
         {
-            this.dictionary = new Dictionary<TKey, TValue>();
+            this.dictionary = new Dictionary<TKey, TValue>(comparer: comparer);
         }
 
-        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection)
+        public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer = null)
         {
-#if NET6_0_OR_GREATER
-            this.dictionary = new Dictionary<TKey, TValue>(collection);
+#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
+            this.dictionary = new Dictionary<TKey, TValue>(collection: collection, comparer: comparer);
 #else
-            this.dictionary = new Dictionary<TKey, TValue>();
+            this.dictionary = new Dictionary<TKey, TValue>(comparer: comparer);
             foreach (var item in collection)
             {
                 dictionary.Add(item.Key, item.Value);
@@ -223,6 +223,17 @@ namespace ObservableCollections
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public IEqualityComparer<TKey> Comparer
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return dictionary.Comparer;
+                }
+            }
         }
     }
 }
