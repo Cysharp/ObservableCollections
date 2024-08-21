@@ -32,7 +32,8 @@ namespace ObservableCollections
 
             ISynchronizedViewFilter<T, TView> filter;
 
-            public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
+            public event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
+            // public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -162,11 +163,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     list.Add(v);
-                                    if (filter.IsMatch(v))
-                                    {
-                                        filteredCount++;
-                                    }
-                                    filter.InvokeOnAdd(v, e.NewStartingIndex);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
                                 }
                                 else
                                 {

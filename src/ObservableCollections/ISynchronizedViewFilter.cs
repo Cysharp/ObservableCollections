@@ -21,111 +21,130 @@ namespace ObservableCollections
         public readonly int OldViewIndex = oldViewIndex;
     }
 
-    public interface ISynchronizedViewFilter<T, TView>
+    public interface ISynchronizedViewFilter<T>
     {
-        bool IsMatch(T value, TView view);
-        void WhenTrue(T value, TView view);
-        void WhenFalse(T value, TView view);
-        void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> eventArgs);
+        bool IsMatch(T value);
     }
 
-    public class SynchronizedViewFilter<T, TView>(
-        Func<T, TView, bool> isMatch,
-        Action<T, TView>? whenTrue,
-        Action<T, TView>? whenFalse,
-        Action<SynchronizedViewChangedEventArgs<T, TView>>? onCollectionChanged)
-        : ISynchronizedViewFilter<T, TView>
+    public class SynchronizedViewFilter<T>(Func<T, bool> isMatch) : ISynchronizedViewFilter<T>
     {
-        public static readonly ISynchronizedViewFilter<T, TView> Null = new NullViewFilter();
+        public static readonly ISynchronizedViewFilter<T> Null = new NullViewFilter();
 
-        public bool IsMatch(T value, TView view) => isMatch(value, view);
-        public void WhenFalse(T value, TView view) => whenFalse?.Invoke(value, view);
-        public void WhenTrue(T value, TView view) => whenTrue?.Invoke(value, view);
-        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> eventArgs) => onCollectionChanged?.Invoke(eventArgs);
+        public bool IsMatch(T value) => isMatch(value);
 
-        class NullViewFilter : ISynchronizedViewFilter<T, TView>
+        class NullViewFilter : ISynchronizedViewFilter<T>
         {
-            public bool IsMatch(T value, TView view) => true;
-            public void WhenFalse(T value, TView view) { }
-            public void WhenTrue(T value, TView view) { }
-            public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> eventArgs) { }
+            public bool IsMatch(T value) => true;
         }
     }
 
     public static class SynchronizedViewFilterExtensions
     {
-        public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> filter)
+        public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, bool> filter)
         {
-            source.AttachFilter(new SynchronizedViewFilter<T, TView>(filter, null, null, null));
+            source.AttachFilter(new SynchronizedViewFilter<T>(filter));
         }
 
-        public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> isMatch, Action<T, TView>? whenTrue, Action<T, TView>? whenFalse)
+        public static bool IsNullFilter<T>(this ISynchronizedViewFilter<T> filter)
         {
-            source.AttachFilter(new SynchronizedViewFilter<T, TView>(isMatch, whenTrue, whenFalse, null));
+            return filter == SynchronizedViewFilter<T>.Null;
         }
 
-        public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> isMatch, Action<T, TView>? whenTrue, Action<T, TView>? whenFalse, Action<SynchronizedViewChangedEventArgs<T, TView>>? onCollectionChanged)
+        internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, (T value, TView view) value, int index)
         {
-            source.AttachFilter(new SynchronizedViewFilter<T, TView>(isMatch, whenTrue, whenFalse, onCollectionChanged));
+            InvokeOnAdd(collection, ref filteredCount, ev, value.value, value.view, index);
         }
 
-        public static bool IsNullFilter<T, TView>(this ISynchronizedViewFilter<T, TView> filter)
+        internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, T value, TView view, int index)
         {
-            return filter == SynchronizedViewFilter<T, TView>.Null;
-        }
-
-
-        internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, int index)
-        {
-            filter.InvokeOnAdd(value.value, value.view, index);
-        }
-
-        internal static void InvokeOnAdd<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, int index)
-        {
-            if (filter.IsMatch(value, view))
+            var isMatch = collection.CurrentFilter.IsMatch(value);
+            if (isMatch)
             {
-                filter.WhenTrue(value, view);
+                filteredCount++;
+                if (ev != null)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, newValue: value, newView: view, newViewIndex: index));
+                }
             }
-            else
+        }
+
+        internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, (T value, TView view) value, int oldIndex)
+        {
+            InvokeOnRemove(collection, ref filteredCount, ev, value.value, value.view, oldIndex);
+        }
+
+        internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, T value, TView view, int oldIndex)
+        {
+            var isMatch = collection.CurrentFilter.IsMatch(value);
+            if (isMatch)
             {
-                filter.WhenFalse(value, view);
+                filteredCount--;
+                if (ev != null)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isMatch, oldValue: value, oldView: view, oldViewIndex: oldIndex));
+                }
             }
-            filter.OnCollectionChanged(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, newValue: value, newView: view, newViewIndex: index));
         }
 
-        internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, int oldIndex)
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, (T value, TView view) value, int index, int oldIndex)
         {
-            filter.InvokeOnRemove(value.value, value.view, oldIndex);
+            InvokeOnMove(collection, ref filteredCount, ev, value.value, value.view, index, oldIndex);
         }
 
-        internal static void InvokeOnRemove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, int oldIndex)
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, T value, TView view, int index, int oldIndex)
         {
-            filter.OnCollectionChanged(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, oldValue: value, oldView: view, oldViewIndex: oldIndex));
+            if (ev != null)
+            {
+                // move does not changes filtered-count
+                var isMatch = collection.CurrentFilter.IsMatch(value);
+                if (isMatch)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, newValue: value, newView: view, newViewIndex: index, oldViewIndex: oldIndex));
+                }
+            }
         }
 
-        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, int index, int oldIndex)
+        internal static void InvokeOnReplace<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, (T value, TView view) value, (T value, TView view) oldValue, int index, int oldIndex = -1)
         {
-            InvokeOnMove(filter, value.value, value.view, index, oldIndex);
+            InvokeOnReplace(collection, ref filteredCount, ev, value.value, value.view, oldValue.value, oldValue.view, index, oldIndex);
         }
 
-        internal static void InvokeOnMove<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, int index, int oldIndex)
+        internal static void InvokeOnReplace<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev, T value, TView view, T oldValue, TView oldView, int index, int oldIndex = -1)
         {
-            filter.OnCollectionChanged(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, newValue: value, newView: view, newViewIndex: index, oldViewIndex: oldIndex));
+            var oldMatched = collection.CurrentFilter.IsMatch(oldValue);
+            var newMatched = collection.CurrentFilter.IsMatch(value);
+            var bothMatched = oldMatched && newMatched;
+
+            // TODO:...!
+            if (bothMatched)
+            {
+            }
+            else if (oldMatched)
+            {
+                // only-old is remove
+            }
+            else if (newMatched)
+            {
+                // only-new is add
+            }
+
+
+
+
+            if (ev != null)
+            {
+                var isMatch = collection.CurrentFilter.IsMatch(value);
+                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, isMatch, newValue: value, newView: view, oldValue: oldValue, oldView: oldView, newViewIndex: index, oldViewIndex: oldIndex >= 0 ? oldIndex : index));
+            }
         }
 
-        internal static void InvokeOnReplace<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T value, TView view) value, (T value, TView view) oldValue, int index, int oldIndex = -1)
+        internal static void InvokeOnReset<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, Action<SynchronizedViewChangedEventArgs<T, TView>>? ev)
         {
-            filter.InvokeOnReplace(value.value, value.view, oldValue.value, oldValue.view, index, oldIndex);
-        }
-
-        internal static void InvokeOnReplace<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view, T oldValue, TView oldView, int index, int oldIndex = -1)
-        {
-            filter.OnCollectionChanged(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, newValue: value, newView: view, oldValue: oldValue, oldView: oldView, newViewIndex: index, oldViewIndex: oldIndex >= 0 ? oldIndex : index));
-        }
-
-        internal static void InvokeOnReset<T, TView>(this ISynchronizedViewFilter<T, TView> filter)
-        {
-            filter.OnCollectionChanged(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
+            filteredCount = 0;
+            if (ev != null)
+            {
+                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
+            }
         }
 
         internal static void InvokeOnAttach<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
@@ -138,11 +157,6 @@ namespace ObservableCollections
             {
                 filter.WhenFalse(value, view);
             }
-        }
-
-        internal static bool IsMatch<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T, TView) value)
-        {
-            return filter.IsMatch(value);
         }
     }
 }

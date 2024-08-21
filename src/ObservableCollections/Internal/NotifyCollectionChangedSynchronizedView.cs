@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -16,6 +15,7 @@ namespace ObservableCollections.Internal
         public SynchronizedViewList(ISynchronizedView<T, TView> parent)
         {
             this.parent = parent;
+            this.listView = parent.Select(x => x.View).ToList(); // need lock
             // TODO:add
             parent.ViewChanged += Parent_ViewChanged;
         }
@@ -24,7 +24,6 @@ namespace ObservableCollections.Internal
         {
             // event is called inside lock(parent.SyncRoot)
             // TODO: invoke in ICollectionEventDispatcher?
-
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add: // Add or Insert
@@ -50,6 +49,8 @@ namespace ObservableCollections.Internal
                 case NotifyCollectionChangedAction.Replace: // Indexer
                     if (e.NewViewIndex == -1)
                     {
+                        var index = listView.IndexOf(e.OldView);
+                        listView[index] = e.NewView;
                     }
                     else
                     {
@@ -60,6 +61,7 @@ namespace ObservableCollections.Internal
                 case NotifyCollectionChangedAction.Move: //Remove and Insert
                     if (e.NewViewIndex == -1)
                     {
+                        // do nothing
                     }
                     else
                     {
@@ -68,32 +70,31 @@ namespace ObservableCollections.Internal
                     }
                     break;
                 case NotifyCollectionChangedAction.Reset: // Clear
+                    listView.Clear();
                     break;
                 default:
                     break;
             }
-
-            // throw new NotImplementedException();
         }
 
 
-        public TView this[int index] => throw new NotImplementedException();
+        public TView this[int index] => listView[index];
 
-        public int Count => throw new NotImplementedException();
-
-        public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
+        public int Count => listView.Count;
 
         public IEnumerator<TView> GetEnumerator()
         {
-            throw new NotImplementedException();
+            return listView.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            throw new NotImplementedException();
+            return listView.GetEnumerator();
+        }
+
+        public void Dispose()
+        {
+            parent.ViewChanged -= Parent_ViewChanged;
         }
     }
 

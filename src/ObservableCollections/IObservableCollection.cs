@@ -21,7 +21,7 @@ namespace ObservableCollections
     {
     }
 
-    public interface IReadOnlyObservableDictionary<TKey, TValue> : 
+    public interface IReadOnlyObservableDictionary<TKey, TValue> :
         IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>>
     {
     }
@@ -35,16 +35,16 @@ namespace ObservableCollections
     public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
     {
         object SyncRoot { get; }
-        ISynchronizedViewFilter<T, TView> CurrentFilter { get; }
+        ISynchronizedViewFilter<T> CurrentFilter { get; }
 
         // TODO: add
-        event Action<SynchronizedViewChangedEventArgs<T,TView>>? ViewChanged;
+        event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
         // TODO: remove
-        event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
+        // event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
-        void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForInitialElements = false);
-        void ResetFilter(Action<T, TView>? resetAction);
+        void AttachFilter(ISynchronizedViewFilter<T> filter, bool invokeAddEventForInitialElements = false);
+        void ResetFilter(Action<T>? resetAction);
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged();
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
     }
