@@ -16,7 +16,7 @@ namespace ObservableCollections
 
         internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
-            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            public ISynchronizedViewFilter<T> CurrentFilter
             {
                 get
                 {
@@ -30,10 +30,9 @@ namespace ObservableCollections
             readonly List<(T, TView)> list;
             int filteredCount;
 
-            ISynchronizedViewFilter<T, TView> filter;
+            ISynchronizedViewFilter<T> filter;
 
             public event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
-            // public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -43,7 +42,7 @@ namespace ObservableCollections
                 this.source = source;
                 this.selector = selector;
                 this.reverse = reverse;
-                this.filter = SynchronizedViewFilter<T, TView>.Null;
+                this.filter = SynchronizedViewFilter<T>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -64,7 +63,7 @@ namespace ObservableCollections
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
+            public void AttachFilter(ISynchronizedViewFilter<T> filter, bool invokeAddEventForCurrentElements = false)
             {
                 lock (SyncRoot)
                 {
@@ -84,11 +83,11 @@ namespace ObservableCollections
                 }
             }
 
-            public void ResetFilter(Action<T, TView>? resetAction)
+            public void ResetFilter(Action<T>? resetAction)
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.Null;
+                    this.filter = SynchronizedViewFilter<T>.Null;
                     if (resetAction != null)
                     {
                         foreach (var (item, view) in list)

@@ -81,7 +81,7 @@ namespace ObservableCollections
                 filteredCount--;
                 if (ev != null)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isMatch, oldValue: value, oldView: view, oldViewIndex: oldIndex));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, oldValue: value, oldView: view, oldViewIndex: oldIndex));
                 }
             }
         }
@@ -115,26 +115,31 @@ namespace ObservableCollections
             var newMatched = collection.CurrentFilter.IsMatch(value);
             var bothMatched = oldMatched && newMatched;
 
-            // TODO:...!
             if (bothMatched)
             {
+                if (ev != null)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, newValue: value, newView: view, oldValue: oldValue, oldView: oldView, newViewIndex: index, oldViewIndex: oldIndex >= 0 ? oldIndex : index));
+                }
             }
             else if (oldMatched)
             {
                 // only-old is remove
+                filteredCount--;
+                if (ev != null)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, oldValue: value, oldView: view, oldViewIndex: oldIndex));
+                }
+
             }
             else if (newMatched)
             {
                 // only-new is add
-            }
-
-
-
-
-            if (ev != null)
-            {
-                var isMatch = collection.CurrentFilter.IsMatch(value);
-                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, isMatch, newValue: value, newView: view, oldValue: oldValue, oldView: oldView, newViewIndex: index, oldViewIndex: oldIndex >= 0 ? oldIndex : index));
+                filteredCount++;
+                if (ev != null)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, newValue: value, newView: view, newViewIndex: index));
+                }
             }
         }
 
@@ -143,19 +148,7 @@ namespace ObservableCollections
             filteredCount = 0;
             if (ev != null)
             {
-                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
-            }
-        }
-
-        internal static void InvokeOnAttach<T, TView>(this ISynchronizedViewFilter<T, TView> filter, T value, TView view)
-        {
-            if (filter.IsMatch(value, view))
-            {
-                filter.WhenTrue(value, view);
-            }
-            else
-            {
-                filter.WhenFalse(value, view);
+                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
             }
         }
     }
