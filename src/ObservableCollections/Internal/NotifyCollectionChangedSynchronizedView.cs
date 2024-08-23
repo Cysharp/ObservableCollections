@@ -26,7 +26,7 @@ namespace ObservableCollections.Internal
             // TODO: invoke in ICollectionEventDispatcher?
             switch (e.Action)
             {
-                case NotifyCollectionChangedAction.Add: // Add or Insert
+                case NotifyViewChangedAction.Add: // Add or Insert
                     if (e.NewViewIndex == -1)
                     {
                         listView.Add(e.NewView);
@@ -36,7 +36,7 @@ namespace ObservableCollections.Internal
                         listView.Insert(e.NewViewIndex, e.NewView);
                     }
                     break;
-                case NotifyCollectionChangedAction.Remove: // Remove
+                case NotifyViewChangedAction.Remove: // Remove
                     if (e.OldViewIndex == -1) // can't gurantee correct remove if index is not provided
                     {
                         listView.Remove(e.OldView);
@@ -46,7 +46,7 @@ namespace ObservableCollections.Internal
                         listView.RemoveAt(e.OldViewIndex);
                     }
                     break;
-                case NotifyCollectionChangedAction.Replace: // Indexer
+                case NotifyViewChangedAction.Replace: // Indexer
                     if (e.NewViewIndex == -1)
                     {
                         var index = listView.IndexOf(e.OldView);
@@ -58,7 +58,7 @@ namespace ObservableCollections.Internal
                     }
 
                     break;
-                case NotifyCollectionChangedAction.Move: //Remove and Insert
+                case NotifyViewChangedAction.Move: //Remove and Insert
                     if (e.NewViewIndex == -1)
                     {
                         // do nothing
@@ -69,8 +69,15 @@ namespace ObservableCollections.Internal
                         listView.Insert(e.NewViewIndex, e.NewView);
                     }
                     break;
-                case NotifyCollectionChangedAction.Reset: // Clear
+                case NotifyViewChangedAction.Reset: // Clear
                     listView.Clear();
+                    break;
+                case NotifyViewChangedAction.FilterReset:
+                    listView.Clear();
+                    foreach (var item in parent)
+                    {
+                        listView.Add(item.View);
+                    }
                     break;
                 default:
                     break;
@@ -116,7 +123,7 @@ namespace ObservableCollections.Internal
         {
             this.parent = parent;
             this.eventDispatcher = eventDispatcher ?? DirectCollectionEventDispatcher.Instance;
-            currentFilter = parent.CurrentFilter;
+            currentFilter = parent.Filter;
             parent.AttachFilter(this);
         }
 

@@ -16,7 +16,7 @@ namespace ObservableCollections
 
         internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
-            public ISynchronizedViewFilter<T> CurrentFilter
+            public ISynchronizedViewFilter<T> Filter
             {
                 get
                 {
@@ -63,38 +63,38 @@ namespace ObservableCollections
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T> filter, bool invokeAddEventForCurrentElements = false)
+            public void AttachFilter(ISynchronizedViewFilter<T> filter)
             {
+                if (filter.IsNullFilter())
+                {
+                    ResetFilter();
+                    return;
+                }
+
                 lock (SyncRoot)
                 {
                     this.filter = filter;
+
+                    this.filteredCount = 0;
                     for (var i = 0; i < list.Count; i++)
                     {
-                        var (value, view) = list[i];
-                        if (invokeAddEventForCurrentElements)
+                        if (filter.IsMatch(list[i].Item1))
                         {
-                            filter.InvokeOnAdd(value, view, i);
-                        }
-                        else
-                        {
-                            filter.InvokeOnAttach(value, view);
+                            filteredCount++;
                         }
                     }
+
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
                 }
             }
 
-            public void ResetFilter(Action<T>? resetAction)
+            public void ResetFilter()
             {
                 lock (SyncRoot)
                 {
                     this.filter = SynchronizedViewFilter<T>.Null;
-                    if (resetAction != null)
-                    {
-                        foreach (var (item, view) in list)
-                        {
-                            resetAction(item, view);
-                        }
-                    }
+                    this.filteredCount = list.Count;
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
                 }
             }
 

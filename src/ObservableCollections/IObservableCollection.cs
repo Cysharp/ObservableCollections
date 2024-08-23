@@ -32,19 +32,17 @@ namespace ObservableCollections
         ISortableSynchronizedView<T, TView> CreateSortableView<TView>(Func<T, TView> transform);
     }
 
-    public interface ISynchronizedView<T, TView> : IReadOnlyCollection<(T Value, TView View)>, IDisposable
+    public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisposable
     {
         object SyncRoot { get; }
-        ISynchronizedViewFilter<T> CurrentFilter { get; }
+        ISynchronizedViewFilter<T> Filter { get; }
+        IEnumerable<(T Value, TView View)> Unfiltered { get; }
 
-        // TODO: add
         event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
-        // TODO: remove
-        // event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
-        void AttachFilter(ISynchronizedViewFilter<T> filter, bool invokeAddEventForInitialElements = false);
-        void ResetFilter(Action<T>? resetAction);
+        void AttachFilter(ISynchronizedViewFilter<T> filter);
+        void ResetFilter();
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged();
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
     }
