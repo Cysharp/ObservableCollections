@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 
 namespace ObservableCollections.Internal
 {
@@ -25,7 +26,7 @@ namespace ObservableCollections.Internal
             parent.AttachFilter(this);
         }
 
-        public int Count => parent.Count;
+        public virtual int Count => parent.Count;
 
         public event NotifyCollectionChangedEventHandler? CollectionChanged;
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -152,8 +153,20 @@ namespace ObservableCollections.Internal
             {
                 lock (view.SyncRoot)
                 {
-                    return view.list[index].Item2;
+                    int currentIndex = 0;
+                    foreach (var (value, itemView) in view.list)
+                    {
+                        if (view.CurrentFilter.IsMatch(value, itemView))
+                        {
+                            if (currentIndex == index)
+                            {
+                                return itemView;
                 }
+                            currentIndex++;
+                        }
+                    }
+                    throw new ArgumentOutOfRangeException(nameof(index));
+            }
             }
             set => throw new NotSupportedException();
         }
@@ -162,14 +175,40 @@ namespace ObservableCollections.Internal
         {
             get
             {
-                return this[index];
+                lock (view.SyncRoot)
+                {
+                    int currentIndex = 0;
+                    foreach (var (value, itemView) in view.list)
+                    {
+                        if (view.CurrentFilter.IsMatch(value, itemView))
+                        {
+                            if (currentIndex == index)
+                            {
+                                return itemView;
+                            }
+                            currentIndex++;
+                        }
+                    }
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
             }
             set => throw new NotSupportedException();
         }
 
+        public override int Count
+        {
+            get
+            {
+                lock (view.SyncRoot)
+                {
+                    return view.list.Count(item => view.CurrentFilter.IsMatch(item.Item1, item.Item2));
+                }
+            }
+        }
+
         static bool IsCompatibleObject(object? value)
         {
-            return (value is T) || (value == null && default(T) == null);
+            return (value is T) || (value is TView) || (value == null && default(T) == null);
         }
 
         public bool IsReadOnly => true;
@@ -199,13 +238,16 @@ namespace ObservableCollections.Internal
         {
             lock (view.SyncRoot)
             {
-                foreach (var listItem in view.list)
+                foreach (var (value, itemView) in view.list)
                 {
-                    if (EqualityComparer<TView>.Default.Equals(listItem.Item2, item))
+                    if (view.CurrentFilter.IsMatch(value, itemView))
+                    {
+                        if (EqualityComparer<TView>.Default.Equals(itemView, item))
                     {
                         return true;
                     }
                 }
+            }
             }
             return false;
         }
@@ -234,14 +276,17 @@ namespace ObservableCollections.Internal
             lock (view.SyncRoot)
             {
                 var index = 0;
-                foreach (var listItem in view.list)
+                foreach (var (value, itemView) in view.list)
                 {
-                    if (EqualityComparer<TView>.Default.Equals(listItem.Item2, item))
+                    if (view.CurrentFilter.IsMatch(value, itemView))
+                {
+                        if (EqualityComparer<TView>.Default.Equals(itemView, item))
                     {
                         return index;
                     }
                     index++;
                 }
+            }
             }
             return -1;
         }
