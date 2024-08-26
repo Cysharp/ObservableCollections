@@ -13,7 +13,7 @@ namespace ObservableCollections
     {
         event NotifyCollectionChangedEventHandler<T>? CollectionChanged;
         object SyncRoot { get; }
-        ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false);
+        ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform);
     }
 
     public interface IReadOnlyObservableList<T> :
@@ -36,7 +36,9 @@ namespace ObservableCollections
     {
         object SyncRoot { get; }
         ISynchronizedViewFilter<T> Filter { get; }
+        IEnumerable<(T Value, TView View)> Filtered { get; }
         IEnumerable<(T Value, TView View)> Unfiltered { get; }
+        int UnfilteredCount { get; }
 
         event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;

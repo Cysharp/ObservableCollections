@@ -15,9 +15,11 @@ namespace ObservableCollections.Internal
         public SynchronizedViewList(ISynchronizedView<T, TView> parent)
         {
             this.parent = parent;
-            this.listView = parent.Select(x => x.View).ToList(); // need lock
-            // TODO:add
-            parent.ViewChanged += Parent_ViewChanged;
+            lock (parent.SyncRoot)
+            {
+                this.listView = parent.ToList();
+                parent.ViewChanged += Parent_ViewChanged;
+            }
         }
 
         private void Parent_ViewChanged(SynchronizedViewChangedEventArgs<T, TView> e)
