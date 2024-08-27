@@ -107,7 +107,7 @@ namespace ObservableCollections
                         }
                     }
 
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
@@ -117,7 +117,7 @@ namespace ObservableCollections
                 {
                     this.filter = SynchronizedViewFilter<T>.Null;
                     this.filteredCount = list.Count;
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
@@ -208,15 +208,14 @@ namespace ObservableCollections
                                 {
                                     var i = e.NewStartingIndex;
 
-                                    //new CloneCollection<(T, TView)>();
                                     using var array = new ResizableArray<(T, TView)>(e.NewItems.Length);
-
                                     foreach (var item in e.NewItems)
                                     {
-                                        var v = (item, selector(item));
-                                        list.Add(v);
-                                        this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
+                                        array.Add((item, selector(item)));
                                     }
+
+                                    list.AddRange(array.Span);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
                                 }
                             }
                             // Insert

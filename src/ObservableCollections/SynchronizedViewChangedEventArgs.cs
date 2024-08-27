@@ -52,7 +52,20 @@ namespace ObservableCollections
                 filteredCount++;
                 if (ev != null)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, newValue: value, newView: view, newViewIndex: index));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, true, newItem: (value, view), newStartingIndex: index));
+                }
+            }
+        }
+
+        internal static void InvokeOnAddRange<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, int index)
+        {
+            var isMatch = collection.Filter.IsMatch(value);
+            if (isMatch)
+            {
+                filteredCount++;
+                if (ev != null)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, false, newValues: values, newViews: views, newStartingIndex: index));
                 }
             }
         }
