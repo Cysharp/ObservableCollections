@@ -98,7 +98,6 @@ namespace ObservableCollections
                 lock (SyncRoot)
                 {
                     this.filter = filter;
-
                     this.filteredCount = 0;
                     for (var i = 0; i < list.Count; i++)
                     {

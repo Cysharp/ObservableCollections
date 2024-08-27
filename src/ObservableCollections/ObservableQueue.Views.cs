@@ -4,14 +4,15 @@ using System.Collections.Specialized;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ObservableCollections
 {
     public sealed partial class ObservableQueue<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
-        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false)
+        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {
-            return new View<TView>(this, transform, reverse);
+            return new View<TView>(this, transform);
         }
 
         class View<TView> : ISynchronizedView<T, TView>
@@ -20,29 +21,30 @@ namespace ObservableCollections
             readonly Func<T, TView> selector;
             readonly bool reverse;
             protected readonly Queue<(T, TView)> queue;
+            int filteredCount;
 
-            ISynchronizedViewFilter<T, TView> filter;
+            ISynchronizedViewFilter<T> filter;
 
-            public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
+            public event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
 
-            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            public ISynchronizedViewFilter<T> Filter
             {
                 get { lock (SyncRoot) return filter; }
             }
 
-            public View(ObservableQueue<T> source, Func<T, TView> selector, bool reverse)
+            public View(ObservableQueue<T> source, Func<T, TView> selector)
             {
                 this.source = source;
                 this.selector = selector;
-                this.reverse = reverse;
-                this.filter = SynchronizedViewFilter<T, TView>.Null;
+                this.filter = SynchronizedViewFilter<T>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
                     this.queue = new Queue<(T, TView)>(source.queue.Select(x => (x, selector(x))));
+                    this.filteredCount = queue.Count;
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
             }
@@ -53,90 +55,116 @@ namespace ObservableCollections
                 {
                     lock (SyncRoot)
                     {
+                        return filteredCount;
+                    }
+                }
+            }
+
+            public int UnfilteredCount
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
                         return queue.Count;
                     }
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
+            public void AttachFilter(ISynchronizedViewFilter<T> filter)
             {
+                if (filter.IsNullFilter())
+                {
+                    ResetFilter();
+                    return;
+                }
+
                 lock (SyncRoot)
                 {
                     this.filter = filter;
-                    var i = 0;
+                    this.filteredCount = 0;
                     foreach (var (value, view) in queue)
                     {
-                        if (invokeAddEventForCurrentElements)
+                        if (filter.IsMatch(value))
                         {
-                            filter.InvokeOnAdd(value, view, i++);
-                        }
-                        else
-                        {
-                            filter.InvokeOnAttach(value, view);
+                            filteredCount++;
                         }
                     }
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
                 }
             }
 
-            public void ResetFilter(Action<T, TView>? resetAction)
+            public void ResetFilter()
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.Null;
-                    if (resetAction != null)
-                    {
-                        foreach (var (item, view) in queue)
-                        {
-                            resetAction(item, view);
-                        }
-                    }
+                    this.filter = SynchronizedViewFilter<T>.Null;
+                    this.filteredCount = queue.Count;
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
                 }
+            }
+
+            public ISynchronizedViewList<TView> ToViewList()
+            {
+                return new SynchronizedViewList<T, TView>(this);
             }
 
             public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
             {
-                lock (SyncRoot)
-                {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
-                }
+                return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
             }
 
             public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
             {
-                lock (SyncRoot)
-                {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
-                }
+                return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
             }
 
-            public IEnumerator<(T, TView)> GetEnumerator()
+            public IEnumerator<TView> GetEnumerator()
             {
                 lock (SyncRoot)
                 {
-                    if (!reverse)
+                    foreach (var item in queue)
                     {
-                        foreach (var item in queue)
+                        if (filter.IsMatch(item.Item1))
                         {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in queue.AsEnumerable().Reverse())
-                        {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
+                            yield return item.Item2;
                         }
                     }
                 }
             }
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            public IEnumerable<(T Value, TView View)> Filtered
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        foreach (var item in queue)
+                        {
+                            if (filter.IsMatch(item.Item1))
+                            {
+                                yield return item;
+                            }
+                        }
+                    }
+                }
+            }
+
+            public IEnumerable<(T Value, TView View)> Unfiltered
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        foreach (var item in queue)
+                        {
+                            yield return item;
+                        }
+                    }
+                }
+            }
 
             public void Dispose()
             {
@@ -155,7 +183,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 queue.Enqueue(v);
-                                filter.InvokeOnAdd(v, e.NewStartingIndex);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
                             }
                             else
                             {
@@ -164,7 +192,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     queue.Enqueue(v);
-                                    filter.InvokeOnAdd(v, i++);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
                                 }
                             }
                             break;
@@ -173,7 +201,7 @@ namespace ObservableCollections
                             if (e.IsSingleItem)
                             {
                                 var v = queue.Dequeue();
-                                filter.InvokeOnRemove(v.Item1, v.Item2, 0);
+                                this.InvokeOnRemove(ref filteredCount, ViewChanged, v.Item1, v.Item2, 0);
                             }
                             else
                             {
@@ -181,13 +209,13 @@ namespace ObservableCollections
                                 for (int i = 0; i < len; i++)
                                 {
                                     var v = queue.Dequeue();
-                                    filter.InvokeOnRemove(v.Item1, v.Item2, 0);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, v.Item1, v.Item2, 0);
                                 }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             queue.Clear();
-                            filter.InvokeOnReset();
+                            this.InvokeOnReset(ref filteredCount, ViewChanged);
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:
@@ -195,7 +223,6 @@ namespace ObservableCollections
                             break;
                     }
 
-                    RoutingCollectionChanged?.Invoke(e);
                     CollectionStateChanged?.Invoke(e.Action);
                 }
             }
