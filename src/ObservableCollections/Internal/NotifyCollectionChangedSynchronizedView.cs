@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -161,12 +161,12 @@ namespace ObservableCollections.Internal
                             if (currentIndex == index)
                             {
                                 return itemView;
-                }
+                            }
                             currentIndex++;
                         }
                     }
                     throw new ArgumentOutOfRangeException(nameof(index));
-            }
+                }
             }
             set => throw new NotSupportedException();
         }
@@ -243,11 +243,11 @@ namespace ObservableCollections.Internal
                     if (view.CurrentFilter.IsMatch(value, itemView))
                     {
                         if (EqualityComparer<TView>.Default.Equals(itemView, item))
-                    {
-                        return true;
+                        {
+                            return true;
+                        }
                     }
                 }
-            }
             }
             return false;
         }
@@ -279,14 +279,14 @@ namespace ObservableCollections.Internal
                 foreach (var (value, itemView) in view.list)
                 {
                     if (view.CurrentFilter.IsMatch(value, itemView))
-                {
-                        if (EqualityComparer<TView>.Default.Equals(itemView, item))
                     {
-                        return index;
+                        if (EqualityComparer<TView>.Default.Equals(itemView, item))
+                        {
+                            return index;
+                        }
+                        index++;
                     }
-                    index++;
                 }
-            }
             }
             return -1;
         }
