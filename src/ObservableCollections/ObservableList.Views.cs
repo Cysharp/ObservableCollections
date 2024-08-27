@@ -46,7 +46,7 @@ namespace ObservableCollections
 
             ISynchronizedViewFilter<T> filter;
 
-            public event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
+            public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -107,7 +107,7 @@ namespace ObservableCollections
                         }
                     }
 
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
                 }
             }
 
@@ -117,7 +117,7 @@ namespace ObservableCollections
                 {
                     this.filter = SynchronizedViewFilter<T>.Null;
                     this.filteredCount = list.Count;
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
                 }
             }
 
@@ -245,11 +245,12 @@ namespace ObservableCollections
                             }
                             else
                             {
+                                list.RemoveRange(e.OldStartingIndex, e.OldItems.Length); // remove from list first
+
                                 var len = e.OldStartingIndex + e.OldItems.Length;
                                 for (var i = e.OldStartingIndex; i < len; i++)
                                 {
                                     var v = list[i];
-                                    list.RemoveAt(e.OldStartingIndex + i); // should we use RemoveRange?
                                     this.InvokeOnRemove(ref filteredCount, ViewChanged, v, e.OldStartingIndex + i);
                                 }
                             }

@@ -23,7 +23,7 @@ namespace ObservableCollections
 
             ISynchronizedViewFilter<T> filter;
 
-            public event Action<SynchronizedViewChangedEventArgs<T, TView>>? ViewChanged;
+            public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -88,7 +88,7 @@ namespace ObservableCollections
                             filteredCount++;
                         }
                     }
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
                 }
             }
 
@@ -98,7 +98,7 @@ namespace ObservableCollections
                 {
                     this.filter = SynchronizedViewFilter<T>.Null;
                     this.filteredCount = stack.Count;
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyViewChangedAction.FilterReset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
                 }
             }
 

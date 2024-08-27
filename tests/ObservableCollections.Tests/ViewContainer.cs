@@ -31,83 +31,81 @@ namespace ObservableCollections.Tests
         }
     }
 
-    public class TestFilter<T> : ISynchronizedViewFilter<T, ViewContainer<T>>
-    {
-        readonly Func<T, ViewContainer<T>, bool> filter;
-        public List<(T, ViewContainer<T>)> CalledWhenTrue = new();
-        public List<(T, ViewContainer<T>)> CalledWhenFalse = new();
-        public List<SynchronizedViewChangedEventArgs<T, ViewContainer<T>>> CalledOnCollectionChanged = new();
+    //public class TestFilter<T> : ISynchronizedViewFilter<T>
+    //{
+    //    readonly Func<T, bool> filter;
+    //    public List<SynchronizedViewChangedEventArgs<T, ViewContainer<T>>> CalledOnCollectionChanged = new();
 
-        public TestFilter(Func<T, ViewContainer<T>, bool> filter)
-        {
-            this.filter = filter;
-        }
+    //    public TestFilter(Func<T, bool> filter)
+    //    {
+    //        this.filter = filter;
+    //    }
 
-        public void Clear()
-        {
-            CalledWhenTrue.Clear();
-            CalledWhenFalse.Clear();
-            CalledOnCollectionChanged.Clear();
-        }
+    //    public void Clear()
+    //    {
+    //        CalledWhenTrue.Clear();
+    //        CalledWhenFalse.Clear();
+    //        CalledOnCollectionChanged.Clear();
+    //    }
 
-        public bool IsMatch(T value, ViewContainer<T> view)
-        {
-            return this.filter.Invoke(value, view);
-        }
+    //    public bool IsMatch(T value)
+    //    {
+    //        return this.filter.Invoke(value);
+    //    }
 
-        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, ViewContainer<T>> args)
-        {
-            CalledOnCollectionChanged.Add(args);
-        }
+    //    public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, ViewContainer<T>> args)
+    //    {
+    //        CalledOnCollectionChanged.Add(args);
+    //    }
 
-        public void WhenTrue(T value, ViewContainer<T> view)
-        {
-            CalledWhenTrue.Add((value, view));
-        }
+    //    public void WhenTrue(T value, ViewContainer<T> view)
+    //    {
+    //        CalledWhenTrue.Add((value, view));
+    //    }
 
-        public void WhenFalse(T value, ViewContainer<T> view)
-        {
-            CalledWhenFalse.Add((value, view));
-        }
-    }
+    //    public void WhenFalse(T value, ViewContainer<T> view)
+    //    {
+    //        CalledWhenFalse.Add((value, view));
+    //    }
+    //}
 
-    public class TestFilter2<T> : ISynchronizedViewFilter<KeyValuePair<T, T>, ViewContainer<T>>
-    {
-        readonly Func<KeyValuePair<T, T>, ViewContainer<T>, bool> filter;
-        public List<(KeyValuePair<T, T>, ViewContainer<T>)> CalledWhenTrue = new();
-        public List<(KeyValuePair<T, T>, ViewContainer<T>)> CalledWhenFalse = new();
-        public List<SynchronizedViewChangedEventArgs<KeyValuePair<T, T>, ViewContainer<T>>> CalledOnCollectionChanged = new();
+    //public class TestFilter2<T> : ISynchronizedViewFilter<KeyValuePair<T, T>, ViewContainer<T>>
+    //{
+    //    readonly Func<KeyValuePair<T, T>, ViewContainer<T>, bool> filter;
+    //    public List<(KeyValuePair<T, T>, ViewContainer<T>)> CalledWhenTrue = new();
+    //    public List<(KeyValuePair<T, T>, ViewContainer<T>)> CalledWhenFalse = new();
+    //    public List<SynchronizedViewChangedEventArgs<KeyValuePair<T, T>, ViewContainer<T>>> CalledOnCollectionChanged = new();
 
-        public TestFilter2(Func<KeyValuePair<T, T>, ViewContainer<T>, bool> filter)
-        {
-            this.filter = filter;
-        }
+    //    public TestFilter2(Func<KeyValuePair<T, T>, ViewContainer<T>, bool> filter)
+    //    {
+    //        this.filter = filter;
+    //    }
 
-        public void Clear()
-        {
-            CalledWhenTrue.Clear();
-            CalledWhenFalse.Clear();
-            CalledOnCollectionChanged.Clear();
-        }
+    //    public void Clear()
+    //    {
+    //        CalledWhenTrue.Clear();
+    //        CalledWhenFalse.Clear();
+    //        CalledOnCollectionChanged.Clear();
+    //    }
 
-        public bool IsMatch(KeyValuePair<T, T> value, ViewContainer<T> view)
-        {
-            return this.filter.Invoke(value, view);
-        }
+    //    public bool IsMatch(KeyValuePair<T, T> value, ViewContainer<T> view)
+    //    {
+    //        return this.filter.Invoke(value, view);
+    //    }
 
-        public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<KeyValuePair<T, T>, ViewContainer<T>> args)
-        {
-            CalledOnCollectionChanged.Add(args);
-        }
+    //    public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<KeyValuePair<T, T>, ViewContainer<T>> args)
+    //    {
+    //        CalledOnCollectionChanged.Add(args);
+    //    }
 
-        public void WhenTrue(KeyValuePair<T, T> value, ViewContainer<T> view)
-        {
-            CalledWhenTrue.Add((value, view));
-        }
+    //    public void WhenTrue(KeyValuePair<T, T> value, ViewContainer<T> view)
+    //    {
+    //        CalledWhenTrue.Add((value, view));
+    //    }
 
-        public void WhenFalse(KeyValuePair<T, T> value, ViewContainer<T> view)
-        {
-            CalledWhenFalse.Add((value, view));
-        }
-    }
+    //    public void WhenFalse(KeyValuePair<T, T> value, ViewContainer<T> view)
+    //    {
+    //        CalledWhenFalse.Add((value, view));
+    //    }
+    //}
 }

@@ -33,13 +33,13 @@ var viewModels = models.CreateView(x => new ViewModel
     Value = "@" + x
 });
 
-viewModels.AttachFilter(new HogeFilter(), true);
+viewModels.AttachFilter(new HogeFilter());
 
 models.Add(100);
 
-foreach (var (x, xs) in viewModels)
+foreach (var x in viewModels)
 {
-    System.Console.WriteLine(xs.Value);
+    System.Console.WriteLine(x);
 }
 
 class ViewModel
@@ -48,21 +48,11 @@ class ViewModel
     public string Value { get; set; } = default!;
 }
 
-class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
+class HogeFilter : ISynchronizedViewFilter<int>
 {
-    public bool IsMatch(int value, ViewModel view)
+    public bool IsMatch(int value)
     {
         return value % 2 == 0;
-    }
-
-    public void WhenTrue(int value, ViewModel view)
-    {
-        view.Value = $"@{value} (even)";
-    }
-
-    public void WhenFalse(int value, ViewModel view)
-    {
-        view.Value = $"@{value} (odd)";
     }
 
     public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<int, ViewModel> eventArgs)

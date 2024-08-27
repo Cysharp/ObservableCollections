@@ -5,7 +5,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 
-namespace ObservableCollections.Internal
+namespace ObservableCollections
 {
     internal class SynchronizedViewList<T, TView> : ISynchronizedViewList<TView>
     {
@@ -18,18 +18,18 @@ namespace ObservableCollections.Internal
             this.parent = parent;
             lock (parent.SyncRoot)
             {
-                this.listView = parent.ToList();
+                listView = parent.ToList();
                 parent.ViewChanged += Parent_ViewChanged;
             }
         }
 
-        private void Parent_ViewChanged(SynchronizedViewChangedEventArgs<T, TView> e)
+        private void Parent_ViewChanged(in SynchronizedViewChangedEventArgs<T, TView> e)
         {
             lock (gate)
             {
                 switch (e.Action)
                 {
-                    case NotifyViewChangedAction.Add: // Add or Insert
+                    case NotifyCollectionChangedAction.Add: // Add or Insert
                         if (e.NewViewIndex == -1)
                         {
                             listView.Add(e.NewView);
@@ -39,7 +39,7 @@ namespace ObservableCollections.Internal
                             listView.Insert(e.NewViewIndex, e.NewView);
                         }
                         break;
-                    case NotifyViewChangedAction.Remove: // Remove
+                    case NotifyCollectionChangedAction.Remove: // Remove
                         if (e.OldViewIndex == -1) // can't gurantee correct remove if index is not provided
                         {
                             listView.Remove(e.OldView);
@@ -49,7 +49,7 @@ namespace ObservableCollections.Internal
                             listView.RemoveAt(e.OldViewIndex);
                         }
                         break;
-                    case NotifyViewChangedAction.Replace: // Indexer
+                    case NotifyCollectionChangedAction.Replace: // Indexer
                         if (e.NewViewIndex == -1)
                         {
                             var index = listView.IndexOf(e.OldView);
@@ -61,7 +61,7 @@ namespace ObservableCollections.Internal
                         }
 
                         break;
-                    case NotifyViewChangedAction.Move: //Remove and Insert
+                    case NotifyCollectionChangedAction.Move: //Remove and Insert
                         if (e.NewViewIndex == -1)
                         {
                             // do nothing
@@ -72,12 +72,9 @@ namespace ObservableCollections.Internal
                             listView.Insert(e.NewViewIndex, e.NewView);
                         }
                         break;
-                    case NotifyViewChangedAction.Reset: // Clear
+                    case NotifyCollectionChangedAction.Reset: // Clear or drastic changes
                         listView.Clear();
-                        break;
-                    case NotifyViewChangedAction.FilterReset:
-                        listView.Clear();
-                        foreach (var item in parent)
+                        foreach (var item in parent) // refresh
                         {
                             listView.Add(item);
                         }
@@ -163,7 +160,7 @@ namespace ObservableCollections.Internal
 
             switch (args.Action)
             {
-                case NotifyViewChangedAction.Add:
+                case NotifyCollectionChangedAction.Add:
                     eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewView, args.NewViewIndex)
                     {
                         Collection = this,
@@ -172,7 +169,7 @@ namespace ObservableCollections.Internal
                         IsInvokePropertyChanged = true
                     });
                     break;
-                case NotifyViewChangedAction.Remove:
+                case NotifyCollectionChangedAction.Remove:
                     eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldView, args.OldViewIndex)
                     {
                         Collection = this,
@@ -181,7 +178,7 @@ namespace ObservableCollections.Internal
                         IsInvokePropertyChanged = true
                     });
                     break;
-                case NotifyViewChangedAction.Reset:
+                case NotifyCollectionChangedAction.Reset:
                     eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Reset)
                     {
                         Collection = this,
@@ -190,7 +187,7 @@ namespace ObservableCollections.Internal
                         IsInvokePropertyChanged = true
                     });
                     break;
-                case NotifyViewChangedAction.Replace:
+                case NotifyCollectionChangedAction.Replace:
                     eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewView, args.OldView, args.NewViewIndex)
                     {
                         Collection = this,
@@ -199,7 +196,7 @@ namespace ObservableCollections.Internal
                         IsInvokePropertyChanged = false
                     });
                     break;
-                case NotifyViewChangedAction.Move:
+                case NotifyCollectionChangedAction.Move:
                     eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewView, args.NewViewIndex, args.OldViewIndex)
                     {
                         Collection = this,
@@ -245,7 +242,7 @@ namespace ObservableCollections.Internal
 
         static bool IsCompatibleObject(object? value)
         {
-            return (value is T) || (value == null && default(T) == null);
+            return value is T || value == null && default(T) == null;
         }
 
         public bool IsReadOnly => true;

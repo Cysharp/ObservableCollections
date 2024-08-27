@@ -24,7 +24,6 @@ namespace ObservableCollections.Tests
             {
                 buf.Should().Equal(expected);
                 view.Select(x => x.Value).Should().Equal(expected);
-                view.Select(x => x.View).Should().Equal(expected.Select(x => new ViewContainer<int>(x)));
             }
 
             Equal(10, 50, 30, 20, 40);
@@ -65,7 +64,6 @@ namespace ObservableCollections.Tests
             {
                 buf.Should().Equal(expected);
                 view.Select(x => x.Value).Should().Equal(expected);
-                view.Select(x => x.View).Should().Equal(expected.Select(x => new ViewContainer<int>(x)));
             }
 
             buf.AddLast(10);

@@ -1,3 +1,5 @@
+using ObservableCollections;
+
 namespace ObservableCollections.Tests;
 
 public class ToNotifyCollectionChangedTest
@@ -43,7 +45,7 @@ public class ToNotifyCollectionChangedTest
         var view = list.CreateView(x => $"${x}");
         var notify = view.ToNotifyCollectionChanged();
 
-        view.AttachFilter((value, view) => value % 2 == 0);
+        view.AttachFilter((value) => value % 2 == 0);
 
         list.Add(4);
 

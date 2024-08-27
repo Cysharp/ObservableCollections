@@ -38,7 +38,7 @@ namespace ObservableCollections
             }
 
             public object SyncRoot { get; }
-            public event Action<SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>>? ViewChanged;
+            public event NotifyViewChangedEventHandler<KeyValuePair<TKey, TValue>, TView>? ViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public ISynchronizedViewFilter<KeyValuePair<TKey, TValue>> Filter
@@ -94,7 +94,7 @@ namespace ObservableCollections
                         }
                     }
 
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyViewChangedAction.FilterReset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset));
                 }
             }
 
@@ -104,7 +104,7 @@ namespace ObservableCollections
                 {
                     this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>>.Null;
                     this.filteredCount = dict.Count;
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyViewChangedAction.FilterReset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset));
                 }
             }
 
