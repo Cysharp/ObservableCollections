@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
@@ -30,24 +31,57 @@ namespace ObservableCollections
                 switch (e.Action)
                 {
                     case NotifyCollectionChangedAction.Add: // Add or Insert
-                        if (e.NewViewIndex == -1)
+                        if (e.IsSingleItem)
                         {
-                            listView.Add(e.NewView);
+                            if (e.NewStartingIndex == -1)
+                            {
+                                listView.Add(e.NewItem.View);
+                            }
+                            else
+                            {
+                                listView.Insert(e.NewStartingIndex, e.NewItem.View);
+                            }
                         }
                         else
                         {
-                            listView.Insert(e.NewViewIndex, e.NewView);
+                            if (e.NewStartingIndex == -1)
+                            {
+                                listView.AddRange(e.NewViews);
+                            }
+                            else
+                            {
+                                listView.InsertRange(e.NewStartingIndex, e.NewViews);
+                            }
                         }
                         break;
                     case NotifyCollectionChangedAction.Remove: // Remove
-                        if (e.OldViewIndex == -1) // can't gurantee correct remove if index is not provided
+                        if (e.IsSingleItem)
                         {
-                            listView.Remove(e.OldView);
+                            if (e.OldStartingIndex == -1) // can't gurantee correct remove if index is not provided
+                            {
+                                listView.Remove(e.OldItem.View);
+                            }
+                            else
+                            {
+                                listView.RemoveAt(e.OldStartingIndex);
+                            }
                         }
                         else
                         {
-                            listView.RemoveAt(e.OldViewIndex);
+                            if (e.OldStartingIndex == -1)
+                            {
+                                // TODO:...
+                                //listView.RemoveAll(
+
+                                // e.OldItems
+                            }
+                            else
+                            {
+                                listView.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
+                            }
                         }
+
+
                         break;
                     case NotifyCollectionChangedAction.Replace: // Indexer
                         if (e.NewViewIndex == -1)
@@ -73,10 +107,38 @@ namespace ObservableCollections
                         }
                         break;
                     case NotifyCollectionChangedAction.Reset: // Clear or drastic changes
-                        listView.Clear();
-                        foreach (var item in parent) // refresh
+                        if (e.SortOperation.IsNull)
                         {
-                            listView.Add(item);
+                            listView.Clear();
+                            foreach (var item in parent) // refresh
+                            {
+                                listView.Add(item);
+                            }
+                        }
+                        else if (e.SortOperation.IsReverse)
+                        {
+                            listView.Reverse();
+                        }
+                        else
+                        {
+                            if (parent is ObservableList<T>.View<TView> observableListView)
+                            {
+#pragma warning disable CS0436
+                                var comparer = new ObservableList<T>.View<TView>.IgnoreViewComparer(e.SortOperation.Comparer ?? Comparer<T>.Default);
+                                var viewSpan = CollectionsMarshal.AsSpan(listView).Slice(e.SortOperation.Index, e.SortOperation.Count);
+                                var sourceSpan = CollectionsMarshal.AsSpan(observableListView.list).Slice(e.SortOperation.Index, e.SortOperation.Count);
+                                sourceSpan.Sort(viewSpan, comparer);
+#pragma warning restore CS0436
+                            }
+                            else
+                            {
+                                // can not get source Span, do Clear and Refresh
+                                listView.Clear();
+                                foreach (var item in parent)
+                                {
+                                    listView.Add(item);
+                                }
+                            }
                         }
                         break;
                     default:

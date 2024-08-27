@@ -41,7 +41,7 @@ namespace ObservableCollections
 
             readonly ObservableList<T> source;
             readonly Func<T, TView> selector;
-            readonly List<(T, TView)> list;
+            internal readonly List<(T, TView)> list; // unsafe, be careful to use
             int filteredCount;
 
             ISynchronizedViewFilter<T> filter;
@@ -207,6 +207,10 @@ namespace ObservableCollections
                                 else
                                 {
                                     var i = e.NewStartingIndex;
+
+                                    //new CloneCollection<(T, TView)>();
+                                    using var array = new ResizableArray<(T, TView)>(e.NewItems.Length);
+
                                     foreach (var item in e.NewItems)
                                     {
                                         var v = (item, selector(item));
@@ -245,7 +249,10 @@ namespace ObservableCollections
                             }
                             else
                             {
-                                list.RemoveRange(e.OldStartingIndex, e.OldItems.Length); // remove from list first
+                                list.RemoveRange(e.OldStartingIndex, e.OldItems.Length); // TODO: no
+
+
+                                // TODO: Range operation before remove...!
 
                                 var len = e.OldStartingIndex + e.OldItems.Length;
                                 for (var i = e.OldStartingIndex; i < len; i++)
@@ -274,14 +281,46 @@ namespace ObservableCollections
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            list.Clear();
-                            this.InvokeOnReset(ref filteredCount, ViewChanged);
+                            if (e.SortOperation.IsNull)
+                            {
+                                // None(Clear)
+                                list.Clear();
+                                this.InvokeOnReset(ref filteredCount, ViewChanged);
+                            }
+                            else if (e.SortOperation.IsReverse)
+                            {
+                                // Reverse
+                                list.Reverse(e.SortOperation.Index, e.SortOperation.Count);
+                                // TODO:Invoke
+                            }
+                            else
+                            {
+                                // Sort
+                                list.Sort(e.SortOperation.Index, e.SortOperation.Count, new IgnoreViewComparer(e.SortOperation.Comparer ?? Comparer<T>.Default));
+                                // Span<T> d;
+
+                            }
                             break;
                         default:
                             break;
                     }
 
                     CollectionStateChanged?.Invoke(e.Action);
+                }
+            }
+
+            internal sealed class IgnoreViewComparer : IComparer<(T, TView)>
+            {
+                readonly IComparer<T> comparer;
+
+                public IgnoreViewComparer(IComparer<T> comparer)
+                {
+                    this.comparer = comparer;
+                }
+
+                public int Compare((T, TView) x, (T, TView) y)
+                {
+                    return comparer.Compare(x.Item1, y.Item1);
                 }
             }
         }
