@@ -14,6 +14,21 @@ namespace ObservableCollections
             return new View<TView>(this, transform);
         }
 
+        public ISynchronizedViewList<T> ToViewList()
+        {
+            return CreateView(static x => x).ToViewList();
+        }
+
+        public INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged()
+        {
+            return CreateView(static x => x).ToNotifyCollectionChanged();
+        }
+
+        public INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            return CreateView(static x => x).ToNotifyCollectionChanged(collectionEventDispatcher);
+        }
+
         internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
             public ISynchronizedViewFilter<T> Filter
@@ -107,20 +122,19 @@ namespace ObservableCollections
                 }
             }
 
+            public ISynchronizedViewList<TView> ToViewList()
+            {
+                return new SynchronizedViewList<T, TView>(this);
+            }
+
             public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
             {
-                lock (SyncRoot)
-                {
-                    return new ListNotifyCollectionChangedSynchronizedView<T, TView>(this, null);
-                }
+                return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
             }
 
             public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
             {
-                lock (SyncRoot)
-                {
-                    return new ListNotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
-                }
+                return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
             }
 
             public IEnumerator<TView> GetEnumerator()

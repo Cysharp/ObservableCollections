@@ -1,6 +1,5 @@
 using ObservableCollections.Internal;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -45,6 +44,7 @@ namespace ObservableCollections
 
         void AttachFilter(ISynchronizedViewFilter<T> filter);
         void ResetFilter();
+        ISynchronizedViewList<TView> ToViewList();
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged();
         INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
     }

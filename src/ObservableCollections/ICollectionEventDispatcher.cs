@@ -45,11 +45,11 @@ namespace ObservableCollections
         }
     }
 
-    internal class DirectCollectionEventDispatcher : ICollectionEventDispatcher
+    internal class InlineCollectionEventDispatcher : ICollectionEventDispatcher
     {
-        public static readonly ICollectionEventDispatcher Instance = new DirectCollectionEventDispatcher();
+        public static readonly ICollectionEventDispatcher Instance = new InlineCollectionEventDispatcher();
 
-        DirectCollectionEventDispatcher()
+        InlineCollectionEventDispatcher()
         {
         }
 
