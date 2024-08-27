@@ -169,7 +169,7 @@ namespace ObservableCollections.Internal
 
         static bool IsCompatibleObject(object? value)
         {
-            return (value is T) || (value == null && default(T) == null);
+            return (value is TView) || (value is T) || (value == null && default(T) == null);
         }
 
         public bool IsReadOnly => true;
