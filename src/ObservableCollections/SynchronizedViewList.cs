@@ -14,14 +14,6 @@ namespace ObservableCollections
     {
         readonly ISynchronizedView<T, TView> parent;
         protected readonly List<TView> listView;
-
-
-
-
-        //protected readonly SortedList<int, TView> listView; // key is original index
-
-
-
         protected readonly object gate = new object();
 
         public SynchronizedViewList(ISynchronizedView<T, TView> parent)
@@ -60,6 +52,8 @@ namespace ObservableCollections
                             }
                             else
                             {
+                                // fnew SortedList<int, int>().sort
+
                                 listView.InsertRange(e.NewStartingIndex, e.NewViews);
                             }
                         }
