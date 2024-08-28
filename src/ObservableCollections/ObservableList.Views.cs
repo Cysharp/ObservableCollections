@@ -195,48 +195,41 @@ namespace ObservableCollections
                     switch (e.Action)
                     {
                         case NotifyCollectionChangedAction.Add:
-                            // Add
-                            if (e.NewStartingIndex == list.Count)
+                            // Add or Insert
+                            if (e.IsSingleItem)
                             {
-                                if (e.IsSingleItem)
-                                {
-                                    var v = (e.NewItem, selector(e.NewItem));
-                                    list.Add(v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
-                                }
-                                else
-                                {
-                                    var i = e.NewStartingIndex;
-
-                                    using var array = new ResizableArray<(T, TView)>(e.NewItems.Length);
-                                    foreach (var item in e.NewItems)
-                                    {
-                                        array.Add((item, selector(item)));
-                                    }
-
-                                    list.AddRange(array.Span);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
-                                }
+                                var v = (e.NewItem, selector(e.NewItem));
+                                list.Insert(e.NewStartingIndex, v);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
                             }
-                            // Insert
                             else
                             {
-                                if (e.IsSingleItem)
+                                var items = e.NewItems;
+                                var length = items.Length;
+
+                                using var valueViews = new FixedArray<(T, TView)>(length);
+                                using var views = new FixedArray<TView>(length);
+                                using var matches = new FixedBoolArray(length < FixedBoolArray.StackallocSize ? stackalloc bool[length] : default, length);
+                                var isMatchAll = true;
+                                for (int i = 0; i < items.Length; i++)
                                 {
-                                    var v = (e.NewItem, selector(e.NewItem));
-                                    list.Insert(e.NewStartingIndex, v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
-                                }
-                                else
-                                {
-                                    var span = e.NewItems;
-                                    for (var i = 0; i < span.Length; i++)
+                                    var item = items[i];
+                                    var view = selector(item);
+                                    views.Span[i] = view;
+                                    valueViews.Span[i] = (item, view);
+                                    var isMatch = matches.Span[i] = Filter.IsMatch(item);
+                                    if (isMatch)
                                     {
-                                        var v = (span[i], selector(span[i]));
-                                        list.Insert(e.NewStartingIndex + i, v); // should we use InsertRange?
-                                        this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex + i);
+                                        filteredCount++; // increment in this process
+                                    }
+                                    else
+                                    {
+                                        isMatchAll = false;
                                     }
                                 }
+
+                                list.InsertRange(e.NewStartingIndex, valueViews.Span);
+                                this.InvokeOnAddRange(ViewChanged, e.NewItems, views.Span, isMatchAll, matches.Span, e.NewStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
@@ -248,17 +241,32 @@ namespace ObservableCollections
                             }
                             else
                             {
-                                list.RemoveRange(e.OldStartingIndex, e.OldItems.Length); // TODO: no
-
-
-                                // TODO: Range operation before remove...!
-
-                                var len = e.OldStartingIndex + e.OldItems.Length;
-                                for (var i = e.OldStartingIndex; i < len; i++)
+                                var length = e.OldItems.Length;
+                                using var values = new FixedArray<T>(length);
+                                using var views = new FixedArray<TView>(length);
+                                using var matches = new FixedBoolArray(length < FixedBoolArray.StackallocSize ? stackalloc bool[length] : default, length);
+                                var isMatchAll = true;
+                                var to = e.OldStartingIndex + length;
+                                var j = 0;
+                                for (int i = e.OldStartingIndex; i < to; i++)
                                 {
-                                    var v = list[i];
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, v, e.OldStartingIndex + i);
+                                    var item = list[i];
+                                    values.Span[j] = item.Item1;
+                                    views.Span[j] = item.Item2;
+                                    var isMatch = matches.Span[j] = Filter.IsMatch(item.Item1);
+                                    if (isMatch)
+                                    {
+                                        filteredCount--; // decrement in this process
+                                    }
+                                    else
+                                    {
+                                        isMatchAll = false;
+                                    }
+                                    j++;
                                 }
+
+                                list.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
+                                this.InvokeOnRemoveRange(ViewChanged, values.Span, views.Span, isMatchAll, matches.Span, e.OldStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Replace:
@@ -290,14 +298,13 @@ namespace ObservableCollections
                             {
                                 // Reverse
                                 list.Reverse(e.SortOperation.Index, e.SortOperation.Count);
-                                // TODO:Invoke
+                                this.InvokeOnReverseOrSort(ViewChanged, e.SortOperation);
                             }
                             else
                             {
                                 // Sort
                                 list.Sort(e.SortOperation.Index, e.SortOperation.Count, new IgnoreViewComparer(e.SortOperation.Comparer ?? Comparer<T>.Default));
-                                // Span<T> d;
-
+                                this.InvokeOnReverseOrSort(ViewChanged, e.SortOperation);
                             }
                             break;
                         default:

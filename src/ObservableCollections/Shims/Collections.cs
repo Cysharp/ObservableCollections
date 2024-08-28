@@ -11,6 +11,8 @@ namespace System.Collections.Generic
 {
     internal static class CollectionExtensions
     {
+        const int ArrayMaxLength = 0X7FFFFFC7;
+
         public static void Deconstruct<TKey, TValue>(this KeyValuePair<TKey, TValue> kvp, out TKey key, out TValue value)
         {
             key = kvp.Key;
@@ -108,7 +110,7 @@ namespace System.Collections.Generic
         {
             int newCapacity = list._items.Length == 0 ? 4 : 2 * list._items.Length;
 
-            if ((uint)newCapacity > Array.MaxLength) newCapacity = Array.MaxLength;
+            if ((uint)newCapacity > ArrayMaxLength) newCapacity = ArrayMaxLength;
 
             if (newCapacity < capacity) newCapacity = capacity;
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Specialized;
+using System.Data;
 
 namespace ObservableCollections
 {
@@ -10,7 +11,8 @@ namespace ObservableCollections
         (T Value, TView View) oldItem = default!,
         ReadOnlySpan<T> newValues = default!,
         ReadOnlySpan<TView> newViews = default!,
-        ReadOnlySpan<(T Value, TView View)> oldItems = default!,
+        ReadOnlySpan<T> oldValues = default!,
+        ReadOnlySpan<TView> oldViews = default!,
         int newStartingIndex = -1,
         int oldStartingIndex = -1,
         SortOperation<T> sortOperation = default)
@@ -21,7 +23,8 @@ namespace ObservableCollections
         public readonly (T Value, TView View) OldItem = oldItem;
         public readonly ReadOnlySpan<T> NewValues = newValues;
         public readonly ReadOnlySpan<TView> NewViews = newViews;
-        public readonly ReadOnlySpan<(T Value, TView View)> OldItems = oldItems;
+        public readonly ReadOnlySpan<T> OldValues = oldValues;
+        public readonly ReadOnlySpan<TView> OldViews = oldViews;
         public readonly int NewStartingIndex = newStartingIndex;
         public readonly int OldStartingIndex = oldStartingIndex;
         public readonly SortOperation<T> SortOperation = sortOperation;
@@ -57,15 +60,25 @@ namespace ObservableCollections
             }
         }
 
-        internal static void InvokeOnAddRange<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, int index)
+        internal static void InvokeOnAddRange<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, bool isMatchAll, ReadOnlySpan<bool> matches, int index)
         {
-            var isMatch = collection.Filter.IsMatch(value);
-            if (isMatch)
+            if (ev != null)
             {
-                filteredCount++;
-                if (ev != null)
+                if (isMatchAll)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, false, newValues: values, newViews: views, newStartingIndex: index));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, isSingleItem: false, newValues: values, newViews: views, newStartingIndex: index));
+                }
+                else
+                {
+                    var startingIndex = index;
+                    for (var i = 0; i < matches.Length; i++)
+                    {
+                        if (matches[i])
+                        {
+                            var item = (values[i], views[i]);
+                            ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, isSingleItem: true, newItem: item, newStartingIndex: startingIndex++));
+                        }
+                    }
                 }
             }
         }
@@ -83,7 +96,35 @@ namespace ObservableCollections
                 filteredCount--;
                 if (ev != null)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, oldValue: value, oldView: view, oldViewIndex: oldIndex));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
+                }
+            }
+        }
+
+        // only use for ObservableList
+        internal static void InvokeOnRemoveRange<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, bool isMatchAll, ReadOnlySpan<bool> matches, int index)
+        {
+            if (ev != null)
+            {
+                if (isMatchAll)
+                {
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isSingleItem: false, oldValues: values, oldViews: views, oldStartingIndex: index));
+                }
+                else
+                {
+                    var startingIndex = index;
+                    for (var i = 0; i < matches.Length; i++)
+                    {
+                        if (matches[i])
+                        {
+                            var item = (values[i], views[i]);
+                            ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isSingleItem: true, oldItem: item, oldStartingIndex: index)); //remove for list, always same index
+                        }
+                        else
+                        {
+                            index++; // not matched, skip index
+                        }
+                    }
                 }
             }
         }
@@ -101,7 +142,7 @@ namespace ObservableCollections
                 var isMatch = collection.Filter.IsMatch(value);
                 if (isMatch)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, newValue: value, newView: view, newViewIndex: index, oldViewIndex: oldIndex));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, true, newItem: (value, view), newStartingIndex: index, oldStartingIndex: oldIndex));
                 }
             }
         }
@@ -121,7 +162,7 @@ namespace ObservableCollections
             {
                 if (ev != null)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, newValue: value, newView: view, oldValue: oldValue, oldView: oldView, newViewIndex: index, oldViewIndex: oldIndex >= 0 ? oldIndex : index));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, true, newItem: (value, view), oldItem: (oldValue, oldView), newStartingIndex: index, oldStartingIndex: oldIndex >= 0 ? oldIndex : index));
                 }
             }
             else if (oldMatched)
@@ -130,7 +171,7 @@ namespace ObservableCollections
                 filteredCount--;
                 if (ev != null)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, oldValue: value, oldView: view, oldViewIndex: oldIndex));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
                 }
 
             }
@@ -140,7 +181,7 @@ namespace ObservableCollections
                 filteredCount++;
                 if (ev != null)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, newValue: value, newView: view, newViewIndex: index));
+                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, true, newItem: (value, view), newStartingIndex: index));
                 }
             }
         }
@@ -150,7 +191,15 @@ namespace ObservableCollections
             filteredCount = 0;
             if (ev != null)
             {
-                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
+                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
+            }
+        }
+
+        internal static void InvokeOnReverseOrSort<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, SortOperation<T> sortOperation)
+        {
+            if (ev != null)
+            {
+                ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true, sortOperation: sortOperation));
             }
         }
     }

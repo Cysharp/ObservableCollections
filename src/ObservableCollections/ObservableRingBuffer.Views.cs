@@ -91,7 +91,7 @@ namespace ObservableCollections
                             filteredCount++;
                         }
                     }
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
@@ -101,7 +101,7 @@ namespace ObservableCollections
                 {
                     this.filter = SynchronizedViewFilter<T>.Null;
                     this.filteredCount = ringBuffer.Count;
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 

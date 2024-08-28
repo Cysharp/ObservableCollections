@@ -94,7 +94,7 @@ namespace ObservableCollections
                         }
                     }
 
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
@@ -104,7 +104,7 @@ namespace ObservableCollections
                 {
                     this.filter = SynchronizedViewFilter<KeyValuePair<TKey, TValue>>.Null;
                     this.filteredCount = dict.Count;
-                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset));
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 

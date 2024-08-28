@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ObservableCollections.Internal;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -8,10 +9,19 @@ using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
+
     internal class SynchronizedViewList<T, TView> : ISynchronizedViewList<TView>
     {
         readonly ISynchronizedView<T, TView> parent;
         protected readonly List<TView> listView;
+
+
+
+
+        //protected readonly SortedList<int, TView> listView; // key is original index
+
+
+
         protected readonly object gate = new object();
 
         public SynchronizedViewList(ISynchronizedView<T, TView> parent)
@@ -70,40 +80,38 @@ namespace ObservableCollections
                         {
                             if (e.OldStartingIndex == -1)
                             {
-                                // TODO:...
-                                //listView.RemoveAll(
-
-                                // e.OldItems
+                                var matcher = new RemoveAllMatcher<TView>(e.OldViews);
+                                listView.RemoveAll(matcher.Predicate);
                             }
                             else
                             {
-                                listView.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
+                                listView.RemoveRange(e.OldStartingIndex, e.OldViews.Length);
                             }
                         }
 
 
                         break;
                     case NotifyCollectionChangedAction.Replace: // Indexer
-                        if (e.NewViewIndex == -1)
+                        if (e.NewStartingIndex == -1)
                         {
-                            var index = listView.IndexOf(e.OldView);
-                            listView[index] = e.NewView;
+                            var index = listView.IndexOf(e.OldItem.View);
+                            listView[index] = e.NewItem.View;
                         }
                         else
                         {
-                            listView[e.NewViewIndex] = e.NewView;
+                            listView[e.NewStartingIndex] = e.NewItem.View;
                         }
 
                         break;
                     case NotifyCollectionChangedAction.Move: //Remove and Insert
-                        if (e.NewViewIndex == -1)
+                        if (e.NewStartingIndex == -1)
                         {
                             // do nothing
                         }
                         else
                         {
-                            listView.RemoveAt(e.OldViewIndex);
-                            listView.Insert(e.NewViewIndex, e.NewView);
+                            listView.RemoveAt(e.OldStartingIndex);
+                            listView.Insert(e.NewStartingIndex, e.NewItem.View);
                         }
                         break;
                     case NotifyCollectionChangedAction.Reset: // Clear or drastic changes
@@ -121,16 +129,18 @@ namespace ObservableCollections
                         }
                         else
                         {
+#if NET6_0_OR_GREATER
+#pragma warning disable CS0436
                             if (parent is ObservableList<T>.View<TView> observableListView)
                             {
-#pragma warning disable CS0436
                                 var comparer = new ObservableList<T>.View<TView>.IgnoreViewComparer(e.SortOperation.Comparer ?? Comparer<T>.Default);
                                 var viewSpan = CollectionsMarshal.AsSpan(listView).Slice(e.SortOperation.Index, e.SortOperation.Count);
                                 var sourceSpan = CollectionsMarshal.AsSpan(observableListView.list).Slice(e.SortOperation.Index, e.SortOperation.Count);
-                                sourceSpan.Sort(viewSpan, comparer);
-#pragma warning restore CS0436
+                                sourceSpan.Sort(viewSpan, comparer); // span.Sort is NET6 or greater
                             }
                             else
+#pragma warning restore CS0436
+#endif
                             {
                                 // can not get source Span, do Clear and Refresh
                                 listView.Clear();
@@ -223,22 +233,48 @@ namespace ObservableCollections
             switch (args.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewView, args.NewViewIndex)
+                    if (args.IsSingleItem)
                     {
-                        Collection = this,
-                        Invoker = raiseChangedEventInvoke,
-                        IsInvokeCollectionChanged = true,
-                        IsInvokePropertyChanged = true
-                    });
+                        eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewItem.View, args.NewStartingIndex)
+                        {
+                            Collection = this,
+                            Invoker = raiseChangedEventInvoke,
+                            IsInvokeCollectionChanged = true,
+                            IsInvokePropertyChanged = true
+                        });
+                    }
+                    else
+                    {
+                        eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewViews.ToArray(), args.NewStartingIndex)
+                        {
+                            Collection = this,
+                            Invoker = raiseChangedEventInvoke,
+                            IsInvokeCollectionChanged = true,
+                            IsInvokePropertyChanged = true
+                        });
+                    }
                     break;
                 case NotifyCollectionChangedAction.Remove:
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldView, args.OldViewIndex)
+                    if (args.IsSingleItem)
                     {
-                        Collection = this,
-                        Invoker = raiseChangedEventInvoke,
-                        IsInvokeCollectionChanged = true,
-                        IsInvokePropertyChanged = true
-                    });
+                        eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldItem.View, args.OldStartingIndex)
+                        {
+                            Collection = this,
+                            Invoker = raiseChangedEventInvoke,
+                            IsInvokeCollectionChanged = true,
+                            IsInvokePropertyChanged = true
+                        });
+                    }
+                    else
+                    {
+                        eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldViews.ToArray(), args.OldStartingIndex)
+                        {
+                            Collection = this,
+                            Invoker = raiseChangedEventInvoke,
+                            IsInvokeCollectionChanged = true,
+                            IsInvokePropertyChanged = true
+                        });
+                    }
                     break;
                 case NotifyCollectionChangedAction.Reset:
                     eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Reset)
@@ -250,7 +286,7 @@ namespace ObservableCollections
                     });
                     break;
                 case NotifyCollectionChangedAction.Replace:
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewView, args.OldView, args.NewViewIndex)
+                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewItem.View, args.OldItem.View, args.NewStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -259,7 +295,7 @@ namespace ObservableCollections
                     });
                     break;
                 case NotifyCollectionChangedAction.Move:
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewView, args.NewViewIndex, args.OldViewIndex)
+                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewItem.View, args.NewStartingIndex, args.OldStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,

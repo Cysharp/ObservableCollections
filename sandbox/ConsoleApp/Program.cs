@@ -60,16 +60,16 @@ class HogeFilter : ISynchronizedViewFilter<int>
         switch (eventArgs.Action)
         {
             case NotifyCollectionChangedAction.Add:
-                eventArgs.NewView.Value += " Add";
+                eventArgs.NewItem.View.Value += " Add";
                 break;
             case NotifyCollectionChangedAction.Remove:
-                eventArgs.OldView.Value += " Remove";
+                eventArgs.OldItem.View.Value += " Remove";
                 break;
             case NotifyCollectionChangedAction.Move:
-                eventArgs.NewView.Value += $" Move {eventArgs.OldViewIndex} {eventArgs.NewViewIndex}";
+                eventArgs.NewItem.View.Value += $" Move {eventArgs.OldStartingIndex} {eventArgs.NewStartingIndex}";
                 break;
             case NotifyCollectionChangedAction.Replace:
-                eventArgs.NewView.Value += $" Replace {eventArgs.NewViewIndex}";
+                eventArgs.NewItem.View.Value += $" Replace {eventArgs.NewStartingIndex}";
                 break;
             case NotifyCollectionChangedAction.Reset:
                 break;
