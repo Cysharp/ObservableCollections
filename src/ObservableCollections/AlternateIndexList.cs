@@ -40,7 +40,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public int Count => list.Count;
 
-    public void Insert(int alternateIndex, T value)
+    public int Insert(int alternateIndex, T value)
     {
         var index = list.BinarySearch(alternateIndex);
         if (index < 0)
@@ -49,9 +49,10 @@ public class AlternateIndexList<T> : IEnumerable<T>
         }
         list.Insert(index, new(alternateIndex, value));
         UpdateAlternateIndex(index + 1, 1);
+        return index;
     }
 
-    public void InsertRange(int startingAlternateIndex, IEnumerable<T> values)
+    public int InsertRange(int startingAlternateIndex, IEnumerable<T> values)
     {
         var index = list.BinarySearch(startingAlternateIndex);
         if (index < 0)
@@ -62,9 +63,10 @@ public class AlternateIndexList<T> : IEnumerable<T>
         using var iter = new InsertIterator(startingAlternateIndex, values);
         list.InsertRange(index, iter);
         UpdateAlternateIndex(index + iter.ConsumedCount, iter.ConsumedCount);
+        return index;
     }
 
-    public void Remove(T value)
+    public int Remove(T value)
     {
         var index = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, value));
         if (index != -1)
@@ -72,9 +74,10 @@ public class AlternateIndexList<T> : IEnumerable<T>
             list.RemoveAt(index);
             UpdateAlternateIndex(index, -1);
         }
+        return index;
     }
 
-    public void RemoveAt(int alternateIndex)
+    public int RemoveAt(int alternateIndex)
     {
         var index = list.BinarySearch(alternateIndex);
         if (index != -1)
@@ -82,9 +85,10 @@ public class AlternateIndexList<T> : IEnumerable<T>
             list.RemoveAt(index);
             UpdateAlternateIndex(index, -1);
         }
+        return index;
     }
 
-    public void RemoveRange(int alternateIndex, int count)
+    public int RemoveRange(int alternateIndex, int count)
     {
         var index = list.BinarySearch(alternateIndex);
         if (index < 0)
@@ -94,6 +98,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
         list.RemoveRange(index, count);
         UpdateAlternateIndex(index, -count);
+        return index;
     }
 
     public bool TryGetAtAlternateIndex(int alternateIndex, [MaybeNullWhen(true)] out T value)
@@ -108,23 +113,23 @@ public class AlternateIndexList<T> : IEnumerable<T>
         return true;
     }
 
-    public bool TrySetAtAlternateIndex(int alternateIndex, T value)
+    public bool TrySetAtAlternateIndex(int alternateIndex, T value, out int setIndex)
     {
-        var index = list.BinarySearch(alternateIndex);
-        if (index < 0)
+        setIndex = list.BinarySearch(alternateIndex);
+        if (setIndex < 0)
         {
             return false;
         }
-        CollectionsMarshal.AsSpan(list)[index].Value = value;
+        CollectionsMarshal.AsSpan(list)[setIndex].Value = value;
         return true;
     }
 
-    public bool TryReplaceByValue(T searchValue, T replaceValue)
+    public bool TryReplaceByValue(T searchValue, T replaceValue, out int replacedIndex)
     {
-        var index = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, searchValue));
-        if (index != -1)
+        replacedIndex = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, searchValue));
+        if (replacedIndex != -1)
         {
-            CollectionsMarshal.AsSpan(list)[index].Value = replaceValue;
+            CollectionsMarshal.AsSpan(list)[replacedIndex].Value = replaceValue;
             return true;
         }
         return false;

@@ -50,7 +50,7 @@ public static class ObservableCollectionR3Extensions
         return new ObservableCollectionClear<T>(source, cancellationToken);
     }
 
-    public static Observable<Unit> ObserveReverse<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    public static Observable<(int Index, int Count))> ObserveReverse<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionReverse<T>(source, cancellationToken);
     }
@@ -251,24 +251,24 @@ sealed class ObservableCollectionClear<T>(IObservableCollection<T> collection, C
     }
 }
 
-sealed class ObservableCollectionReverse<T>(IObservableCollection<T> collection, CancellationToken cancellationToken) : Observable<Unit>
+sealed class ObservableCollectionReverse<T>(IObservableCollection<T> collection, CancellationToken cancellationToken) : Observable<(int Index, int Count)>
 {
-    protected override IDisposable SubscribeCore(Observer<Unit> observer)
+    protected override IDisposable SubscribeCore(Observer<(int Index, int Count)> observer)
     {
         return new _ObservableCollectionReverse(collection, observer, cancellationToken);
     }
 
     sealed class _ObservableCollectionReverse(
         IObservableCollection<T> collection,
-        Observer<Unit> observer,
+        Observer<(int Index, int Count)> observer,
         CancellationToken cancellationToken)
-        : ObservableCollectionObserverBase<T, Unit>(collection, observer, cancellationToken)
+        : ObservableCollectionObserverBase<T, (int Index, int Count)>(collection, observer, cancellationToken)
     {
         protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
             if (eventArgs.Action == NotifyCollectionChangedAction.Reset && eventArgs.SortOperation.IsReverse)
             {
-                observer.OnNext(Unit.Default);
+                observer.OnNext((eventArgs.SortOperation.Index, eventArgs.SortOperation.Count));
             }
         }
     }

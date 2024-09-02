@@ -110,7 +110,7 @@ namespace ObservableCollections
 
             public ISynchronizedViewList<TView> ToViewList()
             {
-                return new SynchronizedViewList<KeyValuePair<TKey, TValue>, TView>(this);
+                return new FiltableSynchronizedViewList<KeyValuePair<TKey, TValue>, TView>(this);
             }
 
             public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()

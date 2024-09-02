@@ -291,7 +291,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                list.Sort();
+                list.Sort(comparer);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Sort(0, list.Count, comparer));
             }
         }
@@ -300,7 +300,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                list.Sort();
+                list.Sort(index, count, comparer);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Sort(index, count, comparer));
             }
         }
@@ -309,7 +309,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                list.Sort();
+                list.Reverse();
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Reverse(0, list.Count));
             }
         }
@@ -318,7 +318,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                list.Sort();
+                list.Reverse(index, count);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Reverse(index, count));
             }
         }

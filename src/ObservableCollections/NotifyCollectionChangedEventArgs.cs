@@ -16,8 +16,6 @@ namespace ObservableCollections
 
         public bool IsReverse => Comparer == ReverseSentinel.Instance;
         public bool IsNull => Comparer == null;
-
-        [MemberNotNullWhen(true, nameof(Comparer))]
         public bool IsSort => !IsNull && !IsReverse;
 
         public SortOperation(int index, int count, IComparer<T>? comparer)
@@ -53,7 +51,7 @@ namespace ObservableCollections
 
             public int Compare(T? x, T? y)
             {
-                throw new NotImplementedException();
+                return Comparer<T>.Default.Compare(x!, y!);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.Data;
+using System.Runtime.CompilerServices;
 
 namespace ObservableCollections
 {
@@ -28,6 +29,55 @@ namespace ObservableCollections
         public readonly int NewStartingIndex = newStartingIndex;
         public readonly int OldStartingIndex = oldStartingIndex;
         public readonly SortOperation<T> SortOperation = sortOperation;
+
+        public SynchronizedViewChangedEventArgs<T, TView> WithNewStartingIndex(int newStartingIndex)
+        {
+            // MEMO: struct copy and replace only newStartingIndex memory maybe fast.
+            return new SynchronizedViewChangedEventArgs<T, TView>(
+                action,
+                IsSingleItem,
+                newItem: NewItem,
+                oldItem: OldItem,
+                newValues: NewValues,
+                newViews: NewViews,
+                oldValues: OldValues,
+                oldViews: OldViews,
+                newStartingIndex: newStartingIndex, // replace
+                oldStartingIndex: OldStartingIndex,
+                sortOperation: SortOperation);
+        }
+
+        public SynchronizedViewChangedEventArgs<T, TView> WithOldStartingIndex(int oldStartingIndex)
+        {
+            return new SynchronizedViewChangedEventArgs<T, TView>(
+                action,
+                IsSingleItem,
+                newItem: NewItem,
+                oldItem: OldItem,
+                newValues: NewValues,
+                newViews: NewViews,
+                oldValues: OldValues,
+                oldViews: OldViews,
+                newStartingIndex: NewStartingIndex,
+                oldStartingIndex: oldStartingIndex, // replace
+                sortOperation: SortOperation);
+        }
+
+        public SynchronizedViewChangedEventArgs<T, TView> WithNewAndOldStartingIndex(int newStartingIndex, int oldStartingIndex)
+        {
+            return new SynchronizedViewChangedEventArgs<T, TView>(
+                action,
+                IsSingleItem,
+                newItem: NewItem,
+                oldItem: OldItem,
+                newValues: NewValues,
+                newViews: NewViews,
+                oldValues: OldValues,
+                oldViews: OldViews,
+                newStartingIndex: newStartingIndex, // replace
+                oldStartingIndex: oldStartingIndex, // replace
+                sortOperation: SortOperation);
+        }
     }
 
     public static class SynchronizedViewExtensions

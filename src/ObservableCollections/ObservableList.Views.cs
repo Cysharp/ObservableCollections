@@ -16,17 +16,30 @@ namespace ObservableCollections
 
         public ISynchronizedViewList<T> ToViewList()
         {
-            return CreateView(static x => x).ToViewList();
+            // NOTE: for more optimize, no need to create View.
+            return ToViewList(static x => x);
+        }
+
+        public ISynchronizedViewList<TView> ToViewList<TView>(Func<T, TView> transform)
+        {
+            // Optimized for non filtered
+            return new NonFilteredSynchronizedViewList<T, TView>(CreateView(transform));
         }
 
         public INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged()
         {
-            return CreateView(static x => x).ToNotifyCollectionChanged();
+            return ToNotifyCollectionChanged(null);
         }
 
         public INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
         {
-            return CreateView(static x => x).ToNotifyCollectionChanged(collectionEventDispatcher);
+            return ToNotifyCollectionChanged(static x => x, collectionEventDispatcher);
+        }
+
+        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged<TView>(Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            // Optimized for non filtered
+            return new NonFilteredNotifyCollectionChangedSynchronizedView<T, TView>(CreateView(transform), collectionEventDispatcher);
         }
 
         internal sealed class View<TView> : ISynchronizedView<T, TView>
@@ -123,7 +136,7 @@ namespace ObservableCollections
 
             public ISynchronizedViewList<TView> ToViewList()
             {
-                return new SynchronizedViewList<T, TView>(this);
+                return new FiltableSynchronizedViewList<T, TView>(this);
             }
 
             public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
@@ -315,7 +328,7 @@ namespace ObservableCollections
                 }
             }
 
-            internal sealed class IgnoreViewComparer : IComparer<(T, TView)>
+            sealed class IgnoreViewComparer : IComparer<(T, TView)>
             {
                 readonly IComparer<T> comparer;
 
