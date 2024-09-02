@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable CS9124
+
+using System;
 using System.Collections.Specialized;
 using System.Data;
 using System.Runtime.CompilerServices;
