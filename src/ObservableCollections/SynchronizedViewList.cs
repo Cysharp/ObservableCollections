@@ -309,7 +309,7 @@ internal class NotifyCollectionChangedSynchronizedView<T, TView> :
 
     static bool IsCompatibleObject(object? value)
     {
-        return value is T || value == null && default(T) == null;
+        return value is TView || value == null && default(TView) == null;
     }
 
     public bool IsReadOnly => true;

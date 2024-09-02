@@ -49,6 +49,5 @@ namespace ObservableCollections
 
     public interface INotifyCollectionChangedSynchronizedView<out TView> : IReadOnlyCollection<TView>, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable
     {
-        void Refresh();
     }
 }
