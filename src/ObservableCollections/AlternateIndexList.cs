@@ -1,0 +1,222 @@
+﻿#pragma warning disable CS0436
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Runtime.InteropServices;
+
+namespace ObservableCollections;
+
+public class AlternateIndexList<T> : IEnumerable<T>
+{
+    List<IndexedValue> list; // alternate index is ordered
+
+    public AlternateIndexList()
+    {
+        this.list = new();
+    }
+
+    public AlternateIndexList(IEnumerable<(int OrderedAlternateIndex, T Value)> values)
+    {
+        this.list = values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)).ToList();
+    }
+
+    void UpdateAlternateIndex(int startIndex, int incr)
+    {
+        var span = CollectionsMarshal.AsSpan(list);
+        for (int i = startIndex; i < span.Length; i++)
+        {
+            span[i].AlternateIndex += incr;
+        }
+    }
+
+    public T this[int index]
+    {
+        get => list[index].Value;
+    }
+
+    public int Count => list.Count;
+
+    public void Insert(int alternateIndex, T value)
+    {
+        var index = list.BinarySearch(alternateIndex);
+        if (index < 0)
+        {
+            index = ~index;
+        }
+        list.Insert(index, new(alternateIndex, value));
+        UpdateAlternateIndex(index + 1, 1);
+    }
+
+    public void InsertRange(int startingAlternateIndex, IEnumerable<T> values)
+    {
+        var index = list.BinarySearch(startingAlternateIndex);
+        if (index < 0)
+        {
+            index = ~index;
+        }
+
+        using var iter = new InsertIterator(startingAlternateIndex, values);
+        list.InsertRange(index, iter);
+        UpdateAlternateIndex(index + iter.ConsumedCount, iter.ConsumedCount);
+    }
+
+    public void Remove(T value)
+    {
+        var index = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, value));
+        if (index != -1)
+        {
+            list.RemoveAt(index);
+            UpdateAlternateIndex(index, -1);
+        }
+    }
+
+    public void RemoveAt(int alternateIndex)
+    {
+        var index = list.BinarySearch(alternateIndex);
+        if (index != -1)
+        {
+            list.RemoveAt(index);
+            UpdateAlternateIndex(index, -1);
+        }
+    }
+
+    public void RemoveRange(int alternateIndex, int count)
+    {
+        var index = list.BinarySearch(alternateIndex);
+        if (index < 0)
+        {
+            index = ~index;
+        }
+
+        list.RemoveRange(index, count);
+        UpdateAlternateIndex(index, -count);
+    }
+
+    public bool TryGetAtAlternateIndex(int alternateIndex, [MaybeNullWhen(true)] out T value)
+    {
+        var index = list.BinarySearch(alternateIndex);
+        if (index < 0)
+        {
+            value = default!;
+            return false;
+        }
+        value = list[index].Value!;
+        return true;
+    }
+
+    public bool TrySetAtAlternateIndex(int alternateIndex, T value)
+    {
+        var index = list.BinarySearch(alternateIndex);
+        if (index < 0)
+        {
+            return false;
+        }
+        CollectionsMarshal.AsSpan(list)[index].Value = value;
+        return true;
+    }
+
+    public bool TryReplaceByValue(T searchValue, T replaceValue)
+    {
+        var index = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, searchValue));
+        if (index != -1)
+        {
+            CollectionsMarshal.AsSpan(list)[index].Value = replaceValue;
+            return true;
+        }
+        return false;
+    }
+
+    public void Clear()
+    {
+        list.Clear();
+    }
+
+    public void Clear(IEnumerable<(int OrderedAlternateIndex, T Value)> values)
+    {
+        list.Clear();
+        list.AddRange(values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)));
+    }
+
+    public IEnumerator<T> GetEnumerator()
+    {
+        foreach (var item in list)
+        {
+            yield return item.Value;
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public IEnumerable<(int AlternateIndex, T Value)> GetIndexedValues()
+    {
+        foreach (var item in list)
+        {
+            yield return (item.AlternateIndex, item.Value);
+        }
+    }
+
+    class InsertIterator(int startingIndex, IEnumerable<T> values) : IEnumerable<IndexedValue>, IEnumerator<IndexedValue>
+    {
+        IEnumerator<T> iter = values.GetEnumerator();
+        IndexedValue current;
+
+        public int ConsumedCount { get; private set; }
+
+        public IndexedValue Current => current;
+
+        object IEnumerator.Current => Current;
+
+        public void Dispose() => iter.Reset();
+
+        public bool MoveNext()
+        {
+            if (iter.MoveNext())
+            {
+                ConsumedCount++;
+                current = new(startingIndex++, iter.Current);
+                return true;
+            }
+            return false;
+        }
+
+        public void Reset() => iter.Reset();
+
+        public IEnumerator<IndexedValue> GetEnumerator() => this;
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    struct IndexedValue : IComparable<IndexedValue>
+    {
+        public int AlternateIndex; // mutable
+        public T Value; // mutable
+
+        public IndexedValue(int alternateIndex, T value)
+        {
+            this.AlternateIndex = alternateIndex;
+            this.Value = value;
+        }
+
+        public static implicit operator IndexedValue(int alternateIndex) // for query
+        {
+            return new IndexedValue(alternateIndex, default!);
+        }
+
+        public int CompareTo(IndexedValue other)
+        {
+            return AlternateIndex.CompareTo(other.AlternateIndex);
+        }
+
+        public override string ToString()
+        {
+            return (AlternateIndex, Value).ToString();
+        }
+    }
+}

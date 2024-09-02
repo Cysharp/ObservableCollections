@@ -97,4 +97,17 @@ public class AlternateIndexListTest
         list.TryGetAtAlternateIndex(4, out var baz).Should().BeTrue();
         baz.Should().Be("new-baz");
     }
+
+    [Fact]
+    public void TryReplaceByValue()
+    {
+        var list = new AlternateIndexList<string>();
+
+        list.Insert(0, "foo");
+        list.Insert(2, "bar");
+        list.Insert(4, "baz");
+
+        list.TryReplaceByValue("bar", "new-bar");
+        list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"), (4, "baz"));
+    }
 }

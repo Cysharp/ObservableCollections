@@ -100,11 +100,16 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var index = list.Count;
+                var index = list.Count; // starting index
+
+#if NET8_0_OR_GREATER
+                list.AddRange(items);
+#else
                 foreach (var item in items)
                 {
                     list.Add(item);
                 }
+#endif
 
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(items, index));
             }
@@ -204,11 +209,16 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
+#if NET8_0_OR_GREATER
+                list.InsertRange(index, items);
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(items, index));
+#else
                 using (var xs = new CloneCollection<T>(items))
                 {
                     list.InsertRange(index, xs.AsEnumerable());
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(xs.Span, index));
                 }
+#endif
             }
         }
 
@@ -303,7 +313,6 @@ namespace ObservableCollections
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Reverse(0, list.Count));
             }
         }
-
 
         public void Reverse(int index, int count)
         {
