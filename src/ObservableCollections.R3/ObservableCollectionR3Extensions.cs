@@ -50,7 +50,7 @@ public static class ObservableCollectionR3Extensions
         return new ObservableCollectionClear<T>(source, cancellationToken);
     }
 
-    public static Observable<(int Index, int Count))> ObserveReverse<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    public static Observable<(int Index, int Count)> ObserveReverse<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionReverse<T>(source, cancellationToken);
     }

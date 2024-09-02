@@ -93,7 +93,7 @@ public class AlternateIndexListTest
         list.TryGetAtAlternateIndex(2, out var bar).Should().BeTrue();
         bar.Should().Be("bar");
 
-        list.TrySetAtAlternateIndex(4, "new-baz").Should().BeTrue();
+        list.TrySetAtAlternateIndex(4, "new-baz", out var i).Should().BeTrue();
         list.TryGetAtAlternateIndex(4, out var baz).Should().BeTrue();
         baz.Should().Be("new-baz");
     }
@@ -107,7 +107,7 @@ public class AlternateIndexListTest
         list.Insert(2, "bar");
         list.Insert(4, "baz");
 
-        list.TryReplaceByValue("bar", "new-bar");
+        list.TryReplaceByValue("bar", "new-bar", out var i);
         list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"), (4, "baz"));
     }
 }
