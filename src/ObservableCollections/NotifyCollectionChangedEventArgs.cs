@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace ObservableCollections
@@ -16,11 +17,19 @@ namespace ObservableCollections
         public bool IsReverse => Comparer == ReverseSentinel.Instance;
         public bool IsNull => Comparer == null;
 
+        [MemberNotNullWhen(true, nameof(Comparer))]
+        public bool IsSort => !IsNull && !IsReverse;
+
         public SortOperation(int index, int count, IComparer<T>? comparer)
         {
             Index = index;
             Count = count;
             Comparer = comparer ?? NullComparerSentinel.Instance;
+        }
+
+        public (int Index, int Count, IComparer<T> Comparer) AsTuple()
+        {
+            return (Index, Count, Comparer!);
         }
 
         public static SortOperation<T> CreateReverse(int index, int count)

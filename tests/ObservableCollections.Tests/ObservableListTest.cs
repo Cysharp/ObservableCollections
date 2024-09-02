@@ -157,8 +157,8 @@ namespace ObservableCollections.Tests
         //    list.AddRange(new[] { 10, 21, 30, 44 });
 
         //    var filter1 = new TestFilter<int>((x, v) => x % 2 == 0);
-        //    view1.AttachFilter(filter1);
-            
+        //    view1.AttachFilter((x, v) => x % 2 == 0));
+
         //    filter1.CalledOnCollectionChanged[0].Action.Should().Be(NotifyCollectionChangedAction.Add);
         //    filter1.CalledOnCollectionChanged[0].NewValue.Should().Be(10);
         //    filter1.CalledOnCollectionChanged[1].Action.Should().Be(NotifyCollectionChangedAction.Add);
@@ -170,6 +170,6 @@ namespace ObservableCollections.Tests
 
         //    filter1.CalledWhenTrue.Count.Should().Be(3);
         //    filter1.CalledWhenFalse.Count.Should().Be(1);
-        //}   
+        //}
     }
 }

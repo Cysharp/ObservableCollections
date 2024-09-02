@@ -34,15 +34,30 @@ public static class ObservableCollectionR3Extensions
     {
         return new ObservableCollectionReplace<T>(source, cancellationToken);
     }
-    
+
     public static Observable<CollectionMoveEvent<T>> ObserveMove<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionMove<T>(source, cancellationToken);
     }
-    
-    public static Observable<Unit> ObserveReset<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+
+    public static Observable<SortOperation<T>> ObserveReset<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionReset<T>(source, cancellationToken);
+    }
+
+    public static Observable<Unit> ObserveClear<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    {
+        return new ObservableCollectionClear<T>(source, cancellationToken);
+    }
+
+    public static Observable<Unit> ObserveReverse<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    {
+        return new ObservableCollectionReverse<T>(source, cancellationToken);
+    }
+
+    public static Observable<(int Index, int Count, IComparer<T> Comparer)> ObserveSort<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    {
+        return new ObservableCollectionSort<T>(source, cancellationToken);
     }
 
     public static Observable<int> ObserveCountChanged<T>(this IObservableCollection<T> source, bool notifyCurrentCount = false, CancellationToken cancellationToken = default)
@@ -148,7 +163,7 @@ sealed class ObservableCollectionReplace<T>(IObservableCollection<T> collection,
     {
         return new _ObservableCollectionReplace(collection, observer, cancellationToken);
     }
-    
+
     sealed class _ObservableCollectionReplace(
         IObservableCollection<T> collection,
         Observer<CollectionReplaceEvent<T>> observer,
@@ -172,7 +187,7 @@ sealed class ObservableCollectionMove<T>(IObservableCollection<T> collection, Ca
     {
         return new _ObservableCollectionMove(collection, observer, cancellationToken);
     }
-    
+
     sealed class _ObservableCollectionMove(
         IObservableCollection<T> collection,
         Observer<CollectionMoveEvent<T>> observer,
@@ -188,16 +203,39 @@ sealed class ObservableCollectionMove<T>(IObservableCollection<T> collection, Ca
         }
     }
 }
-
 sealed class ObservableCollectionReset<T>(IObservableCollection<T> collection, CancellationToken cancellationToken)
+    : Observable<SortOperation<T>>
+{
+    protected override IDisposable SubscribeCore(Observer<SortOperation<T>> observer)
+    {
+        return new _ObservableCollectionReset(collection, observer, cancellationToken);
+    }
+
+    sealed class _ObservableCollectionReset(
+        IObservableCollection<T> collection,
+        Observer<SortOperation<T>> observer,
+        CancellationToken cancellationToken)
+        : ObservableCollectionObserverBase<T, SortOperation<T>>(collection, observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
+        {
+            if (eventArgs.Action == NotifyCollectionChangedAction.Reset)
+            {
+                observer.OnNext(eventArgs.SortOperation);
+            }
+        }
+    }
+}
+
+sealed class ObservableCollectionClear<T>(IObservableCollection<T> collection, CancellationToken cancellationToken)
     : Observable<Unit>
 {
     protected override IDisposable SubscribeCore(Observer<Unit> observer)
     {
-        return new _ObservableCollectionReset(collection, observer, cancellationToken);
+        return new _ObservableCollectionClear(collection, observer, cancellationToken);
     }
-    
-    sealed class _ObservableCollectionReset(
+
+    sealed class _ObservableCollectionClear(
         IObservableCollection<T> collection,
         Observer<Unit> observer,
         CancellationToken cancellationToken)
@@ -205,9 +243,55 @@ sealed class ObservableCollectionReset<T>(IObservableCollection<T> collection, C
     {
         protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            if (eventArgs.Action == NotifyCollectionChangedAction.Reset)
+            if (eventArgs.Action == NotifyCollectionChangedAction.Reset && eventArgs.SortOperation.IsNull)
             {
                 observer.OnNext(Unit.Default);
+            }
+        }
+    }
+}
+
+sealed class ObservableCollectionReverse<T>(IObservableCollection<T> collection, CancellationToken cancellationToken) : Observable<Unit>
+{
+    protected override IDisposable SubscribeCore(Observer<Unit> observer)
+    {
+        return new _ObservableCollectionReverse(collection, observer, cancellationToken);
+    }
+
+    sealed class _ObservableCollectionReverse(
+        IObservableCollection<T> collection,
+        Observer<Unit> observer,
+        CancellationToken cancellationToken)
+        : ObservableCollectionObserverBase<T, Unit>(collection, observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
+        {
+            if (eventArgs.Action == NotifyCollectionChangedAction.Reset && eventArgs.SortOperation.IsReverse)
+            {
+                observer.OnNext(Unit.Default);
+            }
+        }
+    }
+}
+
+sealed class ObservableCollectionSort<T>(IObservableCollection<T> collection, CancellationToken cancellationToken) : Observable<(int Index, int Count, IComparer<T> Comparer)>
+{
+    protected override IDisposable SubscribeCore(Observer<(int Index, int Count, IComparer<T> Comparer)> observer)
+    {
+        return new _ObservableCollectionSort(collection, observer, cancellationToken);
+    }
+
+    sealed class _ObservableCollectionSort(
+        IObservableCollection<T> collection,
+        Observer<(int Index, int Count, IComparer<T> Comparer)> observer,
+        CancellationToken cancellationToken)
+        : ObservableCollectionObserverBase<T, (int Index, int Count, IComparer<T> Comparer)>(collection, observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
+        {
+            if (eventArgs.Action == NotifyCollectionChangedAction.Reset && eventArgs.SortOperation.IsSort)
+            {
+                observer.OnNext(eventArgs.SortOperation.AsTuple());
             }
         }
     }
@@ -220,7 +304,7 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
     {
         return new _ObservableCollectionCountChanged(collection, notifyCurrentCount, observer, cancellationToken);
     }
-    
+
     sealed class _ObservableCollectionCountChanged : ObservableCollectionObserverBase<T, int>
     {
         int countPrev;
@@ -372,7 +456,7 @@ abstract class ObservableCollectionObserverBase<T, TEvent> : IDisposable
         this.handlerDelegate = Handler;
 
         collection.CollectionChanged += handlerDelegate;
-            
+
         if (cancellationToken.CanBeCanceled)
         {
             cancellationTokenRegistration = cancellationToken.UnsafeRegister(static state =>
