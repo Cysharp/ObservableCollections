@@ -58,7 +58,7 @@ Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
 Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
 Observable<Unit> IObservableCollection<T>.ObserveClear<T>()
 Observable<(int Index, int Count)> IObservableCollection<T>.ObserveReverse<T>()
-Observable<(int Index, int Count, IComparer<T> Comparer)> IObservableCollection<T>.ObserveSort<T>()
+Observable<(int Index, int Count, IComparer<T>? Comparer)> IObservableCollection<T>.ObserveSort<T>()
 Observable<int> IObservableCollection<T>.ObserveCountChanged<T>()
 ```
 
