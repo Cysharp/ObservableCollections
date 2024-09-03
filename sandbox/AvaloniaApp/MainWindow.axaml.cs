@@ -24,7 +24,7 @@ namespace AvaloniaApp
     public class ViewModel
     {
         private ObservableList<int> observableList { get; } = new ObservableList<int>();
-        public INotifyCollectionChangedSynchronizedView<int> ItemsView { get; }
+        public INotifyCollectionChangedSynchronizedViewList<int> ItemsView { get; }
         public ReactiveCommand<Unit> AddCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> ClearCommand { get; } = new ReactiveCommand<Unit>();
 

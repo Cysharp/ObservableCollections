@@ -3,43 +3,38 @@ using System.Collections.Specialized;
 using R3;
 using System.Linq;
 using ObservableCollections;
+using System.Collections;
+using System.Collections.Generic;
 
 
 
 
-var list = new ObservableList<int>();
-list.ObserveAdd()
-    .Subscribe(x =>
+// Queue <-> List Synchronization
+var queue = new ObservableQueue<int>();
+
+queue.Enqueue(1);
+queue.Enqueue(10);
+queue.Enqueue(100);
+queue.Enqueue(1000);
+queue.Enqueue(10000);
+
+using var view = queue.CreateView(x => x.ToString() + "$");
+
+using var viewList = view.ToViewList();
+
+Console.WriteLine(viewList[2]); // 100$
+
+
+view.ViewChanged += View_ViewChanged;
+
+void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, string> eventArgs)
+{
+    if (eventArgs.Action == NotifyCollectionChangedAction.Add)
     {
-        Console.WriteLine(x);
-    });
+     // eventArgs.OldItem.View.   
+    }
 
-list.Add(10);
-list.Add(20);
-list.AddRange(new[] { 10, 20, 30 });
-
-
-
-
-
-
-
-
-var models = new ObservableList<int>(Enumerable.Range(0, 10));
-
-var viewModels = models.CreateView(x => new ViewModel
-{
-    Id = x,
-    Value = "@" + x
-});
-
-viewModels.AttachFilter(new HogeFilter());
-
-models.Add(100);
-
-foreach (var x in viewModels)
-{
-    System.Console.WriteLine(x);
+    throw new NotImplementedException();
 }
 
 class ViewModel

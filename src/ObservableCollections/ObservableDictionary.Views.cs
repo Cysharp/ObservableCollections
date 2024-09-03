@@ -113,14 +113,14 @@ namespace ObservableCollections
                 return new FiltableSynchronizedViewList<KeyValuePair<TKey, TValue>, TView>(this);
             }
 
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged()
             {
-                return new NotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView>(this, null);
+                return new NotifyCollectionChangedSynchronizedViewList<KeyValuePair<TKey, TValue>, TView>(this, null);
             }
 
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
             {
-                return new NotifyCollectionChangedSynchronizedView<KeyValuePair<TKey, TValue>, TView>(this, collectionEventDispatcher);
+                return new NotifyCollectionChangedSynchronizedViewList<KeyValuePair<TKey, TValue>, TView>(this, collectionEventDispatcher);
             }
 
             public IEnumerator<TView> GetEnumerator()

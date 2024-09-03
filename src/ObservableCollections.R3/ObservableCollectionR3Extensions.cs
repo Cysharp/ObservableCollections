@@ -10,6 +10,22 @@ public readonly record struct CollectionAddEvent<T>(int Index, T Value);
 public readonly record struct CollectionRemoveEvent<T>(int Index, T Value);
 public readonly record struct CollectionReplaceEvent<T>(int Index, T OldValue, T NewValue);
 public readonly record struct CollectionMoveEvent<T>(int OldIndex, int NewIndex, T Value);
+public readonly record struct CollectionResetEvent<T>
+{
+    readonly SortOperation<T> sortOperation;
+
+    public bool IsClear => sortOperation.IsClear;
+    public bool IsSort => sortOperation.IsSort;
+    public bool IsReverse => sortOperation.IsReverse;
+    public int Index => sortOperation.Index;
+    public int Count => sortOperation.Count;
+    public IComparer<T>? Comparer => sortOperation.Comparer;
+
+    public CollectionResetEvent(SortOperation<T> sortOperation)
+    {
+        this.sortOperation = sortOperation;
+    }
+}
 
 public readonly record struct DictionaryAddEvent<TKey, TValue>(TKey Key, TValue Value);
 
@@ -40,7 +56,7 @@ public static class ObservableCollectionR3Extensions
         return new ObservableCollectionMove<T>(source, cancellationToken);
     }
 
-    public static Observable<SortOperation<T>> ObserveReset<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    public static Observable<CollectionResetEvent<T>> ObserveReset<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionReset<T>(source, cancellationToken);
     }
@@ -204,24 +220,24 @@ sealed class ObservableCollectionMove<T>(IObservableCollection<T> collection, Ca
     }
 }
 sealed class ObservableCollectionReset<T>(IObservableCollection<T> collection, CancellationToken cancellationToken)
-    : Observable<SortOperation<T>>
+    : Observable<CollectionResetEvent<T>>
 {
-    protected override IDisposable SubscribeCore(Observer<SortOperation<T>> observer)
+    protected override IDisposable SubscribeCore(Observer<CollectionResetEvent<T>> observer)
     {
         return new _ObservableCollectionReset(collection, observer, cancellationToken);
     }
 
     sealed class _ObservableCollectionReset(
         IObservableCollection<T> collection,
-        Observer<SortOperation<T>> observer,
+        Observer<CollectionResetEvent<T>> observer,
         CancellationToken cancellationToken)
-        : ObservableCollectionObserverBase<T, SortOperation<T>>(collection, observer, cancellationToken)
+        : ObservableCollectionObserverBase<T, CollectionResetEvent<T>>(collection, observer, cancellationToken)
     {
         protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
             if (eventArgs.Action == NotifyCollectionChangedAction.Reset)
             {
-                observer.OnNext(eventArgs.SortOperation);
+                observer.OnNext(new CollectionResetEvent<T>(eventArgs.SortOperation));
             }
         }
     }
@@ -243,7 +259,7 @@ sealed class ObservableCollectionClear<T>(IObservableCollection<T> collection, C
     {
         protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
-            if (eventArgs.Action == NotifyCollectionChangedAction.Reset && eventArgs.SortOperation.IsNull)
+            if (eventArgs.Action == NotifyCollectionChangedAction.Reset && eventArgs.SortOperation.IsClear)
             {
                 observer.OnNext(Unit.Default);
             }

@@ -39,15 +39,15 @@ namespace ObservableCollections
         void AttachFilter(ISynchronizedViewFilter<T> filter);
         void ResetFilter();
         ISynchronizedViewList<TView> ToViewList();
-        INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged();
-        INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
+        INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged();
+        INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
     }
 
     public interface ISynchronizedViewList<out TView> : IReadOnlyList<TView>, IDisposable
     {
     }
 
-    public interface INotifyCollectionChangedSynchronizedView<out TView> : IReadOnlyCollection<TView>, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable
+    public interface INotifyCollectionChangedSynchronizedViewList<out TView> : ISynchronizedViewList<TView>, INotifyCollectionChanged, INotifyPropertyChanged
     {
     }
 
@@ -64,20 +64,25 @@ namespace ObservableCollections
             return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform));
         }
 
-        public static INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
+        public static INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
         {
             return ToNotifyCollectionChanged(collection, null);
         }
 
-        public static INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
+        public static INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             return ToNotifyCollectionChanged(collection, static x => x, collectionEventDispatcher);
         }
 
-        public static INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
+        public static INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform)
+        {
+            return ToNotifyCollectionChanged(collection, transform, null!);
+        }
+
+        public static INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             // Optimized for non filtered
-            return new NonFilteredNotifyCollectionChangedSynchronizedView<T, TView>(collection.CreateView(transform), collectionEventDispatcher);
+            return new NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView>(collection.CreateView(transform), collectionEventDispatcher);
         }
     }
 }

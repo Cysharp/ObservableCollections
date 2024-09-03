@@ -7,7 +7,7 @@ public partial class Index : IDisposable
 {
     ObservableList<int> list;
     public ISynchronizedView<int, int> ItemsView { get; set; }
-    int adder = 99;
+    int count = 99;
 
     protected override void OnInitialized()
     {
@@ -20,19 +20,13 @@ public partial class Index : IDisposable
         };
     }
 
+    void OnClick()
+    {
+        list.Add(count++);
+    }
+
     public void Dispose()
     {
         ItemsView.Dispose();
-    }
-
-
-
-
-    void OnClick()
-    {
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            list.Add(adder++);
-        });
     }
 }

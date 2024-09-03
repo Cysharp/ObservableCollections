@@ -306,7 +306,7 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
                     }
                     break;
                 case NotifyCollectionChangedAction.Reset: // Clear or drastic changes
-                    if (e.SortOperation.IsNull)
+                    if (e.SortOperation.IsClear)
                     {
                         listView.Clear();
                         foreach (var item in parent.Unfiltered) // refresh
@@ -418,9 +418,9 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
     }
 }
 
-internal class NotifyCollectionChangedSynchronizedView<T, TView> :
+internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
     FiltableSynchronizedViewList<T, TView>,
-    INotifyCollectionChangedSynchronizedView<TView>,
+    INotifyCollectionChangedSynchronizedViewList<TView>,
     IList<TView>, IList
 {
     static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new("Count");
@@ -431,7 +431,7 @@ internal class NotifyCollectionChangedSynchronizedView<T, TView> :
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public NotifyCollectionChangedSynchronizedView(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher)
+    public NotifyCollectionChangedSynchronizedViewList(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher)
         : base(parent)
     {
         this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
@@ -520,7 +520,7 @@ internal class NotifyCollectionChangedSynchronizedView<T, TView> :
     static void RaiseChangedEvent(NotifyCollectionChangedEventArgs e)
     {
         var e2 = (CollectionEventDispatcherEventArgs)e;
-        var self = (NotifyCollectionChangedSynchronizedView<T, TView>)e2.Collection;
+        var self = (NotifyCollectionChangedSynchronizedViewList<T, TView>)e2.Collection;
 
         if (e2.IsInvokeCollectionChanged)
         {
@@ -663,9 +663,9 @@ internal class NotifyCollectionChangedSynchronizedView<T, TView> :
     }
 }
 
-internal class NonFilteredNotifyCollectionChangedSynchronizedView<T, TView> :
+internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> :
     NonFilteredSynchronizedViewList<T, TView>,
-    INotifyCollectionChangedSynchronizedView<TView>,
+    INotifyCollectionChangedSynchronizedViewList<TView>,
     IList<TView>, IList
 {
     static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new("Count");
@@ -676,7 +676,7 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedView<T, TView> :
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public NonFilteredNotifyCollectionChangedSynchronizedView(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher)
+    public NonFilteredNotifyCollectionChangedSynchronizedViewList(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher)
         : base(parent)
     {
         this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
@@ -765,7 +765,7 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedView<T, TView> :
     static void RaiseChangedEvent(NotifyCollectionChangedEventArgs e)
     {
         var e2 = (CollectionEventDispatcherEventArgs)e;
-        var self = (NonFilteredNotifyCollectionChangedSynchronizedView<T, TView>)e2.Collection;
+        var self = (NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView>)e2.Collection;
 
         if (e2.IsInvokeCollectionChanged)
         {

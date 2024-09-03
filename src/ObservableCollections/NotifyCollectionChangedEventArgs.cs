@@ -15,8 +15,8 @@ namespace ObservableCollections
         public readonly IComparer<T>? Comparer;
 
         public bool IsReverse => Comparer == ReverseSentinel.Instance;
-        public bool IsNull => Comparer == null;
-        public bool IsSort => !IsNull && !IsReverse;
+        public bool IsClear => Comparer == null;
+        public bool IsSort => !IsClear && !IsReverse;
 
         public SortOperation(int index, int count, IComparer<T>? comparer)
         {
@@ -68,7 +68,7 @@ namespace ObservableCollections
     ///     Action.Move
     ///         NewStartingIndex, OldStartingIndex
     ///     Action.Reset
-    ///         SortOperation(IsNull, IsReverse, Comparer)
+    ///         SortOperation(IsClear, IsReverse, Comparer)
     /// </summary>
     [StructLayout(LayoutKind.Auto)]
     public readonly ref struct NotifyCollectionChangedEventArgs<T>

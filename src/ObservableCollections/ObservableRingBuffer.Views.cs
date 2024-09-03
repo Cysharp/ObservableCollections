@@ -110,19 +110,19 @@ namespace ObservableCollections
                 return new FiltableSynchronizedViewList<T, TView>(this);
             }
 
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged()
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
+                    return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null);
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
+                    return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, collectionEventDispatcher);
                 }
             }
 
