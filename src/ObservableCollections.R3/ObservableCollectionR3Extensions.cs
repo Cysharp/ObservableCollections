@@ -71,7 +71,7 @@ public static class ObservableCollectionR3Extensions
         return new ObservableCollectionReverse<T>(source, cancellationToken);
     }
 
-    public static Observable<(int Index, int Count, IComparer<T> Comparer)> ObserveSort<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    public static Observable<(int Index, int Count, IComparer<T>? Comparer)> ObserveSort<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionSort<T>(source, cancellationToken);
     }
@@ -290,18 +290,18 @@ sealed class ObservableCollectionReverse<T>(IObservableCollection<T> collection,
     }
 }
 
-sealed class ObservableCollectionSort<T>(IObservableCollection<T> collection, CancellationToken cancellationToken) : Observable<(int Index, int Count, IComparer<T> Comparer)>
+sealed class ObservableCollectionSort<T>(IObservableCollection<T> collection, CancellationToken cancellationToken) : Observable<(int Index, int Count, IComparer<T>? Comparer)>
 {
-    protected override IDisposable SubscribeCore(Observer<(int Index, int Count, IComparer<T> Comparer)> observer)
+    protected override IDisposable SubscribeCore(Observer<(int Index, int Count, IComparer<T>? Comparer)> observer)
     {
         return new _ObservableCollectionSort(collection, observer, cancellationToken);
     }
 
     sealed class _ObservableCollectionSort(
         IObservableCollection<T> collection,
-        Observer<(int Index, int Count, IComparer<T> Comparer)> observer,
+        Observer<(int Index, int Count, IComparer<T>? Comparer)> observer,
         CancellationToken cancellationToken)
-        : ObservableCollectionObserverBase<T, (int Index, int Count, IComparer<T> Comparer)>(collection, observer, cancellationToken)
+        : ObservableCollectionObserverBase<T, (int Index, int Count, IComparer<T>? Comparer)>(collection, observer, cancellationToken)
     {
         protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
