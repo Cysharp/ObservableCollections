@@ -74,21 +74,28 @@ namespace WpfApp
     public class ViewModel
     {
         private ObservableList<int> observableList { get; } = new ObservableList<int>();
-        public INotifyCollectionChangedSynchronizedView<int> ItemsView { get; }
+        public INotifyCollectionChangedSynchronizedViewList<int> ItemsView { get; }
         public ReactiveCommand<Unit> AddCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> InsertAtRandomCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> RemoveAtRandomCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> ClearCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> ReverseCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> SortCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> AttachFilterCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> ResetFilterCommand { get; } = new ReactiveCommand<Unit>();
 
         public ViewModel()
         {
             observableList.Add(1);
             observableList.Add(2);
 
-            ItemsView = observableList.CreateView(x => x).ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
+            var view = observableList.CreateView(x => x);
+            ItemsView = view.ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
 
 
-            // ItemsView = observableList.CreateView(x => x).ToNotifyCollectionChanged();
+            // check for optimize list
+            // ItemsView = observableList.ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
 
-            // BindingOperations.EnableCollectionSynchronization(ItemsView, new object());
 
             AddCommand.Subscribe(_ =>
             {
@@ -98,11 +105,42 @@ namespace WpfApp
                 });
             });
 
-            // var iii = 10;
+            InsertAtRandomCommand.Subscribe(_ =>
+            {
+                var from = Random.Shared.Next(0, view.Count);
+                observableList.Insert(from, Random.Shared.Next());
+            });
+
+            RemoveAtRandomCommand.Subscribe(_ =>
+            {
+                var from = Random.Shared.Next(0, view.Count);
+                observableList.RemoveAt(from);
+            });
+
             ClearCommand.Subscribe(_ =>
             {
-                // observableList.Add(iii++);
                 observableList.Clear();
+            });
+
+
+            ReverseCommand.Subscribe(_ =>
+            {
+                observableList.Reverse();
+            });
+
+            SortCommand.Subscribe(_ =>
+            {
+                observableList.Sort();
+            });
+
+            AttachFilterCommand.Subscribe(_ =>
+            {
+                view.AttachFilter(x => x % 2 == 0);
+            });
+
+            ResetFilterCommand.Subscribe(_ =>
+            {
+                view.ResetFilter();
             });
         }
     }

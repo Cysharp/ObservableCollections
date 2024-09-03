@@ -100,11 +100,16 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                var index = list.Count;
+                var index = list.Count; // starting index
+
+#if NET8_0_OR_GREATER
+                list.AddRange(items);
+#else
                 foreach (var item in items)
                 {
                     list.Add(item);
                 }
+#endif
 
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(items, index));
             }
@@ -204,11 +209,16 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
+#if NET8_0_OR_GREATER
+                list.InsertRange(index, items);
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(items, index));
+#else
                 using (var xs = new CloneCollection<T>(items))
                 {
                     list.InsertRange(index, xs.AsEnumerable());
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(xs.Span, index));
                 }
+#endif
             }
         }
 
@@ -245,12 +255,9 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-#if NET5_0_OR_GREATER
+#pragma warning disable CS0436
                 var range = CollectionsMarshal.AsSpan(list).Slice(index, count);
-#else
-                var range = list.GetRange(index, count);
-#endif
-
+#pragma warning restore CS0436
                 // require copy before remove
                 using (var xs = new CloneCollection<T>(range))
                 {
@@ -268,6 +275,51 @@ namespace ObservableCollections
                 list.RemoveAt(oldIndex);
                 list.Insert(newIndex, removedItem);
                 CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Move(removedItem, newIndex, oldIndex));
+            }
+        }
+
+        public void Sort()
+        {
+            lock (SyncRoot)
+            {
+                list.Sort();
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Sort(0, list.Count, null));
+            }
+        }
+
+        public void Sort(IComparer<T> comparer)
+        {
+            lock (SyncRoot)
+            {
+                list.Sort(comparer);
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Sort(0, list.Count, comparer));
+            }
+        }
+
+        public void Sort(int index, int count, IComparer<T> comparer)
+        {
+            lock (SyncRoot)
+            {
+                list.Sort(index, count, comparer);
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Sort(index, count, comparer));
+            }
+        }
+
+        public void Reverse()
+        {
+            lock (SyncRoot)
+            {
+                list.Reverse();
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Reverse(0, list.Count));
+            }
+        }
+
+        public void Reverse(int index, int count)
+        {
+            lock (SyncRoot)
+            {
+                list.Reverse(index, count);
+                CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Reverse(index, count));
             }
         }
     }

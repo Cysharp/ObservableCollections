@@ -3,43 +3,38 @@ using System.Collections.Specialized;
 using R3;
 using System.Linq;
 using ObservableCollections;
+using System.Collections;
+using System.Collections.Generic;
 
 
 
 
-var list = new ObservableList<int>();
-list.ObserveAdd()
-    .Subscribe(x =>
+// Queue <-> List Synchronization
+var queue = new ObservableQueue<int>();
+
+queue.Enqueue(1);
+queue.Enqueue(10);
+queue.Enqueue(100);
+queue.Enqueue(1000);
+queue.Enqueue(10000);
+
+using var view = queue.CreateView(x => x.ToString() + "$");
+
+using var viewList = view.ToViewList();
+
+Console.WriteLine(viewList[2]); // 100$
+
+
+view.ViewChanged += View_ViewChanged;
+
+void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, string> eventArgs)
+{
+    if (eventArgs.Action == NotifyCollectionChangedAction.Add)
     {
-        Console.WriteLine(x);
-    });
+     // eventArgs.OldItem.View.   
+    }
 
-list.Add(10);
-list.Add(20);
-list.AddRange(new[] { 10, 20, 30 });
-
-
-
-
-
-
-
-
-var models = new ObservableList<int>(Enumerable.Range(0, 10));
-
-var viewModels = models.CreateView(x => new ViewModel
-{
-    Id = x,
-    Value = "@" + x
-});
-
-viewModels.AttachFilter(new HogeFilter(), true);
-
-models.Add(100);
-
-foreach (var (x, xs) in viewModels)
-{
-    System.Console.WriteLine(xs.Value);
+    throw new NotImplementedException();
 }
 
 class ViewModel
@@ -48,21 +43,11 @@ class ViewModel
     public string Value { get; set; } = default!;
 }
 
-class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
+class HogeFilter : ISynchronizedViewFilter<int>
 {
-    public bool IsMatch(int value, ViewModel view)
+    public bool IsMatch(int value)
     {
         return value % 2 == 0;
-    }
-
-    public void WhenTrue(int value, ViewModel view)
-    {
-        view.Value = $"@{value} (even)";
-    }
-
-    public void WhenFalse(int value, ViewModel view)
-    {
-        view.Value = $"@{value} (odd)";
     }
 
     public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<int, ViewModel> eventArgs)
@@ -70,16 +55,16 @@ class HogeFilter : ISynchronizedViewFilter<int, ViewModel>
         switch (eventArgs.Action)
         {
             case NotifyCollectionChangedAction.Add:
-                eventArgs.NewView.Value += " Add";
+                eventArgs.NewItem.View.Value += " Add";
                 break;
             case NotifyCollectionChangedAction.Remove:
-                eventArgs.OldView.Value += " Remove";
+                eventArgs.OldItem.View.Value += " Remove";
                 break;
             case NotifyCollectionChangedAction.Move:
-                eventArgs.NewView.Value += $" Move {eventArgs.OldViewIndex} {eventArgs.NewViewIndex}";
+                eventArgs.NewItem.View.Value += $" Move {eventArgs.OldStartingIndex} {eventArgs.NewStartingIndex}";
                 break;
             case NotifyCollectionChangedAction.Replace:
-                eventArgs.NewView.Value += $" Replace {eventArgs.NewViewIndex}";
+                eventArgs.NewItem.View.Value += $" Replace {eventArgs.NewStartingIndex}";
                 break;
             case NotifyCollectionChangedAction.Reset:
                 break;

@@ -9,14 +9,14 @@ namespace ObservableCollections
 {
     public sealed partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
     {
-        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false)
+        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {
-            return new View<TView>(this, transform, reverse);
+            return new View<TView>(this, transform);
         }
 
         internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
-            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            public ISynchronizedViewFilter<T> Filter
             {
                 get
                 {
@@ -26,26 +26,26 @@ namespace ObservableCollections
 
             readonly ObservableList<T> source;
             readonly Func<T, TView> selector;
-            readonly bool reverse;
-            internal readonly List<(T, TView)> list; // be careful to use
+            internal readonly List<(T, TView)> list; // unsafe, be careful to use
+            int filteredCount;
 
-            ISynchronizedViewFilter<T, TView> filter;
+            ISynchronizedViewFilter<T> filter;
 
-            public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
+            public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
 
-            public View(ObservableList<T> source, Func<T, TView> selector, bool reverse)
+            public View(ObservableList<T> source, Func<T, TView> selector)
             {
                 this.source = source;
                 this.selector = selector;
-                this.reverse = reverse;
-                this.filter = SynchronizedViewFilter<T, TView>.Null;
+                this.filter = SynchronizedViewFilter<T>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
                     this.list = source.list.Select(x => (x, selector(x))).ToList();
+                    this.filteredCount = list.Count;
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
             }
@@ -56,90 +56,117 @@ namespace ObservableCollections
                 {
                     lock (SyncRoot)
                     {
+                        return filteredCount;
+                    }
+                }
+            }
+
+            public int UnfilteredCount
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
                         return list.Count;
                     }
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
+            public void AttachFilter(ISynchronizedViewFilter<T> filter)
             {
+                if (filter.IsNullFilter())
+                {
+                    ResetFilter();
+                    return;
+                }
+
                 lock (SyncRoot)
                 {
                     this.filter = filter;
+                    this.filteredCount = 0;
                     for (var i = 0; i < list.Count; i++)
                     {
-                        var (value, view) = list[i];
-                        if (invokeAddEventForCurrentElements)
+                        if (filter.IsMatch(list[i].Item1))
                         {
-                            filter.InvokeOnAdd(value, view, i);
-                        }
-                        else
-                        {
-                            filter.InvokeOnAttach(value, view);
+                            filteredCount++;
                         }
                     }
+
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
-            public void ResetFilter(Action<T, TView>? resetAction)
+            public void ResetFilter()
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.Null;
-                    if (resetAction != null)
+                    this.filter = SynchronizedViewFilter<T>.Null;
+                    this.filteredCount = list.Count;
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
+                }
+            }
+
+            public ISynchronizedViewList<TView> ToViewList()
+            {
+                return new FiltableSynchronizedViewList<T, TView>(this);
+            }
+
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged()
+            {
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null);
+            }
+
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, collectionEventDispatcher);
+            }
+
+            public IEnumerator<TView> GetEnumerator()
+            {
+                lock (SyncRoot)
+                {
+                    foreach (var item in list)
                     {
-                        foreach (var (item, view) in list)
+                        if (filter.IsMatch(item.Item1))
                         {
-                            resetAction(item, view);
-                        }
-                    }
-                }
-            }
-
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
-            {
-                lock (SyncRoot)
-                {
-                    return new ListNotifyCollectionChangedSynchronizedView<T, TView>(this, null);
-                }
-            }
-
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
-            {
-                lock (SyncRoot)
-                {
-                    return new ListNotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
-                }
-            }
-
-            public IEnumerator<(T, TView)> GetEnumerator()
-            {
-                lock (SyncRoot)
-                {
-                    if (!reverse)
-                    {
-                        foreach (var item in list)
-                        {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in list.AsEnumerable().Reverse())
-                        {
-                            if (filter.IsMatch(item.Item1, item.Item2))
-                            {
-                                yield return item;
-                            }
+                            yield return item.Item2;
                         }
                     }
                 }
             }
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            public IEnumerable<(T Value, TView View)> Filtered
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        foreach (var item in list)
+                        {
+                            if (filter.IsMatch(item.Item1))
+                            {
+                                yield return item;
+                            }
+                        }
+                    }
+                }
+            }
+
+            public IEnumerable<(T Value, TView View)> Unfiltered
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        foreach (var item in list)
+                        {
+                            yield return item;
+                        }
+                    }
+                }
+            }
 
             public void Dispose()
             {
@@ -153,48 +180,41 @@ namespace ObservableCollections
                     switch (e.Action)
                     {
                         case NotifyCollectionChangedAction.Add:
-                            // Add
-                            if (e.NewStartingIndex == list.Count)
+                            // Add or Insert
+                            if (e.IsSingleItem)
                             {
-                                if (e.IsSingleItem)
-                                {
-                                    var v = (e.NewItem, selector(e.NewItem));
-                                    list.Add(v);
-                                    filter.InvokeOnAdd(v, e.NewStartingIndex);
-                                }
-                                else
-                                {
-                                    var i = e.NewStartingIndex;
-                                    foreach (var item in e.NewItems)
-                                    {
-                                        var v = (item, selector(item));
-                                        list.Add(v);
-                                        filter.InvokeOnAdd(v, i++);
-                                    }
-                                }
+                                var v = (e.NewItem, selector(e.NewItem));
+                                list.Insert(e.NewStartingIndex, v);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
                             }
-                            // Insert
                             else
                             {
-                                if (e.IsSingleItem)
+                                var items = e.NewItems;
+                                var length = items.Length;
+
+                                using var valueViews = new FixedArray<(T, TView)>(length);
+                                using var views = new FixedArray<TView>(length);
+                                using var matches = new FixedBoolArray(length < FixedBoolArray.StackallocSize ? stackalloc bool[length] : default, length);
+                                var isMatchAll = true;
+                                for (int i = 0; i < items.Length; i++)
                                 {
-                                    var v = (e.NewItem, selector(e.NewItem));
-                                    list.Insert(e.NewStartingIndex, v);
-                                    filter.InvokeOnAdd(v, e.NewStartingIndex);
-                                }
-                                else
-                                {
-                                    // inefficient copy, need refactoring
-                                    var newArray = new (T, TView)[e.NewItems.Length];
-                                    var span = e.NewItems;
-                                    for (var i = 0; i < span.Length; i++)
+                                    var item = items[i];
+                                    var view = selector(item);
+                                    views.Span[i] = view;
+                                    valueViews.Span[i] = (item, view);
+                                    var isMatch = matches.Span[i] = Filter.IsMatch(item);
+                                    if (isMatch)
                                     {
-                                        var v = (span[i], selector(span[i]));
-                                        newArray[i] = v;
-                                        filter.InvokeOnAdd(v, e.NewStartingIndex + i);
+                                        filteredCount++; // increment in this process
                                     }
-                                    list.InsertRange(e.NewStartingIndex, newArray);
+                                    else
+                                    {
+                                        isMatchAll = false;
+                                    }
                                 }
+
+                                list.InsertRange(e.NewStartingIndex, valueViews.Span);
+                                this.InvokeOnAddRange(ViewChanged, e.NewItems, views.Span, isMatchAll, matches.Span, e.NewStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
@@ -202,18 +222,36 @@ namespace ObservableCollections
                             {
                                 var v = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
-                                filter.InvokeOnRemove(v, e.OldStartingIndex);
+                                this.InvokeOnRemove(ref filteredCount, ViewChanged, v, e.OldStartingIndex);
                             }
                             else
                             {
-                                var len = e.OldStartingIndex + e.OldItems.Length;
-                                for (var i = e.OldStartingIndex; i < len; i++)
+                                var length = e.OldItems.Length;
+                                using var values = new FixedArray<T>(length);
+                                using var views = new FixedArray<TView>(length);
+                                using var matches = new FixedBoolArray(length < FixedBoolArray.StackallocSize ? stackalloc bool[length] : default, length);
+                                var isMatchAll = true;
+                                var to = e.OldStartingIndex + length;
+                                var j = 0;
+                                for (int i = e.OldStartingIndex; i < to; i++)
                                 {
-                                    var v = list[i];
-                                    filter.InvokeOnRemove(v, e.OldStartingIndex + i);
+                                    var item = list[i];
+                                    values.Span[j] = item.Item1;
+                                    views.Span[j] = item.Item2;
+                                    var isMatch = matches.Span[j] = Filter.IsMatch(item.Item1);
+                                    if (isMatch)
+                                    {
+                                        filteredCount--; // decrement in this process
+                                    }
+                                    else
+                                    {
+                                        isMatchAll = false;
+                                    }
+                                    j++;
                                 }
 
                                 list.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
+                                this.InvokeOnRemoveRange(ViewChanged, values.Span, views.Span, isMatchAll, matches.Span, e.OldStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Replace:
@@ -222,7 +260,7 @@ namespace ObservableCollections
                                 var v = (e.NewItem, selector(e.NewItem));
                                 var ov = (e.OldItem, list[e.OldStartingIndex].Item2);
                                 list[e.NewStartingIndex] = v;
-                                filter.InvokeOnReplace(v, ov, e.NewStartingIndex);
+                                this.InvokeOnReplace(ref filteredCount, ViewChanged, v, ov, e.NewStartingIndex);
                                 break;
                             }
                         case NotifyCollectionChangedAction.Move:
@@ -231,19 +269,49 @@ namespace ObservableCollections
                                 list.RemoveAt(e.OldStartingIndex);
                                 list.Insert(e.NewStartingIndex, removeItem);
 
-                                filter.InvokeOnMove(removeItem, e.NewStartingIndex, e.OldStartingIndex);
+                                this.InvokeOnMove(ref filteredCount, ViewChanged, removeItem, e.NewStartingIndex, e.OldStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
-                            list.Clear();
-                            filter.InvokeOnReset();
+                            if (e.SortOperation.IsClear)
+                            {
+                                // None(Clear)
+                                list.Clear();
+                                this.InvokeOnReset(ref filteredCount, ViewChanged);
+                            }
+                            else if (e.SortOperation.IsReverse)
+                            {
+                                // Reverse
+                                list.Reverse(e.SortOperation.Index, e.SortOperation.Count);
+                                this.InvokeOnReverseOrSort(ViewChanged, e.SortOperation);
+                            }
+                            else
+                            {
+                                // Sort
+                                list.Sort(e.SortOperation.Index, e.SortOperation.Count, new IgnoreViewComparer(e.SortOperation.Comparer ?? Comparer<T>.Default));
+                                this.InvokeOnReverseOrSort(ViewChanged, e.SortOperation);
+                            }
                             break;
                         default:
                             break;
                     }
 
-                    RoutingCollectionChanged?.Invoke(e);
                     CollectionStateChanged?.Invoke(e.Action);
+                }
+            }
+
+            sealed class IgnoreViewComparer : IComparer<(T, TView)>
+            {
+                readonly IComparer<T> comparer;
+
+                public IgnoreViewComparer(IComparer<T> comparer)
+                {
+                    this.comparer = comparer;
+                }
+
+                public int Compare((T, TView) x, (T, TView) y)
+                {
+                    return comparer.Compare(x.Item1, y.Item1);
                 }
             }
         }

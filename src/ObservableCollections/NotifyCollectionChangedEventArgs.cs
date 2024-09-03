@@ -1,9 +1,61 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
+    // default(SortOperation<T>) == IsNull
+    public readonly struct SortOperation<T>
+    {
+        public readonly int Index;
+        public readonly int Count;
+        public readonly IComparer<T>? Comparer;
+
+        public bool IsReverse => Comparer == ReverseSentinel.Instance;
+        public bool IsClear => Comparer == null;
+        public bool IsSort => !IsClear && !IsReverse;
+
+        public SortOperation(int index, int count, IComparer<T>? comparer)
+        {
+            Index = index;
+            Count = count;
+            Comparer = comparer ?? NullComparerSentinel.Instance;
+        }
+
+        public (int Index, int Count, IComparer<T> Comparer) AsTuple()
+        {
+            return (Index, Count, Comparer!);
+        }
+
+        public static SortOperation<T> CreateReverse(int index, int count)
+        {
+            return new SortOperation<T>(index, count, ReverseSentinel.Instance);
+        }
+
+        sealed class ReverseSentinel : IComparer<T>
+        {
+            public static IComparer<T> Instance = new ReverseSentinel();
+
+            public int Compare(T? x, T? y)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        sealed class NullComparerSentinel : IComparer<T>
+        {
+            public static IComparer<T> Instance = new NullComparerSentinel();
+
+            public int Compare(T? x, T? y)
+            {
+                return Comparer<T>.Default.Compare(x!, y!);
+            }
+        }
+    }
+
     /// <summary>
     /// Contract:
     ///     IsSingleItem ? (NewItem, OldItem) : (NewItems, OldItems)
@@ -16,7 +68,7 @@ namespace ObservableCollections
     ///     Action.Move
     ///         NewStartingIndex, OldStartingIndex
     ///     Action.Reset
-    ///         -
+    ///         SortOperation(IsClear, IsReverse, Comparer)
     /// </summary>
     [StructLayout(LayoutKind.Auto)]
     public readonly ref struct NotifyCollectionChangedEventArgs<T>
@@ -29,8 +81,9 @@ namespace ObservableCollections
         public readonly ReadOnlySpan<T> OldItems;
         public readonly int NewStartingIndex;
         public readonly int OldStartingIndex;
+        public readonly SortOperation<T> SortOperation;
 
-        public NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction action, bool isSingleItem, T newItem = default!, T oldItem = default!, ReadOnlySpan<T> newItems = default, ReadOnlySpan<T> oldItems = default, int newStartingIndex = -1, int oldStartingIndex = -1)
+        public NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction action, bool isSingleItem, T newItem = default!, T oldItem = default!, ReadOnlySpan<T> newItems = default, ReadOnlySpan<T> oldItems = default, int newStartingIndex = -1, int oldStartingIndex = -1, SortOperation<T> sortOperation = default)
         {
             Action = action;
             IsSingleItem = isSingleItem;
@@ -40,6 +93,7 @@ namespace ObservableCollections
             OldItems = oldItems;
             NewStartingIndex = newStartingIndex;
             OldStartingIndex = oldStartingIndex;
+            SortOperation = sortOperation;
         }
 
         public static NotifyCollectionChangedEventArgs<T> Add(T newItem, int newStartingIndex)
@@ -80,6 +134,16 @@ namespace ObservableCollections
         public static NotifyCollectionChangedEventArgs<T> Reset()
         {
             return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Reset, true);
+        }
+
+        public static NotifyCollectionChangedEventArgs<T> Reverse(int index, int count)
+        {
+            return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Reset, true, sortOperation: SortOperation<T>.CreateReverse(index, count));
+        }
+
+        public static NotifyCollectionChangedEventArgs<T> Sort(int index, int count, IComparer<T>? comparer)
+        {
+            return new NotifyCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Reset, true, sortOperation: new SortOperation<T>(index, count, comparer));
         }
     }
 }

@@ -4,19 +4,20 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ObservableCollections
 {
     public sealed partial class ObservableHashSet<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
-        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool _ = false)
+        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {
             return new View<TView>(this, transform);
         }
 
         sealed class View<TView> : ISynchronizedView<T, TView>
         {
-            public ISynchronizedViewFilter<T, TView> CurrentFilter
+            public ISynchronizedViewFilter<T> Filter
             {
                 get { lock (SyncRoot) return filter; }
             }
@@ -24,10 +25,11 @@ namespace ObservableCollections
             readonly ObservableHashSet<T> source;
             readonly Func<T, TView> selector;
             readonly Dictionary<T, (T, TView)> dict;
+            int filteredCount;
 
-            ISynchronizedViewFilter<T, TView> filter;
+            ISynchronizedViewFilter<T> filter;
 
-            public event NotifyCollectionChangedEventHandler<T>? RoutingCollectionChanged;
+            public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -36,11 +38,12 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<T, TView>.Null;
+                this.filter = SynchronizedViewFilter<T>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
                     this.dict = source.set.ToDictionary(x => x, x => (x, selector(x)));
+                    this.filteredCount = dict.Count;
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
             }
@@ -51,76 +54,116 @@ namespace ObservableCollections
                 {
                     lock (SyncRoot)
                     {
+                        return filteredCount;
+                    }
+                }
+            }
+
+            public int UnfilteredCount
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
                         return dict.Count;
                     }
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter, bool invokeAddEventForCurrentElements = false)
+            public void AttachFilter(ISynchronizedViewFilter<T> filter)
             {
+                if (filter.IsNullFilter())
+                {
+                    ResetFilter();
+                    return;
+                }
+
                 lock (SyncRoot)
                 {
                     this.filter = filter;
+                    this.filteredCount = 0;
                     foreach (var (_, (value, view)) in dict)
                     {
-                        if (invokeAddEventForCurrentElements)
+                        if (filter.IsMatch(value))
                         {
-                            filter.InvokeOnAdd((value, view), -1);
-                        }
-                        else
-                        {
-                            filter.InvokeOnAttach(value, view);
+                            filteredCount++;
                         }
                     }
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
-            public void ResetFilter(Action<T, TView>? resetAction)
+            public void ResetFilter()
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T, TView>.Null;
-                    if (resetAction != null)
-                    {
-                        foreach (var (_, (value, view)) in dict)
-                        {
-                            resetAction(value, view);
-                        }
-                    }
+                    this.filter = SynchronizedViewFilter<T>.Null;
+                    this.filteredCount = dict.Count;
+                    ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged()
+            public ISynchronizedViewList<TView> ToViewList()
             {
-                lock (SyncRoot)
-                {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, null);
-                }
+                return new FiltableSynchronizedViewList<T, TView>(this);
             }
 
-            public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged()
             {
-                lock (SyncRoot)
-                {
-                    return new NotifyCollectionChangedSynchronizedView<T, TView>(this, collectionEventDispatcher);
-                }
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null);
             }
 
-            public IEnumerator<(T, TView)> GetEnumerator()
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, collectionEventDispatcher);
+            }
+
+            public IEnumerator<TView> GetEnumerator()
             {
                 lock (SyncRoot)
                 {
                     foreach (var item in dict)
                     {
-                        if (filter.IsMatch(item.Value.Item1, item.Value.Item2))
+                        if (filter.IsMatch(item.Value.Item1))
                         {
-                            yield return item.Value;
+                            yield return item.Value.Item2;
                         }
                     }
                 }
             }
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            public IEnumerable<(T Value, TView View)> Filtered
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        foreach (var item in dict)
+                        {
+                            if (filter.IsMatch(item.Value.Item1))
+                            {
+                                yield return item.Value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            public IEnumerable<(T Value, TView View)> Unfiltered
+            {
+                get
+                {
+                    lock (SyncRoot)
+                    {
+                        foreach (var item in dict)
+                        {
+                            yield return item.Value;
+                        }
+                    }
+                }
+            }
 
             public void Dispose()
             {
@@ -138,7 +181,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 dict.Add(e.NewItem, v);
-                                filter.InvokeOnAdd(v, -1);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, -1);
                             }
                             else
                             {
@@ -147,7 +190,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     dict.Add(item, v);
-                                    filter.InvokeOnAdd(v, i++);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
                                 }
                             }
                             break;
@@ -156,7 +199,7 @@ namespace ObservableCollections
                             {
                                 if (dict.Remove(e.OldItem, out var value))
                                 {
-                                    filter.InvokeOnRemove(value, -1);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, value, -1);
                                 }
                             }
                             else
@@ -165,14 +208,14 @@ namespace ObservableCollections
                                 {
                                     if (dict.Remove(item, out var value))
                                     {
-                                        filter.InvokeOnRemove(value, -1);
+                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, value, -1);
                                     }
                                 }
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:
                             dict.Clear();
-                            filter.InvokeOnReset();
+                            this.InvokeOnReset(ref filteredCount, ViewChanged);
                             break;
                         case NotifyCollectionChangedAction.Replace:
                         case NotifyCollectionChangedAction.Move:
@@ -180,7 +223,6 @@ namespace ObservableCollections
                             break;
                     }
 
-                    RoutingCollectionChanged?.Invoke(e);
                     CollectionStateChanged?.Invoke(e.Action);
                 }
             }

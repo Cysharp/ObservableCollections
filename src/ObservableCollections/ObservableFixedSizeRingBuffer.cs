@@ -320,9 +320,9 @@ namespace ObservableCollections
             return GetEnumerator();
         }
 
-        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform, bool reverse = false)
+        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {
-            return new ObservableRingBuffer<T>.View<TView>(this, transform, reverse);
+            return new ObservableRingBuffer<T>.View<TView>(this, transform);
         }
     }
 }
