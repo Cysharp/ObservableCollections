@@ -14,34 +14,6 @@ namespace ObservableCollections
             return new View<TView>(this, transform);
         }
 
-        public ISynchronizedViewList<T> ToViewList()
-        {
-            // NOTE: for more optimize, no need to create View.
-            return ToViewList(static x => x);
-        }
-
-        public ISynchronizedViewList<TView> ToViewList<TView>(Func<T, TView> transform)
-        {
-            // Optimized for non filtered
-            return new NonFilteredSynchronizedViewList<T, TView>(CreateView(transform));
-        }
-
-        public INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged()
-        {
-            return ToNotifyCollectionChanged(null);
-        }
-
-        public INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
-        {
-            return ToNotifyCollectionChanged(static x => x, collectionEventDispatcher);
-        }
-
-        public INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged<TView>(Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
-        {
-            // Optimized for non filtered
-            return new NonFilteredNotifyCollectionChangedSynchronizedView<T, TView>(CreateView(transform), collectionEventDispatcher);
-        }
-
         internal sealed class View<TView> : ISynchronizedView<T, TView>
         {
             public ISynchronizedViewFilter<T> Filter

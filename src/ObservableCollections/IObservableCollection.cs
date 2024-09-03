@@ -50,4 +50,34 @@ namespace ObservableCollections
     public interface INotifyCollectionChangedSynchronizedView<out TView> : IReadOnlyCollection<TView>, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable
     {
     }
+
+    public static class ObservableCollectionExtensions
+    {
+        public static ISynchronizedViewList<T> ToViewList<T>(this IObservableCollection<T> collection)
+        {
+            return ToViewList(collection, static x => x);
+        }
+
+        public static ISynchronizedViewList<TView> ToViewList<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform)
+        {
+            // Optimized for non filtered
+            return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform));
+        }
+
+        public static INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
+        {
+            return ToNotifyCollectionChanged(collection, null);
+        }
+
+        public static INotifyCollectionChangedSynchronizedView<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            return ToNotifyCollectionChanged(collection, static x => x, collectionEventDispatcher);
+        }
+
+        public static INotifyCollectionChangedSynchronizedView<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            // Optimized for non filtered
+            return new NonFilteredNotifyCollectionChangedSynchronizedView<T, TView>(collection.CreateView(transform), collectionEventDispatcher);
+        }
+    }
 }
