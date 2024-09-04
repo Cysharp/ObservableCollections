@@ -106,18 +106,18 @@ namespace ObservableCollections
                     this.filteredCount = dict.Count;
                     ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<KeyValuePair<TKey, TValue>, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
-			}
+            }
 
-			public void Refresh()
-			{
-				if (filter.IsNullFilter())
-				{
-					return;
-				}
-				AttachFilter(filter);
-			}
+            public void Refresh()
+            {
+                if (filter.IsNullFilter())
+                {
+                    return;
+                }
+                AttachFilter(filter);
+            }
 
-			public ISynchronizedViewList<TView> ToViewList()
+            public ISynchronizedViewList<TView> ToViewList()
             {
                 return new FiltableSynchronizedViewList<KeyValuePair<TKey, TValue>, TView>(this);
             }

@@ -104,18 +104,18 @@ namespace ObservableCollections
                     this.filteredCount = list.Count;
                     ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
-			}
+            }
 
-			public void Refresh()
-			{
-				if (filter.IsNullFilter())
-				{
-					return;
-				}
+            public void Refresh()
+            {
+                if (filter.IsNullFilter())
+                {
+                    return;
+                }
                 AttachFilter(filter);
-			}
+            }
 
-			public ISynchronizedViewList<TView> ToViewList()
+            public ISynchronizedViewList<TView> ToViewList()
             {
                 return new FiltableSynchronizedViewList<T, TView>(this);
             }
