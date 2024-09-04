@@ -21,12 +21,18 @@ public sealed partial class ObservableList<T> : IList<T>, IReadOnlyObservableLis
     //    return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform));
     //}
 
-    public INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged()
+    /// <summary>
+    /// Create faster, compact INotifyCollectionChanged view, however it does not support ***Range.
+    /// </summary>
+    public INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChangedSlim()
     {
         return new ObservableListSynchronizedViewList<T>(this, null);
     }
 
-    public INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+    /// <summary>
+    /// Create faster, compact INotifyCollectionChanged view, however it does not support ***Range.
+    /// </summary>
+    public INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChangedSlim(ICollectionEventDispatcher? collectionEventDispatcher)
     {
         return new ObservableListSynchronizedViewList<T>(this, collectionEventDispatcher);
     }

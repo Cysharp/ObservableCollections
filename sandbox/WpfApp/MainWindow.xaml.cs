@@ -2,6 +2,7 @@
 using R3;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
@@ -76,8 +77,10 @@ namespace WpfApp
         private ObservableList<int> observableList { get; } = new ObservableList<int>();
         public INotifyCollectionChangedSynchronizedViewList<int> ItemsView { get; }
         public ReactiveCommand<Unit> AddCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> AddRangeCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> InsertAtRandomCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> RemoveAtRandomCommand { get; } = new ReactiveCommand<Unit>();
+        public ReactiveCommand<Unit> RemoveRangeCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> ClearCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> ReverseCommand { get; } = new ReactiveCommand<Unit>();
         public ReactiveCommand<Unit> SortCommand { get; } = new ReactiveCommand<Unit>();
@@ -90,8 +93,8 @@ namespace WpfApp
             observableList.Add(2);
 
             var view = observableList.CreateView(x => x);
-            ItemsView = view.ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
-
+            //ItemsView = view.ToNotifyCollectionChanged();
+            ItemsView = observableList.ToNotifyCollectionChanged();
 
             // check for optimize list
             // ItemsView = observableList.ToNotifyCollectionChanged(SynchronizationContextCollectionEventDispatcher.Current);
@@ -99,10 +102,16 @@ namespace WpfApp
 
             AddCommand.Subscribe(_ =>
             {
-                ThreadPool.QueueUserWorkItem(_ =>
+                // ThreadPool.QueueUserWorkItem(_ =>
                 {
                     observableList.Add(Random.Shared.Next());
-                });
+                }
+            });
+
+            AddRangeCommand.Subscribe(_ =>
+            {
+                var xs = Enumerable.Range(1, 5).Select(_ => Random.Shared.Next()).ToArray();
+                observableList.AddRange(xs);
             });
 
             InsertAtRandomCommand.Subscribe(_ =>
@@ -115,6 +124,11 @@ namespace WpfApp
             {
                 var from = Random.Shared.Next(0, view.Count);
                 observableList.RemoveAt(from);
+            });
+
+            RemoveRangeCommand.Subscribe(_ =>
+            {
+                observableList.RemoveRange(2, 5);
             });
 
             ClearCommand.Subscribe(_ =>

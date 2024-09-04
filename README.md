@@ -355,6 +355,10 @@ public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDi
 }
 ```
 
+`ToNotifyCollectionChanged()` can also be called without going through a View. In this case, it's guaranteed that no filters will be applied, making it faster. If you want to apply filters, please generate a View before calling it. Additionally, `ObservableList` has a variation called `ToNotifyCollectionChangedSlim()`. This option doesn't generate a list for the View and shares the actual data, making it the fastest and most memory-efficient option. However, range operations such as `AddRange`, `InsertRange` and `RemoveRange` are not supported by WPF (or Avalonia), so they will throw runtime exceptions.
+
+Views and ToNotifyCollectionChanged are internally connected by events, so they need to be `Dispose` to release those connections.
+
 Unity
 ---
 In Unity projects, you can installing `ObservableCollections` with [NugetForUnity](https://github.com/GlitchEnzo/NuGetForUnity). If R3 integration is required, similarly install `ObservableCollections.R3` via NuGetForUnity.
