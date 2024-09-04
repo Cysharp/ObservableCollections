@@ -38,6 +38,7 @@ namespace ObservableCollections
 
         void AttachFilter(ISynchronizedViewFilter<T> filter);
         void ResetFilter();
+        void Refresh();
         ISynchronizedViewList<TView> ToViewList();
         INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged();
         INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
