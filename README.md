@@ -380,21 +380,25 @@ public class SampleScript : MonoBehaviour
         {
             var item = GameObject.Instantiate(prefab);
             item.GetComponentInChildren<Text>().text = x.ToString();
+
+            // add to root
+            item.transform.SetParent(root.transform);
+
             return item.gameObject;
         });
         view.ViewChanged += View_ViewChanged;
     }
 
     void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, string> eventArgs)
-    { 
-        if (eventArgs.Action == NotifyCollectionChangedAction.Add)
-        {
-            eventArgs.NewItem.View.transform.SetParent(root.transform);
-        }
-        else if (NotifyCollectionChangedAction.Remove)
+    {
+        // hook remove event
+        if (NotifyCollectionChangedAction.Remove)
         {
             GameObject.Destroy(eventArgs.OldItem.View);
         }
+
+        // hook for Filter attached, clear, etc...
+        // if (NotifyCollectionChangedAction.Reset) { }
     }
 
     void OnDestroy()
