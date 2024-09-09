@@ -64,7 +64,7 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
                 case NotifyCollectionChangedAction.Add: // Add or Insert
                     if (e.IsSingleItem)
                     {
-                        if (e.OldStartingIndex == -1)
+                        if (e.NewStartingIndex == -1)
                         {
                             // add operation
                             var index = listView.Count;
