@@ -259,7 +259,14 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
                 case NotifyCollectionChangedAction.Add: // Add or Insert
                     if (e.IsSingleItem)
                     {
-                        listView.Insert(e.NewStartingIndex, e.NewItem.View);
+                        if (e.NewStartingIndex == -1)
+                        {
+                            listView.Add(e.NewItem.View);
+                        }
+                        else
+                        {
+                            listView.Insert(e.NewStartingIndex, e.NewItem.View);
+                        }
                     }
                     else
                     {
