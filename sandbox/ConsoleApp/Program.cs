@@ -7,35 +7,16 @@ using System.Collections;
 using System.Collections.Generic;
 
 
+var dict = new ObservableDictionary<int, string>();
+var view = dict.CreateView(x => x).ToNotifyCollectionChanged();
+dict.Add(key: 1, value: "foo");
+dict.Add(key: 2, value: "bar");
 
-
-// Queue <-> List Synchronization
-var queue = new ObservableQueue<int>();
-
-queue.Enqueue(1);
-queue.Enqueue(10);
-queue.Enqueue(100);
-queue.Enqueue(1000);
-queue.Enqueue(10000);
-
-using var view = queue.CreateView(x => x.ToString() + "$");
-
-using var viewList = view.ToViewList();
-
-Console.WriteLine(viewList[2]); // 100$
-
-
-view.ViewChanged += View_ViewChanged;
-
-void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, string> eventArgs)
+foreach (var item in view)
 {
-    if (eventArgs.Action == NotifyCollectionChangedAction.Add)
-    {
-     // eventArgs.OldItem.View.   
-    }
-
-    throw new NotImplementedException();
+    Console.WriteLine(item);
 }
+
 
 class ViewModel
 {
