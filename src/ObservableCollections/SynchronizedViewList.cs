@@ -1,4 +1,4 @@
-﻿using ObservableCollections.Internal;
+using ObservableCollections.Internal;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -272,7 +272,10 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
                     {
                         if (e.NewStartingIndex == -1)
                         {
+                            var index = listView.Count;
                             listView.Add(e.NewItem.View);
+                            OnCollectionChanged(e.WithNewStartingIndex(index));
+                            return;
                         }
                         else
                         {
