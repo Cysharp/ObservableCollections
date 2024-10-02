@@ -19,12 +19,6 @@ foreach (var item in view)
 Console.WriteLine("---");
 
 
-class ViewModel
-{
-
-    Console.WriteLine(item);
-}
-
 
 
 //var buffer = new ObservableFixedSizeRingBuffer<int>(5);
