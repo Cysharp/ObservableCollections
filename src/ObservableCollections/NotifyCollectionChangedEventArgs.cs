@@ -25,9 +25,9 @@ namespace ObservableCollections
             Comparer = comparer ?? NullComparerSentinel.Instance;
         }
 
-        public (int Index, int Count, IComparer<T> Comparer) AsTuple()
+        public (int Index, int Count, IComparer<T>? Comparer) AsTuple()
         {
-            return (Index, Count, Comparer!);
+            return (Index, Count, Comparer);
         }
 
         public static SortOperation<T> CreateReverse(int index, int count)

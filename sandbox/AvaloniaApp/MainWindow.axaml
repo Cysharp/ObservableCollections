@@ -7,7 +7,14 @@
         Title="AvaloniaApp">
 	<StackPanel>
 		<ListBox ItemsSource="{Binding ItemsView}" x:CompileBindings="False" />
-		<Button Content="Add" Command="{Binding AddCommand}" x:CompileBindings="False" />
-		<Button Content="Clear" Command="{Binding ClearCommand}"  x:CompileBindings="False" />
+		<Button Content="Add" Command="{Binding AddCommand}"  x:CompileBindings="False"/>
+		<Button Content="AddRange" Command="{Binding AddRangeCommand}"  x:CompileBindings="False"/>
+		<Button Content="Insert" Command="{Binding InsertAtRandomCommand}" x:CompileBindings="False" />
+		<Button Content="Remove" Command="{Binding RemoveAtRandomCommand}" x:CompileBindings="False" />
+		<Button Content="Clear" Command="{Binding ClearCommand}"  x:CompileBindings="False"/>
+		<Button Content="Reverse" Command="{Binding ReverseCommand}" x:CompileBindings="False" />
+		<Button Content="Sort" Command="{Binding SortCommand}"  x:CompileBindings="False"/>
+		<Button Content="AttachFilter" Command="{Binding AttachFilterCommand}" x:CompileBindings="False" />
+		<Button Content="ResetFilter" Command="{Binding ResetFilterCommand}" x:CompileBindings="False" />
 	</StackPanel>
 </Window>

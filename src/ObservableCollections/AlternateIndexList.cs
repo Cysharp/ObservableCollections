@@ -194,7 +194,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
         object IEnumerator.Current => Current;
 
-        public void Dispose() => iter.Reset();
+        public void Dispose() => iter.Dispose();
 
         public bool MoveNext()
         {
@@ -207,7 +207,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
             return false;
         }
 
-        public void Reset() => iter.Reset();
+        public void Reset() { }
 
         public IEnumerator<IndexedValue> GetEnumerator() => this;
 

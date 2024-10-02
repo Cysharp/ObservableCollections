@@ -1,10 +1,11 @@
-﻿using ObservableCollections.Internal;
+using ObservableCollections.Internal;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -15,6 +16,8 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
     readonly ISynchronizedView<T, TView> parent;
     protected readonly AlternateIndexList<TView> listView;
     protected readonly object gate = new object();
+
+    protected virtual bool IsSupportRangeFeature => true;
 
     public FiltableSynchronizedViewList(ISynchronizedView<T, TView> parent)
     {
@@ -62,15 +65,39 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
                 case NotifyCollectionChangedAction.Add: // Add or Insert
                     if (e.IsSingleItem)
                     {
-                        var index = listView.Insert(e.NewStartingIndex, e.NewItem.View);
-                        OnCollectionChanged(e.WithNewStartingIndex(index));
-                        return;
+                        if (e.NewStartingIndex == -1)
+                        {
+                            // add operation
+                            var index = listView.Count;
+                            listView.Insert(index, e.NewItem.View);
+                            OnCollectionChanged(e.WithNewStartingIndex(index));
+                            return;
+                        }
+                        else
+                        {
+                            var index = listView.Insert(e.NewStartingIndex, e.NewItem.View);
+                            OnCollectionChanged(e.WithNewStartingIndex(index));
+                            return;
+                        }
                     }
                     else
                     {
-                        using var array = new CloneCollection<TView>(e.NewViews);
-                        var index = listView.InsertRange(e.NewStartingIndex, array.AsEnumerable());
-                        OnCollectionChanged(e.WithNewStartingIndex(index));
+                        if (IsSupportRangeFeature)
+                        {
+                            using var array = new CloneCollection<TView>(e.NewViews);
+                            var index = listView.InsertRange(e.NewStartingIndex, array.AsEnumerable());
+                            OnCollectionChanged(e.WithNewStartingIndex(index));
+                        }
+                        else
+                        {
+                            var span = e.NewViews;
+                            for (int i = 0; i < span.Length; i++)
+                            {
+                                var index = listView.Insert(e.NewStartingIndex + i, span[i]);
+                                var ev = new SynchronizedViewChangedEventArgs<T, TView>(e.Action, true, newItem: (e.NewValues[i], span[i]), newStartingIndex: index);
+                                OnCollectionChanged(ev);
+                            }
+                        }
                         return;
                     }
                 case NotifyCollectionChangedAction.Remove: // Remove
@@ -100,7 +127,21 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
                             }
                             else
                             {
-                                index = listView.RemoveRange(e.OldStartingIndex, e.OldViews.Length);
+                                if (IsSupportRangeFeature)
+                                {
+                                    index = listView.RemoveRange(e.OldStartingIndex, e.OldViews.Length);
+                                }
+                                else
+                                {
+                                    var span = e.OldViews;
+                                    for (int i = 0; i < span.Length; i++)
+                                    {
+                                        index = listView.RemoveAt(e.OldStartingIndex); // when removed, next remove index is same.
+                                        var ev = new SynchronizedViewChangedEventArgs<T, TView>(e.Action, true, oldItem: (e.OldValues[i], span[i]), oldStartingIndex: index);
+                                        OnCollectionChanged(ev);
+                                    }
+                                    return;
+                                }
                             }
                         }
                         OnCollectionChanged(e.WithOldStartingIndex(index));
@@ -214,7 +255,7 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return listView.GetEnumerator();
+        return GetEnumerator();
     }
 
     public void Dispose()
@@ -229,6 +270,8 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
     readonly ISynchronizedView<T, TView> parent;
     protected readonly List<TView> listView; // no filter can be faster
     protected readonly object gate = new object();
+    
+    protected virtual bool IsSupportRangeFeature => true;
 
     public NonFilteredSynchronizedViewList(ISynchronizedView<T, TView> parent)
     {
@@ -250,16 +293,41 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
                 case NotifyCollectionChangedAction.Add: // Add or Insert
                     if (e.IsSingleItem)
                     {
-                        listView.Insert(e.NewStartingIndex, e.NewItem.View);
+                        if (e.NewStartingIndex == -1)
+                        {
+                            var index = listView.Count;
+                            listView.Add(e.NewItem.View);
+                            OnCollectionChanged(e.WithNewStartingIndex(index));
+                            return;
+                        }
+                        else
+                        {
+                            listView.Insert(e.NewStartingIndex, e.NewItem.View);
+                        }
                     }
                     else
                     {
+                        if (IsSupportRangeFeature)
+                        {
 #if NET8_0_OR_GREATER
-                        listView.InsertRange(e.NewStartingIndex, e.NewViews);
+                            listView.InsertRange(e.NewStartingIndex, e.NewViews);
 #else
-                        using var array = new CloneCollection<TView>(e.NewViews);
-                        listView.InsertRange(e.NewStartingIndex, array.AsEnumerable());
+                            using var array = new CloneCollection<TView>(e.NewViews);
+                            listView.InsertRange(e.NewStartingIndex, array.AsEnumerable());
 #endif
+                        }
+                        else
+                        {
+                            var span = e.NewViews;
+                            for (int i = 0; i < span.Length; i++)
+                            {
+                                var index = e.NewStartingIndex + i;
+                                listView.Insert(index, span[i]);
+                                var ev = new SynchronizedViewChangedEventArgs<T, TView>(e.Action, true, newItem: (e.NewValues[i], span[i]), newStartingIndex: index);
+                                OnCollectionChanged(ev);
+                            }
+                            return;
+                        }
                     }
                     break;
                 case NotifyCollectionChangedAction.Remove: // Remove
@@ -292,7 +360,21 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
                             }
                             else
                             {
-                                listView.RemoveRange(e.OldStartingIndex, e.OldViews.Length);
+                                if (IsSupportRangeFeature)
+                                {
+                                    listView.RemoveRange(e.OldStartingIndex, e.OldViews.Length);
+                                }
+                                else
+                                {
+                                    var span = e.OldViews;
+                                    for (int i = 0; i < span.Length; i++)
+                                    {
+                                        listView.RemoveAt(e.OldStartingIndex); // when removed, next remove index is same.
+                                        var ev = new SynchronizedViewChangedEventArgs<T, TView>(e.Action, true, oldItem: (e.OldValues[i], span[i]), oldStartingIndex: e.OldStartingIndex);
+                                        OnCollectionChanged(ev);
+                                    }
+                                    return;
+                                }
                             }
                         }
                         break;
@@ -343,9 +425,6 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
                     }
                     else
                     {
-
-
-
 #if NET6_0_OR_GREATER
 #pragma warning disable CS0436
                         if (parent is ObservableList<T>.View<TView> observableListView && typeof(T) == typeof(TView))
@@ -431,7 +510,7 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return listView.GetEnumerator();
+        return GetEnumerator();
     }
 
     public void Dispose()
@@ -450,6 +529,8 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
     static readonly Action<NotifyCollectionChangedEventArgs> raiseChangedEventInvoke = RaiseChangedEvent;
 
     readonly ICollectionEventDispatcher eventDispatcher;
+
+    protected override bool IsSupportRangeFeature => false; // WPF, Avalonia etc does not support range notification
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -698,6 +779,8 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> 
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected override bool IsSupportRangeFeature => false; // WPF, Avalonia etc does not support range notification
 
     public NonFilteredNotifyCollectionChangedSynchronizedViewList(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher)
         : base(parent)

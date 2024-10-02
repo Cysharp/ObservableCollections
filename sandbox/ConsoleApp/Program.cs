@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Specialized;
 using R3;
 using System.Linq;
@@ -7,31 +7,10 @@ using System.Collections;
 using System.Collections.Generic;
 
 
-
-var buffer = new ObservableList<int>(5);
-
-var view = buffer.CreateView(value => value);
-view.AttachFilter(value => value % 2 == 1); // when filtered, mismatch...!
-
-//{
-// INotifyCollectionChangedSynchronizedViewList created from ISynchronizedView with a filter.
-var collection = view.ToNotifyCollectionChanged();
-
-// Not disposed here.
-//}
-
-buffer.Insert(0, 1);
-buffer.Insert(0, 1);
-buffer.Insert(0, 2);
-buffer.Insert(0, 3);
-buffer.Insert(0, 5);
-buffer.RemoveAt(buffer.Count - 1);
-
-buffer.Insert(0, 8);
-buffer.Insert(0, 13);
-
-
-buffer.Move(1, 5);
+var dict = new ObservableDictionary<int, string>();
+var view = dict.CreateView(x => x).ToNotifyCollectionChanged();
+dict.Add(key: 1, value: "foo");
+dict.Add(key: 2, value: "bar");
 
 foreach (var item in view)
 {
@@ -39,7 +18,8 @@ foreach (var item in view)
 }
 Console.WriteLine("---");
 
-foreach (var item in collection)
+
+class ViewModel
 {
 
     Console.WriteLine(item);
