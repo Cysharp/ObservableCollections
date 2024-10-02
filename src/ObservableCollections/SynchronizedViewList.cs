@@ -23,6 +23,7 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
         {
             listView = new AlternateIndexList<TView>(IterateFilteredIndexedViewsOfParent());
             parent.ViewChanged += Parent_ViewChanged;
+            parent.RejectedViewChanged += Parent_RejectedViewChanged;
         }
     }
 
@@ -153,6 +154,27 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
         }
     }
 
+    private void Parent_RejectedViewChanged(RejectedViewChangedAction arg1, int index, int oldIndex)
+    {
+        lock (gate)
+        {
+            switch (arg1)
+            {
+                case RejectedViewChangedAction.Add:
+                    listView.UpdateAlternateIndex(index, 1);
+                    break;
+                case RejectedViewChangedAction.Remove:
+                    listView.UpdateAlternateIndex(index, -1);
+                    break;
+                case RejectedViewChangedAction.Move:
+                    listView.TryReplaceAlternateIndex(oldIndex, index);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
     protected virtual void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
     {
     }
@@ -198,6 +220,7 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
     public void Dispose()
     {
         parent.ViewChanged -= Parent_ViewChanged;
+        parent.RejectedViewChanged -= Parent_RejectedViewChanged;
     }
 }
 

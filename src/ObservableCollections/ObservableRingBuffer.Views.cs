@@ -31,6 +31,7 @@ namespace ObservableCollections
             ISynchronizedViewFilter<T> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+            public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -196,7 +197,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     ringBuffer.AddFirst(v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, 0);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, 0);
                                 }
                                 else
                                 {
@@ -204,7 +205,7 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         ringBuffer.AddFirst(v);
-                                        this.InvokeOnAdd(ref filteredCount, ViewChanged, v, 0);
+                                        this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, 0);
                                     }
                                 }
                             }
@@ -215,7 +216,7 @@ namespace ObservableCollections
                                 {
                                     var v = (e.NewItem, selector(e.NewItem));
                                     ringBuffer.AddLast(v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, ringBuffer.Count - 1);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, ringBuffer.Count - 1);
                                 }
                                 else
                                 {
@@ -223,7 +224,7 @@ namespace ObservableCollections
                                     {
                                         var v = (item, selector(item));
                                         ringBuffer.AddLast(v);
-                                        this.InvokeOnAdd(ref filteredCount, ViewChanged, v, ringBuffer.Count - 1);
+                                        this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, ringBuffer.Count - 1);
                                     }
                                 }
                             }
@@ -236,14 +237,14 @@ namespace ObservableCollections
                                 if (e.IsSingleItem)
                                 {
                                     var v = ringBuffer.RemoveFirst();
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, v, 0);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v, 0);
                                 }
                                 else
                                 {
                                     for (int i = 0; i < e.OldItems.Length; i++)
                                     {
                                         var v = ringBuffer.RemoveFirst();
-                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, v, 0);
+                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v, 0);
                                     }
                                 }
                             }
@@ -254,7 +255,7 @@ namespace ObservableCollections
                                 {
                                     var index = ringBuffer.Count - 1;
                                     var v = ringBuffer.RemoveLast();
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, v, index);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v, index);
                                 }
                                 else
                                 {
@@ -262,7 +263,7 @@ namespace ObservableCollections
                                     {
                                         var index = ringBuffer.Count - 1;
                                         var v = ringBuffer.RemoveLast();
-                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, v, index);
+                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v, index);
                                     }
                                 }
                             }

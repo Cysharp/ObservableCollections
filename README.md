@@ -466,6 +466,11 @@ This is the interface for View:
 ```csharp
 public delegate void NotifyViewChangedEventHandler<T, TView>(in SynchronizedViewChangedEventArgs<T, TView> e);
 
+public enum RejectedViewChangedAction
+{
+    Add, Remove, Move
+}
+
 public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisposable
 {
     object SyncRoot { get; }
@@ -475,6 +480,7 @@ public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisp
     int UnfilteredCount { get; }
 
     event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+    event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged; // int index, int oldIndex(when RejectedViewChangedAction is Move)
     event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
     void AttachFilter(ISynchronizedViewFilter<T> filter);

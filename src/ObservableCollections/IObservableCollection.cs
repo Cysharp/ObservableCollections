@@ -25,6 +25,11 @@ namespace ObservableCollections
     {
     }
 
+    public enum RejectedViewChangedAction
+    {
+        Add, Remove, Move
+    }
+
     public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisposable
     {
         object SyncRoot { get; }
@@ -34,6 +39,7 @@ namespace ObservableCollections
         int UnfilteredCount { get; }
 
         event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+        event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
         void AttachFilter(ISynchronizedViewFilter<T> filter);

@@ -3,7 +3,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -24,7 +23,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
         this.list = values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)).ToList();
     }
 
-    void UpdateAlternateIndex(int startIndex, int incr)
+    public void UpdateAlternateIndex(int startIndex, int incr)
     {
         var span = CollectionsMarshal.AsSpan(list);
         for (int i = startIndex; i < span.Length; i++)
@@ -80,10 +79,14 @@ public class AlternateIndexList<T> : IEnumerable<T>
     public int RemoveAt(int alternateIndex)
     {
         var index = list.BinarySearch(alternateIndex);
-        if (index != -1)
+        if (index >= 0)
         {
             list.RemoveAt(index);
             UpdateAlternateIndex(index, -1);
+        }
+        else
+        {
+            throw new InvalidOperationException("Index was not found. AlternateIndex:" + alternateIndex);
         }
         return index;
     }
@@ -121,6 +124,19 @@ public class AlternateIndexList<T> : IEnumerable<T>
             return false;
         }
         CollectionsMarshal.AsSpan(list)[setIndex].Value = value;
+        return true;
+    }
+
+    public bool TryReplaceAlternateIndex(int getAlternateIndex, int setAlternateIndex)
+    {
+        var index = list.BinarySearch(getAlternateIndex);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        var span = CollectionsMarshal.AsSpan(list);
+        span[index].AlternateIndex = setAlternateIndex;
         return true;
     }
 

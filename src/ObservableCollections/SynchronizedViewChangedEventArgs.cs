@@ -94,108 +94,108 @@ namespace ObservableCollections
             return filter == SynchronizedViewFilter<T>.Null;
         }
 
-        internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, (T value, TView view) value, int index)
+        internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, (T value, TView view) value, int index)
         {
-            InvokeOnAdd(collection, ref filteredCount, ev, value.value, value.view, index);
+            InvokeOnAdd(collection, ref filteredCount, ev, ev2, value.value, value.view, index);
         }
 
-        internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, T value, TView view, int index)
+        internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, T value, TView view, int index)
         {
             var isMatch = collection.Filter.IsMatch(value);
             if (isMatch)
             {
                 filteredCount++;
-                if (ev != null)
-                {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, true, newItem: (value, view), newStartingIndex: index));
-                }
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, true, newItem: (value, view), newStartingIndex: index));
             }
-        }
-
-        internal static void InvokeOnAddRange<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, bool isMatchAll, ReadOnlySpan<bool> matches, int index)
-        {
-            if (ev != null)
+            else
             {
-                if (isMatchAll)
+                ev2?.Invoke(RejectedViewChangedAction.Add, index, -1);
+            }
+        }
+
+        internal static void InvokeOnAddRange<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, bool isMatchAll, ReadOnlySpan<bool> matches, int index)
+        {
+            if (isMatchAll)
+            {
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, isSingleItem: false, newValues: values, newViews: views, newStartingIndex: index));
+            }
+            else
+            {
+                for (var i = 0; i < matches.Length; i++)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, isSingleItem: false, newValues: values, newViews: views, newStartingIndex: index));
-                }
-                else
-                {
-                    var startingIndex = index;
-                    for (var i = 0; i < matches.Length; i++)
+                    if (matches[i])
                     {
-                        if (matches[i])
-                        {
-                            var item = (values[i], views[i]);
-                            ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, isSingleItem: true, newItem: item, newStartingIndex: startingIndex++));
-                        }
+                        var item = (values[i], views[i]);
+                        ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, isSingleItem: true, newItem: item, newStartingIndex: index));
                     }
+                    else
+                    {
+                        ev2?.Invoke(RejectedViewChangedAction.Add, index, -1);
+                    }
+                    index++;
                 }
             }
         }
 
-        internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, (T value, TView view) value, int oldIndex)
+        internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, (T value, TView view) value, int oldIndex)
         {
-            InvokeOnRemove(collection, ref filteredCount, ev, value.value, value.view, oldIndex);
+            InvokeOnRemove(collection, ref filteredCount, ev, ev2, value.value, value.view, oldIndex);
         }
 
-        internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, T value, TView view, int oldIndex)
+        internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, T value, TView view, int oldIndex)
         {
             var isMatch = collection.Filter.IsMatch(value);
             if (isMatch)
             {
                 filteredCount--;
-                if (ev != null)
-                {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
-                }
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
+            }
+            else
+            {
+                ev2?.Invoke(RejectedViewChangedAction.Remove, oldIndex, -1);
             }
         }
 
         // only use for ObservableList
-        internal static void InvokeOnRemoveRange<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, bool isMatchAll, ReadOnlySpan<bool> matches, int index)
+        internal static void InvokeOnRemoveRange<T, TView>(this ISynchronizedView<T, TView> collection, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, ReadOnlySpan<T> values, ReadOnlySpan<TView> views, bool isMatchAll, ReadOnlySpan<bool> matches, int index)
         {
-            if (ev != null)
+            if (isMatchAll)
             {
-                if (isMatchAll)
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isSingleItem: false, oldValues: values, oldViews: views, oldStartingIndex: index));
+            }
+            else
+            {
+                for (var i = 0; i < matches.Length; i++)
                 {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isSingleItem: false, oldValues: values, oldViews: views, oldStartingIndex: index));
-                }
-                else
-                {
-                    var startingIndex = index;
-                    for (var i = 0; i < matches.Length; i++)
+                    if (matches[i])
                     {
-                        if (matches[i])
-                        {
-                            var item = (values[i], views[i]);
-                            ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isSingleItem: true, oldItem: item, oldStartingIndex: index)); //remove for list, always same index
-                        }
-                        else
-                        {
-                            index++; // not matched, skip index
-                        }
+                        var item = (values[i], views[i]);
+                        ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, isSingleItem: true, oldItem: item, oldStartingIndex: index)); //remove for list, always same index
+                    }
+                    else
+                    {
+                        ev2?.Invoke(RejectedViewChangedAction.Remove, index, -1); 
                     }
                 }
             }
         }
 
-        internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, (T value, TView view) value, int index, int oldIndex)
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, (T value, TView view) value, int index, int oldIndex)
         {
-            InvokeOnMove(collection, ref filteredCount, ev, value.value, value.view, index, oldIndex);
+            InvokeOnMove(collection, ref filteredCount, ev, ev2, value.value, value.view, index, oldIndex);
         }
 
-        internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, T value, TView view, int index, int oldIndex)
+        internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, T value, TView view, int index, int oldIndex)
         {
-            if (ev != null)
+            // move does not changes filtered-count
+            var isMatch = collection.Filter.IsMatch(value);
+            if (isMatch)
             {
-                // move does not changes filtered-count
-                var isMatch = collection.Filter.IsMatch(value);
-                if (isMatch)
-                {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, true, newItem: (value, view), newStartingIndex: index, oldStartingIndex: oldIndex));
-                }
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, true, newItem: (value, view), newStartingIndex: index, oldStartingIndex: oldIndex));
+            }
+            else
+            {
+                ev2?.Invoke(RejectedViewChangedAction.Move, index, oldIndex);
             }
         }
 
@@ -212,29 +212,19 @@ namespace ObservableCollections
 
             if (bothMatched)
             {
-                if (ev != null)
-                {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, true, newItem: (value, view), oldItem: (oldValue, oldView), newStartingIndex: index, oldStartingIndex: oldIndex >= 0 ? oldIndex : index));
-                }
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Replace, true, newItem: (value, view), oldItem: (oldValue, oldView), newStartingIndex: index, oldStartingIndex: oldIndex >= 0 ? oldIndex : index));
             }
             else if (oldMatched)
             {
                 // only-old is remove
                 filteredCount--;
-                if (ev != null)
-                {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
-                }
-
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
             }
             else if (newMatched)
             {
                 // only-new is add
                 filteredCount++;
-                if (ev != null)
-                {
-                    ev.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, true, newItem: (value, view), newStartingIndex: index));
-                }
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Add, true, newItem: (value, view), newStartingIndex: index));
             }
         }
 

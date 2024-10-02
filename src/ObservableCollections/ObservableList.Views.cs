@@ -32,6 +32,7 @@ namespace ObservableCollections
             ISynchronizedViewFilter<T> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+            public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -185,7 +186,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 list.Insert(e.NewStartingIndex, v);
-                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, e.NewStartingIndex);
                             }
                             else
                             {
@@ -214,7 +215,7 @@ namespace ObservableCollections
                                 }
 
                                 list.InsertRange(e.NewStartingIndex, valueViews.Span);
-                                this.InvokeOnAddRange(ViewChanged, e.NewItems, views.Span, isMatchAll, matches.Span, e.NewStartingIndex);
+                                this.InvokeOnAddRange(ViewChanged, RejectedViewChanged, e.NewItems, views.Span, isMatchAll, matches.Span, e.NewStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
@@ -222,7 +223,7 @@ namespace ObservableCollections
                             {
                                 var v = list[e.OldStartingIndex];
                                 list.RemoveAt(e.OldStartingIndex);
-                                this.InvokeOnRemove(ref filteredCount, ViewChanged, v, e.OldStartingIndex);
+                                this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v, e.OldStartingIndex);
                             }
                             else
                             {
@@ -251,7 +252,7 @@ namespace ObservableCollections
                                 }
 
                                 list.RemoveRange(e.OldStartingIndex, e.OldItems.Length);
-                                this.InvokeOnRemoveRange(ViewChanged, values.Span, views.Span, isMatchAll, matches.Span, e.OldStartingIndex);
+                                this.InvokeOnRemoveRange(ViewChanged, RejectedViewChanged, values.Span, views.Span, isMatchAll, matches.Span, e.OldStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Replace:
@@ -269,7 +270,7 @@ namespace ObservableCollections
                                 list.RemoveAt(e.OldStartingIndex);
                                 list.Insert(e.NewStartingIndex, removeItem);
 
-                                this.InvokeOnMove(ref filteredCount, ViewChanged, removeItem, e.NewStartingIndex, e.OldStartingIndex);
+                                this.InvokeOnMove(ref filteredCount, ViewChanged, RejectedViewChanged, removeItem, e.NewStartingIndex, e.OldStartingIndex);
                             }
                             break;
                         case NotifyCollectionChangedAction.Reset:

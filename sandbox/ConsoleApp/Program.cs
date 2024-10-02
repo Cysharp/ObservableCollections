@@ -8,68 +8,80 @@ using System.Collections.Generic;
 
 
 
+var buffer = new ObservableList<int>(5);
 
-// Queue <-> List Synchronization
-var queue = new ObservableQueue<int>();
+var view = buffer.CreateView(value => value);
+view.AttachFilter(value => value % 2 == 1); // when filtered, mismatch...!
 
-queue.Enqueue(1);
-queue.Enqueue(10);
-queue.Enqueue(100);
-queue.Enqueue(1000);
-queue.Enqueue(10000);
+//{
+// INotifyCollectionChangedSynchronizedViewList created from ISynchronizedView with a filter.
+var collection = view.ToNotifyCollectionChanged();
 
-using var view = queue.CreateView(x => x.ToString() + "$");
+// Not disposed here.
+//}
 
-using var viewList = view.ToViewList();
+buffer.Insert(0, 1);
+buffer.Insert(0, 1);
+buffer.Insert(0, 2);
+buffer.Insert(0, 3);
+buffer.Insert(0, 5);
+buffer.RemoveAt(buffer.Count - 1);
 
-Console.WriteLine(viewList[2]); // 100$
+buffer.Insert(0, 8);
+buffer.Insert(0, 13);
 
 
-view.ViewChanged += View_ViewChanged;
+buffer.Move(1, 5);
 
-void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, string> eventArgs)
+foreach (var item in view)
 {
-    if (eventArgs.Action == NotifyCollectionChangedAction.Add)
-    {
-     // eventArgs.OldItem.View.   
-    }
+    Console.WriteLine(item);
+}
+Console.WriteLine("---");
 
-    throw new NotImplementedException();
+foreach (var item in collection)
+{
+
+    Console.WriteLine(item);
 }
 
-class ViewModel
-{
-    public int Id { get; set; }
-    public string Value { get; set; } = default!;
-}
 
-class HogeFilter : ISynchronizedViewFilter<int>
-{
-    public bool IsMatch(int value)
-    {
-        return value % 2 == 0;
-    }
 
-    public void OnCollectionChanged(in SynchronizedViewChangedEventArgs<int, ViewModel> eventArgs)
-    {
-        switch (eventArgs.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                eventArgs.NewItem.View.Value += " Add";
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                eventArgs.OldItem.View.Value += " Remove";
-                break;
-            case NotifyCollectionChangedAction.Move:
-                eventArgs.NewItem.View.Value += $" Move {eventArgs.OldStartingIndex} {eventArgs.NewStartingIndex}";
-                break;
-            case NotifyCollectionChangedAction.Replace:
-                eventArgs.NewItem.View.Value += $" Replace {eventArgs.NewStartingIndex}";
-                break;
-            case NotifyCollectionChangedAction.Reset:
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(eventArgs.Action), eventArgs.Action, null);
-        }
-    }
-}
+//var buffer = new ObservableFixedSizeRingBuffer<int>(5);
+
+//var view = buffer.CreateView(value => value);
+//view.AttachFilter(value => value % 2 == 1); // when filtered, mismatch...!
+
+////{
+//// INotifyCollectionChangedSynchronizedViewList created from ISynchronizedView with a filter.
+//var collection = view.ToNotifyCollectionChanged();
+
+//// Not disposed here.
+////}
+
+//buffer.AddFirst(1);
+//buffer.AddFirst(1);
+//buffer.AddFirst(2);
+//buffer.AddFirst(3);
+//buffer.AddFirst(5);
+//buffer.AddFirst(8); // Argument out of range
+//buffer.AddFirst(13);
+
+//foreach (var item in collection)
+//{
+//    Console.WriteLine(item);
+//}
+
+//Console.WriteLine("---");
+
+//foreach (var item in view)
+//{
+//    Console.WriteLine(item);
+//}
+
+//Console.WriteLine("---");
+
+//foreach (var item in buffer)
+//{
+//    Console.WriteLine(item);
+//}

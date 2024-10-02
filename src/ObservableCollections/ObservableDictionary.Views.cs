@@ -39,6 +39,7 @@ namespace ObservableCollections
 
             public object SyncRoot { get; }
             public event NotifyViewChangedEventHandler<KeyValuePair<TKey, TValue>, TView>? ViewChanged;
+            public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public ISynchronizedViewFilter<KeyValuePair<TKey, TValue>> Filter
@@ -184,14 +185,14 @@ namespace ObservableCollections
                             {
                                 var v = selector(e.NewItem);
                                 dict.Add(e.NewItem.Key, (e.NewItem.Value, v));
-                                this.InvokeOnAdd(ref filteredCount, ViewChanged, e.NewItem, v, -1);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, e.NewItem, v, -1);
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
                             {
                                 if (dict.Remove(e.OldItem.Key, out var v))
                                 {
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, e.OldItem, v.Item2, -1);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, e.OldItem, v.Item2, -1);
                                 }
                             }
                             break;

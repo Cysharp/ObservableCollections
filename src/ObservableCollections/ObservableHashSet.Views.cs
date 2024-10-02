@@ -30,6 +30,7 @@ namespace ObservableCollections
             ISynchronizedViewFilter<T> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+            public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -181,7 +182,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 dict.Add(e.NewItem, v);
-                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, -1);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, -1);
                             }
                             else
                             {
@@ -190,7 +191,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     dict.Add(item, v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, i++);
                                 }
                             }
                             break;
@@ -199,7 +200,7 @@ namespace ObservableCollections
                             {
                                 if (dict.Remove(e.OldItem, out var value))
                                 {
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, value, -1);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, value, -1);
                                 }
                             }
                             else
@@ -208,7 +209,7 @@ namespace ObservableCollections
                                 {
                                     if (dict.Remove(item, out var value))
                                     {
-                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, value, -1);
+                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, value, -1);
                                     }
                                 }
                             }

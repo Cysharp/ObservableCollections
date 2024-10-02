@@ -24,6 +24,7 @@ namespace ObservableCollections
             ISynchronizedViewFilter<T> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+            public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -187,7 +188,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 stack.Push(v);
-                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, 0);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, 0);
                             }
                             else
                             {
@@ -195,7 +196,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     stack.Push(v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, 0);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, 0);
                                 }
                             }
                             break;
@@ -204,7 +205,7 @@ namespace ObservableCollections
                             if (e.IsSingleItem)
                             {
                                 var v = stack.Pop();
-                                this.InvokeOnRemove(ref filteredCount, ViewChanged, v.Item1, v.Item2, 0);
+                                this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v.Item1, v.Item2, 0);
                             }
                             else
                             {
@@ -212,7 +213,7 @@ namespace ObservableCollections
                                 for (int i = 0; i < len; i++)
                                 {
                                     var v = stack.Pop();
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, v.Item1, v.Item2, 0);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v.Item1, v.Item2, 0);
                                 }
                             }
                             break;

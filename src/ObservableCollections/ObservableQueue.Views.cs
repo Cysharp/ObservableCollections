@@ -25,6 +25,7 @@ namespace ObservableCollections
             ISynchronizedViewFilter<T> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
+            public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
             public event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
             public object SyncRoot { get; }
@@ -182,7 +183,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 queue.Enqueue(v);
-                                this.InvokeOnAdd(ref filteredCount, ViewChanged, v, e.NewStartingIndex);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, e.NewStartingIndex);
                             }
                             else
                             {
@@ -191,7 +192,7 @@ namespace ObservableCollections
                                 {
                                     var v = (item, selector(item));
                                     queue.Enqueue(v);
-                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, v, i++);
+                                    this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, i++);
                                 }
                             }
                             break;
@@ -200,7 +201,7 @@ namespace ObservableCollections
                             if (e.IsSingleItem)
                             {
                                 var v = queue.Dequeue();
-                                this.InvokeOnRemove(ref filteredCount, ViewChanged, v.Item1, v.Item2, 0);
+                                this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v.Item1, v.Item2, 0);
                             }
                             else
                             {
@@ -208,7 +209,7 @@ namespace ObservableCollections
                                 for (int i = 0; i < len; i++)
                                 {
                                     var v = queue.Dequeue();
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, v.Item1, v.Item2, 0);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, v.Item1, v.Item2, 0);
                                 }
                             }
                             break;
