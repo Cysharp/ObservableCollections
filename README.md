@@ -359,6 +359,31 @@ public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDi
 
 Views and ToNotifyCollectionChanged are internally connected by events, so they need to be `Dispose` to release those connections.
 
+Standard Views are readonly. If you want to reflect the results of binding back to the original collection, use `CreateWritableView` to generate an `IWritableSynchronizedView`, and then use `ToWritableNotifyCollectionChanged` to create an `INotifyCollectionChanged` collection from it.
+
+```csharp
+public delegate T WritableViewChangedEventHandler<T, TView>(TView newView, T originalValue, ref bool setValue);
+
+public interface IWritableSynchronizedView<T, TView> : ISynchronizedView<T, TView>
+{
+    INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter);
+    INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher);
+}
+```
+
+`ToWritableNotifyCollectionChanged` accepts a delegate called `WritableViewChangedEventHandler`. `newView` receives the newly bound value. If `setValue` is true, it sets a new value to the original collection, triggering notification propagation. The View is also regenerated. If `T originalValue` is a reference type, you can prevent such propagation by setting `setValue` to `false`.
+
+```csharp
+var list = new ObservableList<int>();
+var view = list.CreateWritableView(x => x.ToString());
+view.AttachFilter(x => x % 2 == 0);
+IList<string> notify = view.ToWritableNotifyCollectionChanged((string newView, int originalValue, ref bool setValue) =>
+{
+    setValue = true; // or false
+    return int.Parse(newView);
+});
+```
+
 Unity
 ---
 In Unity projects, you can installing `ObservableCollections` with [NugetForUnity](https://github.com/GlitchEnzo/NuGetForUnity). If R3 integration is required, similarly install `ObservableCollections.R3` via NuGetForUnity.
@@ -550,6 +575,37 @@ public static class SynchronizedViewExtensions
     public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, bool> filter)
     {
     }
+}
+```
+
+`ObservableList<T>` has writable view.
+
+```csharp
+public sealed partial class ObservableList<T>
+{
+    public IWritableSynchronizedView<T, TView> CreateWritableView<TView>(Func<T, TView> transform);
+
+    public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged();
+    public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
+    public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter);
+    public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher, WritableViewChangedEventHandler<T, TView>? converter);
+}
+
+public delegate T WritableViewChangedEventHandler<T, TView>(TView newView, T originalValue, ref bool setValue);
+
+public interface IWritableSynchronizedView<T, TView> : ISynchronizedView<T, TView>
+{
+    (T Value, TView View) GetAt(int index);
+    void SetViewAt(int index, TView view);
+    void SetToSourceCollection(int index, T value);
+    IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter);
+    INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter);
+    INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher);
+}
+
+public interface IWritableSynchronizedViewList<TView> : ISynchronizedViewList<TView>
+{
+    new TView this[int index] { get; set; }
 }
 ```
 

@@ -14,7 +14,36 @@ namespace ObservableCollections
             return new View<TView>(this, transform);
         }
 
-        internal sealed class View<TView> : ISynchronizedView<T, TView>
+        public IWritableSynchronizedView<T, TView> CreateWritableView<TView>(Func<T, TView> transform)
+        {
+            return new View<TView>(this, transform);
+        }
+
+        public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged()
+        {
+            return ToWritableNotifyCollectionChanged(null);
+        }
+
+        public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            return ToWritableNotifyCollectionChanged(static x => x, collectionEventDispatcher, static (T newView, T originalValue, ref bool setValue) =>
+            {
+                setValue = true;
+                return newView;
+            });
+        }
+
+        public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter)
+        {
+            return ToWritableNotifyCollectionChanged(transform, null!);
+        }
+
+        public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher, WritableViewChangedEventHandler<T, TView>? converter)
+        {
+            return new NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView>(CreateView(transform), collectionEventDispatcher, converter);
+        }
+
+        internal sealed class View<TView> : ISynchronizedView<T, TView>, IWritableSynchronizedView<T, TView>
         {
             public ISynchronizedViewFilter<T> Filter
             {
@@ -300,6 +329,50 @@ namespace ObservableCollections
                     CollectionStateChanged?.Invoke(e.Action);
                 }
             }
+
+            #region Writable
+
+            public (T Value, TView View) GetAt(int index)
+            {
+                lock (SyncRoot)
+                {
+                    return list[index];
+                }
+            }
+
+            public void SetViewAt(int index, TView view)
+            {
+                lock (SyncRoot)
+                {
+                    var v = list[index];
+                    list[index] = (v.Item1, view);
+                }
+            }
+
+            public void SetToSourceCollection(int index, T value)
+            {
+                lock (SyncRoot)
+                {
+                    source[index] = value;
+                }
+            }
+
+            public IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter)
+            {
+                return new FiltableWritableSynchronizedViewList<T, TView>(this, converter);
+            }
+
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter)
+            {
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null, converter);
+            }
+
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null, converter);
+            }
+
+            #endregion
 
             sealed class IgnoreViewComparer : IComparer<(T, TView)>
             {

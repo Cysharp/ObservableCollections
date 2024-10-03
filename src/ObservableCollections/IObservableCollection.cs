@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -7,6 +8,7 @@ namespace ObservableCollections
 {
     public delegate void NotifyCollectionChangedEventHandler<T>(in NotifyCollectionChangedEventArgs<T> e);
     public delegate void NotifyViewChangedEventHandler<T, TView>(in SynchronizedViewChangedEventArgs<T, TView> e);
+    public delegate T WritableViewChangedEventHandler<T, TView>(TView newView, T originalValue, ref bool setValue);
 
     public interface IObservableCollection<T> : IReadOnlyCollection<T>
     {
@@ -49,11 +51,26 @@ namespace ObservableCollections
         INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
     }
 
+    public interface IWritableSynchronizedView<T, TView> : ISynchronizedView<T, TView>
+    {
+        (T Value, TView View) GetAt(int index);
+        void SetViewAt(int index, TView view);
+        void SetToSourceCollection(int index, T value);
+        IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter);
+        INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter);
+        INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher);
+    }
+
     public interface ISynchronizedViewList<out TView> : IReadOnlyList<TView>, IDisposable
     {
     }
 
-    public interface INotifyCollectionChangedSynchronizedViewList<out TView> : ISynchronizedViewList<TView>, INotifyCollectionChanged, INotifyPropertyChanged
+    public interface IWritableSynchronizedViewList<TView> : ISynchronizedViewList<TView>
+    {
+        new TView this[int index] { get; set; }
+    }
+
+    public interface INotifyCollectionChangedSynchronizedViewList<TView> : IList<TView>, IList, ISynchronizedViewList<TView>, INotifyCollectionChanged, INotifyPropertyChanged
     {
     }
 

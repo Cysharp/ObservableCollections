@@ -5,23 +5,30 @@ using System.Linq;
 using ObservableCollections;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks.Sources;
 
+var l = new ObservableList<int>();
+var view = l.CreateWritableView(x => x.ToString());
+view.AttachFilter(x => x % 2 == 0);
+IList<string> notify = view.ToWritableNotifyCollectionChanged((string newView, int originalValue, ref bool setValue) =>
+{
+    setValue = false;
+    return int.Parse(newView);
+});
 
-var dict = new ObservableDictionary<int, string>();
-var view = dict.CreateView(x => x);
-view.AttachFilter(x => x.Key == 1);
+l.Add(0);
+l.Add(1);
+l.Add(2);
+l.Add(3);
+l.Add(4);
+l.Add(5);
 
-var view2 = view.ToNotifyCollectionChanged();
-dict.Add(key: 1, value: "foo");
-dict.Add(key: 2, value: "bar");
+notify[1] = "99999";
 
-foreach (var item in view2)
+foreach (var item in view)
 {
     Console.WriteLine(item);
 }
-Console.WriteLine("---");
-
-
 
 
 //var buffer = new ObservableFixedSizeRingBuffer<int>(5);

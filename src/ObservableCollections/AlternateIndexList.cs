@@ -35,7 +35,10 @@ public class AlternateIndexList<T> : IEnumerable<T>
     public T this[int index]
     {
         get => list[index].Value;
+        set => CollectionsMarshal.AsSpan(list)[index].Value = value;
     }
+
+    public int GetAlternateIndex(int index) => list[index].AlternateIndex;
 
     public int Count => list.Count;
 
@@ -127,6 +130,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
         return true;
     }
 
+    /// <summary>NOTE: when replace successfully, list has been sorted.</summary>
     public bool TryReplaceAlternateIndex(int getAlternateIndex, int setAlternateIndex)
     {
         var index = list.BinarySearch(getAlternateIndex);
@@ -137,6 +141,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
         var span = CollectionsMarshal.AsSpan(list);
         span[index].AlternateIndex = setAlternateIndex;
+        list.Sort(); // needs sort to keep order
         return true;
     }
 

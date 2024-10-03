@@ -13,7 +13,7 @@ namespace ObservableCollections;
 
 internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TView>
 {
-    readonly ISynchronizedView<T, TView> parent;
+    protected readonly ISynchronizedView<T, TView> parent;
     protected readonly AlternateIndexList<TView> listView;
     protected readonly object gate = new object();
 
@@ -211,7 +211,11 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
                     break;
                 case RejectedViewChangedAction.Move:
                     if (oldIndex == -1) return;
-                    listView.TryReplaceAlternateIndex(oldIndex, index);
+                    if (listView.TryReplaceAlternateIndex(oldIndex, index))
+                    {
+                        // replace alternate-index changes order so needs Reset
+                        OnCollectionChanged(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
+                    }
                     break;
                 default:
                     break;
@@ -270,7 +274,7 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
 
 internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList<TView>
 {
-    readonly ISynchronizedView<T, TView> parent;
+    protected readonly ISynchronizedView<T, TView> parent;
     protected readonly List<TView> listView; // no filter can be faster
     protected readonly object gate = new object();
 
@@ -523,6 +527,43 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
     }
 }
 
+internal class FiltableWritableSynchronizedViewList<T, TView> : FiltableSynchronizedViewList<T, TView>, IWritableSynchronizedViewList<TView>
+{
+    IWritableSynchronizedView<T, TView> writableView;
+    WritableViewChangedEventHandler<T, TView> converter;
+
+    public FiltableWritableSynchronizedViewList(IWritableSynchronizedView<T, TView> parent, WritableViewChangedEventHandler<T, TView> converter) : base(parent)
+    {
+        this.writableView = parent;
+        this.converter = converter;
+    }
+
+    public new TView this[int index]
+    {
+        get => base[index];
+        set
+        {
+            lock (gate)
+            {
+                var originalIndex = listView.GetAlternateIndex(index);
+                var (originalValue, _) = writableView.GetAt(originalIndex);
+
+                // update view
+                writableView.SetViewAt(originalIndex, value);
+                listView[index] = value;
+
+                var setValue = true;
+                var newOriginal = converter(value, originalValue, ref setValue);
+
+                if (setValue)
+                {
+                    writableView.SetToSourceCollection(index, newOriginal);
+                }
+            }
+        }
+    }
+}
+
 internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
     FiltableSynchronizedViewList<T, TView>,
     INotifyCollectionChangedSynchronizedViewList<TView>,
@@ -532,6 +573,7 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
     static readonly Action<NotifyCollectionChangedEventArgs> raiseChangedEventInvoke = RaiseChangedEvent;
 
     readonly ICollectionEventDispatcher eventDispatcher;
+    WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
     protected override bool IsSupportRangeFeature => false; // WPF, Avalonia etc does not support range notification
 
@@ -542,6 +584,13 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
         : base(parent)
     {
         this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
+    }
+
+    public NotifyCollectionChangedSynchronizedViewList(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher, WritableViewChangedEventHandler<T, TView>? converter)
+        : base(parent)
+    {
+        this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
+        this.converter = converter;
     }
 
     protected override void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
@@ -644,7 +693,30 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
     TView IList<TView>.this[int index]
     {
         get => ((IReadOnlyList<TView>)this)[index];
-        set => throw new NotSupportedException();
+        set
+        {
+            if (converter == null || parent is not IWritableSynchronizedView<T,TView> writableView)
+            {
+                throw new NotSupportedException("This CollectionView does not support set. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+            }
+            else
+            {
+                var originalIndex = listView.GetAlternateIndex(index);
+                var (originalValue, _) = writableView.GetAt(originalIndex);
+
+                // update view
+                writableView.SetViewAt(originalIndex, value);
+                listView[index] = value;
+
+                var setValue = true;
+                var newOriginal = converter(value, originalValue, ref setValue);
+
+                if (setValue)
+                {
+                    writableView.SetToSourceCollection(index, newOriginal);
+                }
+            }
+        }
     }
 
     object? IList.this[int index]
@@ -653,7 +725,7 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
         {
             return this[index];
         }
-        set => throw new NotSupportedException();
+        set => ((IList<TView>)this)[index] = (TView)value!;
     }
 
     static bool IsCompatibleObject(object? value)
@@ -779,6 +851,7 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> 
     static readonly Action<NotifyCollectionChangedEventArgs> raiseChangedEventInvoke = RaiseChangedEvent;
 
     readonly ICollectionEventDispatcher eventDispatcher;
+    readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -789,6 +862,13 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> 
         : base(parent)
     {
         this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
+    }
+
+    public NonFilteredNotifyCollectionChangedSynchronizedViewList(ISynchronizedView<T, TView> parent, ICollectionEventDispatcher? eventDispatcher, WritableViewChangedEventHandler<T, TView>? converter)
+        : base(parent)
+    {
+        this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
+        this.converter = converter;
     }
 
     protected override void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
@@ -891,7 +971,29 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> 
     TView IList<TView>.this[int index]
     {
         get => ((IReadOnlyList<TView>)this)[index];
-        set => throw new NotSupportedException();
+        set
+        {
+            if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+            {
+                throw new NotSupportedException("This CollectionView does not support set. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+            }
+            else
+            {
+                var (originalValue, _) = writableView.GetAt(index);
+
+                // update view
+                writableView.SetViewAt(index, value);
+                listView[index] = value;
+
+                var setValue = true;
+                var newOriginal = converter(value, originalValue, ref setValue);
+
+                if (setValue)
+                {
+                    writableView.SetToSourceCollection(index, newOriginal);
+                }
+            }
+        }
     }
 
     object? IList.this[int index]
@@ -900,7 +1002,7 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> 
         {
             return this[index];
         }
-        set => throw new NotSupportedException();
+        set => ((IList<TView>)this)[index] = (TView)value!;
     }
 
     static bool IsCompatibleObject(object? value)
