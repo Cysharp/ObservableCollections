@@ -8,11 +8,14 @@ using System.Collections.Generic;
 
 
 var dict = new ObservableDictionary<int, string>();
-var view = dict.CreateView(x => x).ToNotifyCollectionChanged();
+var view = dict.CreateView(x => x);
+view.AttachFilter(x => x.Key == 1);
+
+var view2 = view.ToNotifyCollectionChanged();
 dict.Add(key: 1, value: "foo");
 dict.Add(key: 2, value: "bar");
 
-foreach (var item in view)
+foreach (var item in view2)
 {
     Console.WriteLine(item);
 }

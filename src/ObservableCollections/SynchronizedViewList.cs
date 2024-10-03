@@ -197,6 +197,8 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
 
     private void Parent_RejectedViewChanged(RejectedViewChangedAction arg1, int index, int oldIndex)
     {
+        if (index == -1) return;
+
         lock (gate)
         {
             switch (arg1)
@@ -208,6 +210,7 @@ internal class FiltableSynchronizedViewList<T, TView> : ISynchronizedViewList<TV
                     listView.UpdateAlternateIndex(index, -1);
                     break;
                 case RejectedViewChangedAction.Move:
+                    if (oldIndex == -1) return;
                     listView.TryReplaceAlternateIndex(oldIndex, index);
                     break;
                 default:
@@ -270,7 +273,7 @@ internal class NonFilteredSynchronizedViewList<T, TView> : ISynchronizedViewList
     readonly ISynchronizedView<T, TView> parent;
     protected readonly List<TView> listView; // no filter can be faster
     protected readonly object gate = new object();
-    
+
     protected virtual bool IsSupportRangeFeature => true;
 
     public NonFilteredSynchronizedViewList(ISynchronizedView<T, TView> parent)
