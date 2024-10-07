@@ -441,7 +441,7 @@ public class SampleScript : MonoBehaviour
     public Button prefab;
     public GameObject root;
     ObservableRingBuffer<int> collection;
-    ISynchronizedView<GameObject> view;
+    ISynchronizedView<int, GameObject> view;
 
     void Start()
     {
@@ -459,10 +459,10 @@ public class SampleScript : MonoBehaviour
         view.ViewChanged += View_ViewChanged;
     }
 
-    void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, string> eventArgs)
+    void View_ViewChanged(in SynchronizedViewChangedEventArgs<int, GameObject> eventArgs)
     {
         // hook remove event
-        if (NotifyCollectionChangedAction.Remove)
+        if (eventArgs.Action == NotifyCollectionChangedAction.Remove)
         {
             GameObject.Destroy(eventArgs.OldItem.View);
         }
