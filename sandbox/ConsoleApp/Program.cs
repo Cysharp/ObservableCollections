@@ -6,28 +6,57 @@ using ObservableCollections;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks.Sources;
+using System.Reflection.Emit;
 
-var l = new ObservableList<int>();
-var view = l.CreateWritableView(x => x.ToString());
-view.AttachFilter(x => x % 2 == 0);
-IList<string> notify = view.ToWritableNotifyCollectionChanged((string newView, int originalValue, ref bool setValue) =>
+var list = new ObservableList<Person>()
 {
-    setValue = false;
-    return int.Parse(newView);
+    new (){ Age = 10, Name = "John" },
+    new (){ Age = 22, Name = "Jeyne" },
+    new (){ Age = 30, Name = "Mike" },
+};
+var view = list.CreateWritableView(x => x.Name);
+view.AttachFilter(x => x.Age >= 20);
+
+IList<string?> bindable = view.ToWritableNotifyCollectionChanged((string? newView, Person original, ref bool setValue) =>
+{
+    if (setValue)
+    {
+        // default setValue == true is Set operation
+        original.Name = newView;
+
+        // You can modify setValue to false, it does not set original collection to new value.
+        // For mutable reference types, when there is only a single,
+        // bound View and to avoid recreating the View, setting false is effective.
+        // Otherwise, keeping it true will set the value in the original collection as well,
+        // and change notifications will be sent to lower-level Views(the delegate for View generation will also be called anew).
+        setValue = false;
+        return original;
+    }
+    else
+    {
+        // default setValue == false is Add operation
+        return new Person { Age = null, Name = newView };
+    }
 });
 
-l.Add(0);
-l.Add(1);
-l.Add(2);
-l.Add(3);
-l.Add(4);
-l.Add(5);
-
-notify[1] = "99999";
+// bindable[0] = "takoyaki";
 
 foreach (var item in view)
 {
     Console.WriteLine(item);
+}
+
+Console.WriteLine("---");
+
+foreach (var item in list)
+{
+    Console.WriteLine((item.Age, item.Name));
+}
+
+public class Person
+{
+    public int? Age { get; set; }
+    public string? Name { get; set; }
 }
 
 

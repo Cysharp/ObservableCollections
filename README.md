@@ -374,14 +374,59 @@ public interface IWritableSynchronizedView<T, TView> : ISynchronizedView<T, TVie
 `ToWritableNotifyCollectionChanged` accepts a delegate called `WritableViewChangedEventHandler`. `newView` receives the newly bound value. If `setValue` is true, it sets a new value to the original collection, triggering notification propagation. The View is also regenerated. If `T originalValue` is a reference type, you can prevent such propagation by setting `setValue` to `false`.
 
 ```csharp
-var list = new ObservableList<int>();
-var view = list.CreateWritableView(x => x.ToString());
-view.AttachFilter(x => x % 2 == 0);
-IList<string> notify = view.ToWritableNotifyCollectionChanged((string newView, int originalValue, ref bool setValue) =>
+var list = new ObservableList<Person>()
 {
-    setValue = true; // or false
-    return int.Parse(newView);
+    new (){ Age = 10, Name = "John" },
+    new (){ Age = 22, Name = "Jeyne" },
+    new (){ Age = 30, Name = "Mike" },
+};
+var view = list.CreateWritableView(x => x.Name);
+view.AttachFilter(x => x.Age >= 20);
+
+IList<string?> bindable = view.ToWritableNotifyCollectionChanged((string? newView, Person original, ref bool setValue) =>
+{
+    if (setValue)
+    {
+        // default setValue == true is Set operation
+        original.Name = newView;
+
+        // You can modify setValue to false, it does not set original collection to new value.
+        // For mutable reference types, when there is only a single,
+        // bound View and to avoid recreating the View, setting false is effective.
+        // Otherwise, keeping it true will set the value in the original collection as well,
+        // and change notifications will be sent to lower-level Views(the delegate for View generation will also be called anew).
+        setValue = false;
+        return original;
+    }
+    else
+    {
+        // default setValue == false is Add operation
+        return new Person { Age = null, Name = newView };
+    }
 });
+
+bindable[1] = "Bob"; // change Mike(filtered view's [1]) to Bob.
+bindable.Add("Ken");
+
+// Show Views
+foreach (var item in view)
+{
+    Console.WriteLine(item);
+}
+
+Console.WriteLine("---");
+
+// Show Originals
+foreach (var item in list)
+{
+    Console.WriteLine((item.Age, item.Name));
+}
+
+public class Person
+{
+    public int? Age { get; set; }
+    public string? Name { get; set; }
+}
 ```
 
 Unity

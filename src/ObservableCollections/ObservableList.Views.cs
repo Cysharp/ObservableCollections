@@ -360,6 +360,14 @@ namespace ObservableCollections
                 }
             }
 
+            public void AddToSourceCollection(T value)
+            {
+                lock (SyncRoot)
+                {
+                    source.Add(value);
+                }
+            }
+
             public IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter)
             {
                 return new FiltableWritableSynchronizedViewList<T, TView>(this, converter);

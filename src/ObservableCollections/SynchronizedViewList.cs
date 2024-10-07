@@ -557,7 +557,7 @@ internal class FiltableWritableSynchronizedViewList<T, TView> : FiltableSynchron
 
                 if (setValue)
                 {
-                    writableView.SetToSourceCollection(index, newOriginal);
+                    writableView.SetToSourceCollection(originalIndex, newOriginal);
                 }
             }
         }
@@ -695,7 +695,7 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
         get => ((IReadOnlyList<TView>)this)[index];
         set
         {
-            if (converter == null || parent is not IWritableSynchronizedView<T,TView> writableView)
+            if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
             {
                 throw new NotSupportedException("This CollectionView does not support set. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
             }
@@ -713,7 +713,7 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
 
                 if (setValue)
                 {
-                    writableView.SetToSourceCollection(index, newOriginal);
+                    writableView.SetToSourceCollection(originalIndex, newOriginal);
                 }
             }
         }
@@ -743,12 +743,24 @@ internal class NotifyCollectionChangedSynchronizedViewList<T, TView> :
 
     public void Add(TView item)
     {
-        throw new NotSupportedException();
+        if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+        {
+            throw new NotSupportedException("This CollectionView does not support Add. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var setValue = false;
+            var newOriginal = converter(item, default!, ref setValue);
+
+            // always add
+            writableView.AddToSourceCollection(newOriginal);
+        }
     }
 
     public int Add(object? value)
     {
-        throw new NotImplementedException();
+        Add((TView)value!);
+        return -1; // itself does not add in this collection
     }
 
     public void Clear()
@@ -1020,12 +1032,24 @@ internal class NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView> 
 
     public void Add(TView item)
     {
-        throw new NotSupportedException();
+        if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+        {
+            throw new NotSupportedException("This CollectionView does not support Add. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var setValue = false;
+            var newOriginal = converter(item, default!, ref setValue);
+
+            // always add
+            writableView.AddToSourceCollection(newOriginal);
+        }
     }
 
     public int Add(object? value)
     {
-        throw new NotImplementedException();
+        Add((TView)value!);
+        return -1; // itself does not add in this collection
     }
 
     public void Clear()

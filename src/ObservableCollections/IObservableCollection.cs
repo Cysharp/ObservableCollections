@@ -56,6 +56,7 @@ namespace ObservableCollections
         (T Value, TView View) GetAt(int index);
         void SetViewAt(int index, TView view);
         void SetToSourceCollection(int index, T value);
+        void AddToSourceCollection(T value);
         IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter);
         INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter);
         INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
