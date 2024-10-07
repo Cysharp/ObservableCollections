@@ -26,19 +26,22 @@ namespace ObservableCollections
 
         public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
         {
-            return ToWritableNotifyCollectionChanged(static x => x, collectionEventDispatcher, static (T newView, T originalValue, ref bool setValue) =>
-            {
-                setValue = true;
-                return newView;
-            });
+            return ToWritableNotifyCollectionChanged(
+                static x => x,
+                static (T newView, T originalValue, ref bool setValue) =>
+                {
+                    setValue = true;
+                    return newView;
+                },
+                collectionEventDispatcher);
         }
 
         public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter)
         {
-            return ToWritableNotifyCollectionChanged(transform, null!);
+            return ToWritableNotifyCollectionChanged(transform, converter, null!);
         }
 
-        public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher, WritableViewChangedEventHandler<T, TView>? converter)
+        public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             return new NonFilteredNotifyCollectionChangedSynchronizedViewList<T, TView>(CreateView(transform), collectionEventDispatcher, converter);
         }
@@ -367,9 +370,19 @@ namespace ObservableCollections
                 return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null, converter);
             }
 
+            public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, collectionEventDispatcher,
+                                                                                 static (TView newView, T originalValue, ref bool setValue) =>
+                                                                                 {
+                                                                                     setValue = true;
+                                                                                     return originalValue;
+                                                                                 });
+            }
+
             public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher)
             {
-                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null, converter);
+                return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, collectionEventDispatcher, converter);
             }
 
             #endregion
