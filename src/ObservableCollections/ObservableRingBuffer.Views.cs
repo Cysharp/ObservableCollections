@@ -108,22 +108,22 @@ namespace ObservableCollections
 
             public ISynchronizedViewList<TView> ToViewList()
             {
-                return new FiltableSynchronizedViewList<T, TView>(this);
+                return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: true);
             }
 
-            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged()
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged()
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, null);
+                    return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: false);
                 }
             }
 
-            public INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
             {
                 lock (SyncRoot)
                 {
-                    return new NotifyCollectionChangedSynchronizedViewList<T, TView>(this, collectionEventDispatcher);
+                    return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: false, collectionEventDispatcher);
                 }
             }
 
