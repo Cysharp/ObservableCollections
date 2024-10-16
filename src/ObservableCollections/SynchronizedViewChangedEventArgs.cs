@@ -174,7 +174,7 @@ namespace ObservableCollections
                     }
                     else
                     {
-                        ev2?.Invoke(RejectedViewChangedAction.Remove, index, -1); 
+                        ev2?.Invoke(RejectedViewChangedAction.Remove, index, -1);
                     }
                 }
             }

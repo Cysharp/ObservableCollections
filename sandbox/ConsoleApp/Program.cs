@@ -39,6 +39,11 @@ var bindable = view.ToWritableNotifyCollectionChanged((string? newView, Person o
     }
 });
 
+
+list.Clear();
+
+list.Add(new() { Age = 99, Name = "tako" });
+
 // bindable[0] = "takoyaki";
 
 foreach (var item in view)

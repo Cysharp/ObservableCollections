@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Runtime.InteropServices;
 using System.Threading;
 using R3;
 
@@ -27,15 +28,40 @@ public readonly record struct CollectionResetEvent<T>
     }
 }
 
+[StructLayout(LayoutKind.Auto)]
+public readonly record struct CollectionChangedEvent<T>
+{
+    public readonly NotifyCollectionChangedAction Action;
+    public readonly T NewItem;
+    public readonly T OldItem;
+    public readonly int NewStartingIndex;
+    public readonly int OldStartingIndex;
+    public readonly SortOperation<T> SortOperation;
+
+    public CollectionChangedEvent(NotifyCollectionChangedAction action, T newItem, T oldItem, int newStartingIndex, int oldStartingIndex, SortOperation<T> sortOperation)
+    {
+        Action = action;
+        NewItem = newItem;
+        OldItem = oldItem;
+        NewStartingIndex = newStartingIndex;
+        OldStartingIndex = oldStartingIndex;
+        SortOperation = sortOperation;
+    }
+}
+
 public readonly record struct DictionaryAddEvent<TKey, TValue>(TKey Key, TValue Value);
 
 public readonly record struct DictionaryRemoveEvent<TKey, TValue>(TKey Key, TValue Value);
 
 public readonly record struct DictionaryReplaceEvent<TKey, TValue>(TKey Key, TValue OldValue, TValue NewValue);
 
-
 public static class ObservableCollectionR3Extensions
 {
+    public static Observable<CollectionChangedEvent<T>> ObserveChanged<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
+    {
+        return new ObservableCollectionChanged<T>(source, cancellationToken);
+    }
+
     public static Observable<CollectionAddEvent<T>> ObserveAdd<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
         return new ObservableCollectionAdd<T>(source, cancellationToken);
@@ -102,6 +128,72 @@ public static class ObservableDictionaryR3Extensions
     }
 }
 
+sealed class ObservableCollectionChanged<T>(IObservableCollection<T> collection, CancellationToken cancellationToken)
+    : Observable<CollectionChangedEvent<T>>
+{
+    protected override IDisposable SubscribeCore(Observer<CollectionChangedEvent<T>> observer)
+    {
+        return new _ObservableCollectionAdd(collection, observer, cancellationToken);
+    }
+
+    sealed class _ObservableCollectionAdd(
+        IObservableCollection<T> collection,
+        Observer<CollectionChangedEvent<T>> observer,
+        CancellationToken cancellationToken)
+        : ObservableCollectionObserverBase<T, CollectionChangedEvent<T>>(collection, observer, cancellationToken)
+    {
+        protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
+        {
+            if (eventArgs.IsSingleItem)
+            {
+                var newArgs = new CollectionChangedEvent<T>(
+                    eventArgs.Action,
+                    eventArgs.NewItem,
+                    eventArgs.OldItem,
+                    eventArgs.NewStartingIndex,
+                    eventArgs.OldStartingIndex,
+                    eventArgs.SortOperation);
+
+                observer.OnNext(newArgs);
+            }
+            else
+            {
+                if (eventArgs.Action == NotifyCollectionChangedAction.Add)
+                {
+                    var i = eventArgs.NewStartingIndex;
+                    foreach (var item in eventArgs.NewItems)
+                    {
+                        var newArgs = new CollectionChangedEvent<T>(
+                            eventArgs.Action,
+                            eventArgs.NewItem,
+                            eventArgs.OldItem,
+                            i++,
+                            eventArgs.OldStartingIndex,
+                            eventArgs.SortOperation);
+
+                        observer.OnNext(newArgs);
+                    }
+                }
+                else if (eventArgs.Action == NotifyCollectionChangedAction.Remove)
+                {
+                    foreach (var item in eventArgs.OldItems)
+                    {
+                        var newArgs = new CollectionChangedEvent<T>(
+                            eventArgs.Action,
+                            eventArgs.NewItem,
+                            eventArgs.OldItem,
+                            eventArgs.NewStartingIndex,
+                            eventArgs.OldStartingIndex, // removed, uses same index
+                            eventArgs.SortOperation);
+
+                        observer.OnNext(newArgs);
+                    }
+                }
+            }
+        }
+    }
+}
+
 sealed class ObservableCollectionAdd<T>(IObservableCollection<T> collection, CancellationToken cancellationToken)
     : Observable<CollectionAddEvent<T>>
 {
@@ -161,10 +253,9 @@ sealed class ObservableCollectionRemove<T>(IObservableCollection<T> collection, 
                 }
                 else
                 {
-                    var i = eventArgs.OldStartingIndex;
                     foreach (var item in eventArgs.OldItems)
                     {
-                        observer.OnNext(new CollectionRemoveEvent<T>(i++, item));
+                        observer.OnNext(new CollectionRemoveEvent<T>(eventArgs.OldStartingIndex, item)); // remove uses same index
                     }
                 }
             }
