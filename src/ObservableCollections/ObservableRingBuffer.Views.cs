@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableRingBuffer<T>
+    public partial class ObservableRingBuffer<T>
     {
         public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {

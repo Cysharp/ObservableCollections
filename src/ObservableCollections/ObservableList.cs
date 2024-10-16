@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
+    public partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
     {
         readonly List<T> list;
         public object SyncRoot { get; } = new();

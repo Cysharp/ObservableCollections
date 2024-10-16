@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
+    public partial class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
         readonly Stack<T> stack;
         public object SyncRoot { get; } = new object();

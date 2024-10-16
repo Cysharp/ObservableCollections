@@ -7,7 +7,7 @@ using System.Text;
 
 namespace ObservableCollections;
 
-public sealed partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
+public partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
 {
     // override extension methods(IObservableCollection.cs ObservableCollectionExtensions)
 

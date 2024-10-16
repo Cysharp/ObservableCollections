@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableDictionary<TKey, TValue>
+    public partial class ObservableDictionary<TKey, TValue>
     {
         public ISynchronizedView<KeyValuePair<TKey, TValue>, TView> CreateView<TView>(Func<KeyValuePair<TKey, TValue>, TView> transform)
         {

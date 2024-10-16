@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableHashSet<T> : IReadOnlyCollection<T>, IObservableCollection<T>
+    public partial class ObservableHashSet<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
         public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {

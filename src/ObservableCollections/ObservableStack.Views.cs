@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
+    public partial class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
     {
         public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform)
         {

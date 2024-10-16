@@ -6,7 +6,7 @@ using System.Collections;
 
 namespace ObservableCollections
 {
-    public sealed partial class ObservableRingBuffer<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
+    public partial class ObservableRingBuffer<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>
     {
         readonly RingBuffer<T> buffer;
 
