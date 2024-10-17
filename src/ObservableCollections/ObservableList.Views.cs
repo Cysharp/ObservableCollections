@@ -367,6 +367,37 @@ namespace ObservableCollections
                     source.Add(value);
                 }
             }
+            public void InsertIntoSourceCollection(int index, T value)
+            {
+                lock (SyncRoot)
+                {
+                    source.Insert(index, value);
+                }
+            }
+
+            public bool RemoveFromSourceCollection(T value)
+            {
+                lock (SyncRoot)
+                {
+                    return source.Remove(value);
+                }
+            }
+
+            public void RemoveAtSourceCollection(int index)
+            {
+                lock (SyncRoot)
+                {
+                    source.RemoveAt(index);
+                }
+            }
+
+            public void ClearSourceCollection()
+            {
+                lock (SyncRoot)
+                {
+                    source.Clear();
+                }
+            }
 
             public IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter)
             {
@@ -378,10 +409,10 @@ namespace ObservableCollections
                 return new FiltableSynchronizedViewList<T, TView>(this,
                     isSupportRangeFeature: false,
                     converter: static (TView newView, T originalValue, ref bool setValue) =>
-                    {
-                        setValue = true;
-                        return originalValue;
-                    });
+                                {
+                                    setValue = true;
+                                    return originalValue;
+                                });
             }
 
             public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter)
@@ -393,12 +424,12 @@ namespace ObservableCollections
             {
                 return new FiltableSynchronizedViewList<T, TView>(this,
                     isSupportRangeFeature: false,
-                    collectionEventDispatcher,
-                    static (TView newView, T originalValue, ref bool setValue) =>
-                    {
-                        setValue = true;
-                        return originalValue;
-                    });
+                    eventDispatcher: collectionEventDispatcher,
+                    converter: static (TView newView, T originalValue, ref bool setValue) =>
+                                {
+                                    setValue = true;
+                                    return originalValue;
+                                });
             }
 
             public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher)

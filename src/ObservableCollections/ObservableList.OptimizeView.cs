@@ -189,6 +189,25 @@ internal sealed class ObservableListSynchronizedViewList<T> : NotifyCollectionCh
     {
         parent.Add(item);
     }
+    public override void Insert(int index, T item)
+    {
+        parent.Insert(index, item);
+    }
+
+    public override bool Remove(T item)
+    {
+        return parent.Remove(item);
+    }
+
+    public override void RemoveAt(int index)
+    {
+        parent.RemoveAt(index);
+    }
+
+    public override void Clear()
+    {
+        parent.Clear();
+    }
 
     public override bool Contains(T item)
     {
