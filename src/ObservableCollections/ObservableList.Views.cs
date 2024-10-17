@@ -373,6 +373,17 @@ namespace ObservableCollections
                 return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: true, converter: converter);
             }
 
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged()
+            {
+                return new FiltableSynchronizedViewList<T, TView>(this,
+                    isSupportRangeFeature: false,
+                    converter: static (TView newView, T originalValue, ref bool setValue) =>
+                    {
+                        setValue = true;
+                        return originalValue;
+                    });
+            }
+
             public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter)
             {
                 return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: false, converter: converter);
