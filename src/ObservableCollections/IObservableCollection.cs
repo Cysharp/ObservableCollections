@@ -176,22 +176,22 @@ namespace ObservableCollections
             return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform), isSupportRangeFeature: true, null, null);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
+        public static NotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
         {
             return ToNotifyCollectionChanged(collection, null);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
+        public static NotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             return ToNotifyCollectionChanged(collection, static x => x, collectionEventDispatcher);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform)
+        public static NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform)
         {
             return ToNotifyCollectionChanged(collection, transform, null!);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
+        public static NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             // Optimized for non filtered
             return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform), isSupportRangeFeature: false, collectionEventDispatcher, null);

@@ -19,12 +19,12 @@ namespace ObservableCollections
             return new View<TView>(this, transform);
         }
 
-        public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged()
+        public NotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged()
         {
             return ToWritableNotifyCollectionChanged(null);
         }
 
-        public INotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
+        public NotifyCollectionChangedSynchronizedViewList<T> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
         {
             return ToWritableNotifyCollectionChanged(
                 static x => x,
@@ -36,12 +36,12 @@ namespace ObservableCollections
                 collectionEventDispatcher);
         }
 
-        public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter)
+        public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter)
         {
             return ToWritableNotifyCollectionChanged(transform, converter, null!);
         }
 
-        public INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter, ICollectionEventDispatcher? collectionEventDispatcher)
+        public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, WritableViewChangedEventHandler<T, TView>? converter, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             return new NonFilteredSynchronizedViewList<T, TView>(CreateView(transform), isSupportRangeFeature: false, collectionEventDispatcher, converter);
         }
