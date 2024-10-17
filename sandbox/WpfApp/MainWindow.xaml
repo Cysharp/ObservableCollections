@@ -17,7 +17,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- 1つ目のグループ (上部に配置) -->
+        <!-- original -->
         <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Vertical">
             <ListBox ItemsSource="{Binding ItemsView}" />
             <Button Content="Add" Command="{Binding AddCommand}" />
@@ -30,21 +30,21 @@
             <Button Content="Sort" Command="{Binding SortCommand}" />
         </StackPanel>
 
-        <!-- 左上 (NotWritable, NonFilter) -->
+        <!-- Upper left (NotWritable, NonFilter) -->
         <GroupBox Grid.Row="1" Grid.Column="0" Header="NotWritable, NonFilter">
             <StackPanel Orientation="Vertical">
                 <DataGrid ItemsSource="{Binding NotWritableNonFilterView}" />
             </StackPanel>
         </GroupBox>
 
-        <!-- 右上 (Writable, NonFilter) -->
+        <!-- Upper right (Writable, NonFilter) -->
         <GroupBox Grid.Row="1" Grid.Column="1" Header="Writable, NonFilter">
             <StackPanel Orientation="Vertical">
                 <DataGrid ItemsSource="{Binding WritableNonFilterPersonView}" />
             </StackPanel>
         </GroupBox>
 
-        <!-- 左下 (NotWritable, Filter) -->
+        <!-- Lower left (NotWritable, Filter) -->
         <GroupBox Grid.Row="2" Grid.Column="0" Header="NotWritable, Filter">
             <StackPanel Orientation="Vertical">
                 <DataGrid ItemsSource="{Binding NotWritableFilterView}" />
@@ -53,7 +53,7 @@
             </StackPanel>
         </GroupBox>
 
-        <!-- 右下 (Writable, Filter) -->
+        <!-- Lower right (Writable, Filter) -->
         <GroupBox Grid.Row="2" Grid.Column="1" Header="Writable, Filter">
             <StackPanel Orientation="Vertical">
                 <DataGrid ItemsSource="{Binding WritableFilterPersonView}" />
