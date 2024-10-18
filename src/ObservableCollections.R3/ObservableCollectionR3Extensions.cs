@@ -55,7 +55,7 @@ public readonly record struct DictionaryRemoveEvent<TKey, TValue>(TKey Key, TVal
 
 public readonly record struct DictionaryReplaceEvent<TKey, TValue>(TKey Key, TValue OldValue, TValue NewValue);
 
-public static class ObservableCollectionR3Extensions
+public static partial class ObservableCollectionR3Extensions
 {
     public static Observable<CollectionChangedEvent<T>> ObserveChanged<T>(this IObservableCollection<T> source, CancellationToken cancellationToken = default)
     {
@@ -165,7 +165,7 @@ sealed class ObservableCollectionChanged<T>(IObservableCollection<T> collection,
                     {
                         var newArgs = new CollectionChangedEvent<T>(
                             eventArgs.Action,
-                            eventArgs.NewItem,
+                            item,
                             eventArgs.OldItem,
                             i++,
                             eventArgs.OldStartingIndex,
@@ -181,7 +181,7 @@ sealed class ObservableCollectionChanged<T>(IObservableCollection<T> collection,
                         var newArgs = new CollectionChangedEvent<T>(
                             eventArgs.Action,
                             eventArgs.NewItem,
-                            eventArgs.OldItem,
+                            item,
                             eventArgs.NewStartingIndex,
                             eventArgs.OldStartingIndex, // removed, uses same index
                             eventArgs.SortOperation);
