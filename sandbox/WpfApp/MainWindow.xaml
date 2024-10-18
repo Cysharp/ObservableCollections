@@ -5,29 +5,62 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <!--<Grid>
+        Title="MainWindow" Height="800" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition />
-            <ColumnDefinition />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <ListView ItemsSource="{Binding ItemsView}"></ListView>
-        
-        <Button Grid.Column="1" Click="Button_Click">Insert</Button>
+        <!-- original -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Vertical">
+            <ListBox ItemsSource="{Binding ItemsView}" />
+            <Button Content="Add" Command="{Binding AddCommand}" />
+            <Button Content="AddRange" Command="{Binding AddRangeCommand}" />
+            <Button Content="Insert" Command="{Binding InsertAtRandomCommand}" />
+            <Button Content="Remove" Command="{Binding RemoveAtRandomCommand}" />
+            <Button Content="RemoveRange" Command="{Binding RemoveRangeCommand}" />
+            <Button Content="Clear" Command="{Binding ClearCommand}" />
+            <Button Content="Reverse" Command="{Binding ReverseCommand}" />
+            <Button Content="Sort" Command="{Binding SortCommand}" />
+        </StackPanel>
 
-    </Grid>-->
-    <StackPanel>
-        <ListBox ItemsSource="{Binding ItemsView}" />
-        <Button Content="Add" Command="{Binding AddCommand}" />
-        <Button Content="AddRange" Command="{Binding AddRangeCommand}" />
-        <Button Content="Insert" Command="{Binding InsertAtRandomCommand}" />
-        <Button Content="Remove" Command="{Binding RemoveAtRandomCommand}" />
-        <Button Content="RemoveRange" Command="{Binding RemoveRangeCommand}" />
-        <Button Content="Clear" Command="{Binding ClearCommand}" />
-        <Button Content="Reverse" Command="{Binding ReverseCommand}" />
-        <Button Content="Sort" Command="{Binding SortCommand}" />
-        <Button Content="AttachFilter" Command="{Binding AttachFilterCommand}" />
-        <Button Content="ResetFilter" Command="{Binding ResetFilterCommand}" />
-    </StackPanel>
+        <!-- Upper left (NotWritable, NonFilter) -->
+        <GroupBox Grid.Row="1" Grid.Column="0" Header="NotWritable, NonFilter">
+            <StackPanel Orientation="Vertical">
+                <DataGrid ItemsSource="{Binding NotWritableNonFilterView}" />
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Upper right (Writable, NonFilter) -->
+        <GroupBox Grid.Row="1" Grid.Column="1" Header="Writable, NonFilter">
+            <StackPanel Orientation="Vertical">
+                <DataGrid ItemsSource="{Binding WritableNonFilterPersonView}" />
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Lower left (NotWritable, Filter) -->
+        <GroupBox Grid.Row="2" Grid.Column="0" Header="NotWritable, Filter">
+            <StackPanel Orientation="Vertical">
+                <DataGrid ItemsSource="{Binding NotWritableFilterView}" />
+                <Button Content="AttachFilter" Command="{Binding AttachFilterCommand2}" />
+                <Button Content="ResetFilter" Command="{Binding ResetFilterCommand2}" />
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Lower right (Writable, Filter) -->
+        <GroupBox Grid.Row="2" Grid.Column="1" Header="Writable, Filter">
+            <StackPanel Orientation="Vertical">
+                <DataGrid ItemsSource="{Binding WritableFilterPersonView}" />
+                <Button Content="AttachFilter" Command="{Binding AttachFilterCommand3}" />
+                <Button Content="ResetFilter" Command="{Binding ResetFilterCommand3}" />
+            </StackPanel>
+        </GroupBox>
+
+    </Grid>
 </Window>

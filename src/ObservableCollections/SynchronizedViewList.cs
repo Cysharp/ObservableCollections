@@ -337,21 +337,22 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         }
         set
         {
-            if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+            if (IsReadOnly)
             {
-                throw new NotSupportedException("This CollectionView does not support set. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+                throw new NotSupportedException("This CollectionView does not support Set. If base type is ObservableList<T>, you can use CreateWritableView and ToWritableNotifyCollectionChanged.");
             }
             else
             {
+                var writableView = parent as IWritableSynchronizedView<T, TView>;
                 var originalIndex = listView.GetAlternateIndex(index);
-                var (originalValue, _) = writableView.GetAt(originalIndex);
+                var (originalValue, _) = writableView!.GetAt(originalIndex);
 
                 // update view
                 writableView.SetViewAt(originalIndex, value);
                 listView[index] = value;
 
                 var setValue = true;
-                var newOriginal = converter(value, originalValue, ref setValue);
+                var newOriginal = converter!(value, originalValue, ref setValue);
 
                 if (setValue)
                 {
@@ -372,6 +373,8 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         }
     }
 
+    public override bool IsReadOnly => converter == null || parent is not IWritableSynchronizedView<T, TView>;
+
     public override IEnumerator<TView> GetEnumerator()
     {
         lock (gate)
@@ -385,17 +388,91 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
     public override void Add(TView item)
     {
-        if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+        if (IsReadOnly)
         {
-            throw new NotSupportedException("This CollectionView does not support Add. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+            throw new NotSupportedException("This CollectionView does not support Add. If base type is ObservableList<T>, you can use CreateWritableView and ToWritableNotifyCollectionChanged.");
         }
         else
         {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            if (typeof(T) == typeof(TView) && item is T tItem)
+            {
+                writableView!.AddToSourceCollection(tItem);
+                return;
+            }
             var setValue = false;
-            var newOriginal = converter(item, default!, ref setValue);
+            var newOriginal = converter!(item, default!, ref setValue);
 
             // always add
-            writableView.AddToSourceCollection(newOriginal);
+            writableView!.AddToSourceCollection(newOriginal);
+        }
+    }
+
+    public override void Insert(int index, TView item)
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support Insert. If base type is ObservableList<T>, you can use CreateWritableView and ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            if (typeof(T) == typeof(TView) && item is T tItem)
+            {
+                writableView!.InsertIntoSourceCollection(index, tItem);
+                return;
+            }
+            var setValue = false;
+            var newOriginal = converter!(item, default!, ref setValue);
+
+            writableView!.InsertIntoSourceCollection(index, newOriginal);
+        }
+    }
+
+    public override bool Remove(TView item)
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support Remove. If base type is ObservableList<T>, you can use CreateWritableView and ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            if (typeof(T) == typeof(TView) && item is T tItem)
+            {
+                return writableView!.RemoveFromSourceCollection(tItem);
+            }
+            var setValue = false;
+            var newOriginal = converter!(item, default!, ref setValue);
+
+            // always add
+            return writableView!.RemoveFromSourceCollection(newOriginal);
+        }
+    }
+
+    public override void RemoveAt(int index)
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support RemoveAt. If base type is ObservableList<T>, you can use CreateWritableView and ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            writableView!.RemoveAtSourceCollection(index);
+        }
+    }
+
+    public override void Clear()
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support Clear. If base type is ObservableList<T>, you can use CreateWritableView and ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            writableView!.ClearSourceCollection();
         }
     }
 
@@ -762,20 +839,21 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         }
         set
         {
-            if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+            if (IsReadOnly)
             {
-                throw new NotSupportedException("This CollectionView does not support set. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+                throw new NotSupportedException("This CollectionView does not support set. If base type is ObservableList<T>, you can use ToWritableNotifyCollectionChanged.");
             }
             else
             {
-                var (originalValue, _) = writableView.GetAt(index);
+                var writableView = parent as IWritableSynchronizedView<T, TView>;
+                var (originalValue, _) = writableView!.GetAt(index);
 
                 // update view
                 writableView.SetViewAt(index, value);
                 listView[index] = value;
 
                 var setValue = true;
-                var newOriginal = converter(value, originalValue, ref setValue);
+                var newOriginal = converter!(value, originalValue, ref setValue);
 
                 if (setValue)
                 {
@@ -796,6 +874,8 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         }
     }
 
+    public override bool IsReadOnly => converter == null || parent is not IWritableSynchronizedView<T, TView>;
+
     public override IEnumerator<TView> GetEnumerator()
     {
         lock (gate)
@@ -809,17 +889,91 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
     public override void Add(TView item)
     {
-        if (converter == null || parent is not IWritableSynchronizedView<T, TView> writableView)
+        if (IsReadOnly)
         {
-            throw new NotSupportedException("This CollectionView does not support Add. If base type is ObservableList<T>, you can use ToWritableSynchronizedView and ToWritableNotifyCollectionChanged.");
+            throw new NotSupportedException("This CollectionView does not support Add. If base type is ObservableList<T>, you can use ToWritableNotifyCollectionChanged.");
         }
         else
         {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            if (typeof(T) == typeof(TView) && item is T tItem)
+            {
+                writableView!.AddToSourceCollection(tItem);
+                return;
+            }
             var setValue = false;
-            var newOriginal = converter(item, default!, ref setValue);
+            var newOriginal = converter!(item, default!, ref setValue);
 
             // always add
-            writableView.AddToSourceCollection(newOriginal);
+            writableView!.AddToSourceCollection(newOriginal);
+        }
+    }
+
+    public override void Insert(int index, TView item)
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support Insert. If base type is ObservableList<T>, you can use ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            if (typeof(T) == typeof(TView) && item is T tItem)
+            {
+                writableView!.InsertIntoSourceCollection(index, tItem);
+                return;
+            }
+            var setValue = false;
+            var newOriginal = converter!(item, default!, ref setValue);
+
+            writableView!.InsertIntoSourceCollection(index, newOriginal);
+        }
+    }
+
+    public override bool Remove(TView item)
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support Remove. If base type is ObservableList<T>, you can use ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            if (typeof(T) == typeof(TView) && item is T tItem)
+            {
+                return writableView!.RemoveFromSourceCollection(tItem);
+            }
+            var setValue = false;
+            var newOriginal = converter!(item, default!, ref setValue);
+
+            // always add
+            return writableView!.RemoveFromSourceCollection(newOriginal);
+        }
+    }
+
+    public override void RemoveAt(int index)
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support RemoveAt. If base type is ObservableList<T>, you can use ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            writableView!.RemoveAtSourceCollection(index);
+        }
+    }
+
+    public override void Clear()
+    {
+        if (IsReadOnly)
+        {
+            throw new NotSupportedException("This CollectionView does not support Clear. If base type is ObservableList<T>, you can use ToWritableNotifyCollectionChanged.");
+        }
+        else
+        {
+            var writableView = parent as IWritableSynchronizedView<T, TView>;
+            writableView!.ClearSourceCollection();
         }
     }
 

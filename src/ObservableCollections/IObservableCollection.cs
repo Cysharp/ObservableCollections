@@ -57,7 +57,12 @@ namespace ObservableCollections
         void SetViewAt(int index, TView view);
         void SetToSourceCollection(int index, T value);
         void AddToSourceCollection(T value);
+        void InsertIntoSourceCollection(int index, T value);
+        bool RemoveFromSourceCollection(T value);
+        void RemoveAtSourceCollection(int index);
+        void ClearSourceCollection();
         IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter);
+        NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged();
         NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter);
         NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher);
         NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher);
@@ -99,8 +104,8 @@ namespace ObservableCollections
         }
 
         public abstract int Count { get; }
-        public bool IsReadOnly => false;
-        public bool IsFixedSize => false;
+        public virtual bool IsReadOnly { get; } = true;
+        public bool IsFixedSize => IsReadOnly;
         public bool IsSynchronized => true;
         public object SyncRoot => gate;
 
@@ -112,8 +117,13 @@ namespace ObservableCollections
         int IList.Add(object? value)
         {
             Add((TView)value!);
-            return -1; // itself does not add in this collection
+            return Count - 1;
         }
+
+        public abstract void Insert(int index, TView item);
+        public abstract bool Remove(TView item);
+        public abstract void RemoveAt(int index);
+        public abstract void Clear();
 
         public abstract bool Contains(TView item);
 
@@ -149,17 +159,43 @@ namespace ObservableCollections
             return value is TView || value == null && default(TView) == null;
         }
 
-        void ICollection<TView>.Clear() => throw new NotSupportedException();
-        void IList.Clear() => throw new NotSupportedException();
+        void ICollection<TView>.Clear()
+        {
+            Clear();
+        }
+        void IList.Clear()
+        {
+            Clear();
+        }
 
         void ICollection<TView>.CopyTo(TView[] array, int arrayIndex) => throw new NotSupportedException();
         void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
 
-        void IList<TView>.Insert(int index, TView item) => throw new NotSupportedException();
-        void IList.Insert(int index, object? value) => throw new NotSupportedException();
-        bool ICollection<TView>.Remove(TView item) => throw new NotSupportedException();
-        void IList.Remove(object? value) => throw new NotSupportedException();
-        void IList.RemoveAt(int index) => throw new NotSupportedException();
+        void IList<TView>.Insert(int index, TView item)
+        {
+            Insert(index, item);
+        }
+
+        void IList.Insert(int index, object? value)
+        {
+            Insert(index, (TView)value!);
+        }
+
+        bool ICollection<TView>.Remove(TView item)
+        {
+            return Remove(item!);
+        }
+
+        void IList.Remove(object? value)
+        {
+            Remove((TView)value!);
+        }
+
+        void IList.RemoveAt(int index)
+        {
+            RemoveAt(index);
+        }
+
         void IList<TView>.RemoveAt(int index) => throw new NotSupportedException();
     }
 
@@ -176,22 +212,22 @@ namespace ObservableCollections
             return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform), isSupportRangeFeature: true, null, null);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
+        public static NotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection)
         {
             return ToNotifyCollectionChanged(collection, null);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
+        public static NotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChanged<T>(this IObservableCollection<T> collection, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             return ToNotifyCollectionChanged(collection, static x => x, collectionEventDispatcher);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform)
+        public static NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform)
         {
             return ToNotifyCollectionChanged(collection, transform, null!);
         }
 
-        public static INotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
+        public static NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, ICollectionEventDispatcher? collectionEventDispatcher)
         {
             // Optimized for non filtered
             return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform), isSupportRangeFeature: false, collectionEventDispatcher, null);
