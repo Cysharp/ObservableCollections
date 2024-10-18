@@ -238,7 +238,7 @@ class DescendantComaprer : IComparer<int>
 
 Reactive Extensions with R3
 ---
-Once the R3 extension package is installed, you can subscribe to `ObserveChanged`, `ObserveAdd`, `ObserveRemove`, `ObserveReplace`, `ObserveMove`, `ObserveReset`, `ObserveClear`, `ObserveReverse`, `ObserveSort` events as Rx, allowing you to compose events individually.
+Once the R3 extension package is installed, you can subscribe to `ObserveChanged`, `ObserveAdd`, `ObserveRemove`, `ObserveReplace`, `ObserveMove`, `ObserveReset`, `ObserveClear`, `ObserveReverse`, `ObserveSort`, `ObserveCounteChanged` events as Rx, allowing you to compose events individually.
 
 > dotnet add package [ObservableCollections.R3](https://www.nuget.org/packages/ObservableCollections.R3)
 
@@ -259,6 +259,8 @@ list.AddRange(new[] { 10, 20, 30 });
 ```
 
 Note that `ObserveReset` is used to subscribe to Clear, Reverse, and Sort operations in bulk.
+
+In addition to `IObservableCollection<T>`, there is also a subscription event for `ISynchronizedView<T, TView>`. In the case of View, `ObserveRejected` is also added.
 
 Since it is not supported by dotnet/reactive, please use the Rx library [R3](https://github.com/Cysharp/R3).
 
@@ -553,7 +555,7 @@ public enum RejectedViewChangedAction
 public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisposable
 {
     object SyncRoot { get; }
-    ISynchronizedViewFilter<T> Filter { get; }
+    ISynchronizedViewFilter<T, TView> Filter { get; }
     IEnumerable<(T Value, TView View)> Filtered { get; }
     IEnumerable<(T Value, TView View)> Unfiltered { get; }
     int UnfilteredCount { get; }
@@ -562,7 +564,7 @@ public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisp
     event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged; // int index, int oldIndex(when RejectedViewChangedAction is Move)
     event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
-    void AttachFilter(ISynchronizedViewFilter<T> filter);
+    void AttachFilter(ISynchronizedViewFilter<T, TView> filter);
     void ResetFilter();
     ISynchronizedViewList<TView> ToViewList();
     NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged();
@@ -611,14 +613,18 @@ When `IsReverse` is true, you need to use `Index` and `Count`. When `IsSort` is 
 For Filter, you can either create one that implements this interface or generate one from a lambda expression using extension methods.
 
 ```csharp
-public interface ISynchronizedViewFilter<T>
+public interface ISynchronizedViewFilter<T, TView>
 {
-    bool IsMatch(T value);
+    bool IsMatch(T value, TView view);
 }
 
 public static class SynchronizedViewExtensions
 {
     public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, bool> filter)
+    {
+    }
+    
+    public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> filter)
     {
     }
 }
@@ -644,6 +650,11 @@ public interface IWritableSynchronizedView<T, TView> : ISynchronizedView<T, TVie
     (T Value, TView View) GetAt(int index);
     void SetViewAt(int index, TView view);
     void SetToSourceCollection(int index, T value);
+    void AddToSourceCollection(T value);
+    void InsertIntoSourceCollection(int index, T value);
+    bool RemoveFromSourceCollection(T value);
+    void RemoveAtSourceCollection(int index);
+    void ClearSourceCollection();
     IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter);
     INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter);
     INotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher);
