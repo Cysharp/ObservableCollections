@@ -22,7 +22,7 @@ namespace ObservableCollections
             protected readonly Queue<(T, TView)> queue;
             int filteredCount;
 
-            ISynchronizedViewFilter<T> filter;
+            ISynchronizedViewFilter<T, TView> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
@@ -30,7 +30,7 @@ namespace ObservableCollections
 
             public object SyncRoot { get; }
 
-            public ISynchronizedViewFilter<T> Filter
+            public ISynchronizedViewFilter<T, TView> Filter
             {
                 get { lock (SyncRoot) return filter; }
             }
@@ -39,7 +39,7 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<T>.Null;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -71,7 +71,7 @@ namespace ObservableCollections
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T> filter)
+            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
             {
                 if (filter.IsNullFilter())
                 {
@@ -85,7 +85,7 @@ namespace ObservableCollections
                     this.filteredCount = 0;
                     foreach (var (value, view) in queue)
                     {
-                        if (filter.IsMatch(value))
+                        if (filter.IsMatch(value, view))
                         {
                             filteredCount++;
                         }
@@ -98,7 +98,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T>.Null;
+                    this.filter = SynchronizedViewFilter<T, TView>.Null;
                     this.filteredCount = queue.Count;
                     ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
@@ -125,7 +125,7 @@ namespace ObservableCollections
                 {
                     foreach (var item in queue)
                     {
-                        if (filter.IsMatch(item.Item1))
+                        if (filter.IsMatch(item))
                         {
                             yield return item.Item2;
                         }
@@ -143,7 +143,7 @@ namespace ObservableCollections
                     {
                         foreach (var item in queue)
                         {
-                            if (filter.IsMatch(item.Item1))
+                            if (filter.IsMatch(item))
                             {
                                 yield return item;
                             }

@@ -54,7 +54,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         {
             foreach (var item in parent.Unfiltered) // use Unfiltered
             {
-                if (filter.IsMatch(item.Value))
+                if (filter.IsMatch(item))
                 {
                     yield return (index, item.View);
                 }

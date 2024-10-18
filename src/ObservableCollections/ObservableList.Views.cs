@@ -48,7 +48,7 @@ namespace ObservableCollections
 
         internal sealed class View<TView> : ISynchronizedView<T, TView>, IWritableSynchronizedView<T, TView>
         {
-            public ISynchronizedViewFilter<T> Filter
+            public ISynchronizedViewFilter<T, TView> Filter
             {
                 get
                 {
@@ -61,7 +61,7 @@ namespace ObservableCollections
             internal readonly List<(T, TView)> list; // unsafe, be careful to use
             int filteredCount;
 
-            ISynchronizedViewFilter<T> filter;
+            ISynchronizedViewFilter<T, TView> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
@@ -73,7 +73,7 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<T>.Null;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -105,7 +105,7 @@ namespace ObservableCollections
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T> filter)
+            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
             {
                 if (filter.IsNullFilter())
                 {
@@ -119,7 +119,7 @@ namespace ObservableCollections
                     this.filteredCount = 0;
                     for (var i = 0; i < list.Count; i++)
                     {
-                        if (filter.IsMatch(list[i].Item1))
+                        if (filter.IsMatch(list[i]))
                         {
                             filteredCount++;
                         }
@@ -133,7 +133,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T>.Null;
+                    this.filter = SynchronizedViewFilter<T, TView>.Null;
                     this.filteredCount = list.Count;
                     ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
@@ -160,7 +160,7 @@ namespace ObservableCollections
                 {
                     foreach (var item in list)
                     {
-                        if (filter.IsMatch(item.Item1))
+                        if (filter.IsMatch(item))
                         {
                             yield return item.Item2;
                         }
@@ -178,7 +178,7 @@ namespace ObservableCollections
                     {
                         foreach (var item in list)
                         {
-                            if (filter.IsMatch(item.Item1))
+                            if (filter.IsMatch(item))
                             {
                                 yield return item;
                             }
@@ -235,7 +235,7 @@ namespace ObservableCollections
                                     var view = selector(item);
                                     views.Span[i] = view;
                                     valueViews.Span[i] = (item, view);
-                                    var isMatch = matches.Span[i] = Filter.IsMatch(item);
+                                    var isMatch = matches.Span[i] = Filter.IsMatch(item, view);
                                     if (isMatch)
                                     {
                                         filteredCount++; // increment in this process
@@ -271,7 +271,7 @@ namespace ObservableCollections
                                     var item = list[i];
                                     values.Span[j] = item.Item1;
                                     views.Span[j] = item.Item2;
-                                    var isMatch = matches.Span[j] = Filter.IsMatch(item.Item1);
+                                    var isMatch = matches.Span[j] = Filter.IsMatch(item);
                                     if (isMatch)
                                     {
                                         filteredCount--; // decrement in this process

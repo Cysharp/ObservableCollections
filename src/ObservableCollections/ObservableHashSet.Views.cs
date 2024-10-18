@@ -17,7 +17,7 @@ namespace ObservableCollections
 
         sealed class View<TView> : ISynchronizedView<T, TView>
         {
-            public ISynchronizedViewFilter<T> Filter
+            public ISynchronizedViewFilter<T, TView> Filter
             {
                 get { lock (SyncRoot) return filter; }
             }
@@ -27,7 +27,7 @@ namespace ObservableCollections
             readonly Dictionary<T, (T, TView)> dict;
             int filteredCount;
 
-            ISynchronizedViewFilter<T> filter;
+            ISynchronizedViewFilter<T, TView> filter;
 
             public event NotifyViewChangedEventHandler<T, TView>? ViewChanged;
             public event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
@@ -39,7 +39,7 @@ namespace ObservableCollections
             {
                 this.source = source;
                 this.selector = selector;
-                this.filter = SynchronizedViewFilter<T>.Null;
+                this.filter = SynchronizedViewFilter<T, TView>.Null;
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
@@ -71,7 +71,7 @@ namespace ObservableCollections
                 }
             }
 
-            public void AttachFilter(ISynchronizedViewFilter<T> filter)
+            public void AttachFilter(ISynchronizedViewFilter<T, TView> filter)
             {
                 if (filter.IsNullFilter())
                 {
@@ -85,7 +85,7 @@ namespace ObservableCollections
                     this.filteredCount = 0;
                     foreach (var (_, (value, view)) in dict)
                     {
-                        if (filter.IsMatch(value))
+                        if (filter.IsMatch(value, view))
                         {
                             filteredCount++;
                         }
@@ -98,7 +98,7 @@ namespace ObservableCollections
             {
                 lock (SyncRoot)
                 {
-                    this.filter = SynchronizedViewFilter<T>.Null;
+                    this.filter = SynchronizedViewFilter<T, TView>.Null;
                     this.filteredCount = dict.Count;
                     ViewChanged?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Reset, true));
                 }
@@ -125,7 +125,7 @@ namespace ObservableCollections
                 {
                     foreach (var item in dict)
                     {
-                        if (filter.IsMatch(item.Value.Item1))
+                        if (filter.IsMatch(item.Value))
                         {
                             yield return item.Value.Item2;
                         }
@@ -143,7 +143,7 @@ namespace ObservableCollections
                     {
                         foreach (var item in dict)
                         {
-                            if (filter.IsMatch(item.Value.Item1))
+                            if (filter.IsMatch(item.Value))
                             {
                                 yield return item.Value;
                             }

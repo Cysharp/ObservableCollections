@@ -86,12 +86,22 @@ namespace ObservableCollections
     {
         public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, bool> filter)
         {
-            source.AttachFilter(new SynchronizedViewFilter<T>(filter));
+            source.AttachFilter(new SynchronizedViewValueOnlyFilter<T, TView>(filter));
         }
 
-        public static bool IsNullFilter<T>(this ISynchronizedViewFilter<T> filter)
+        public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> filter)
         {
-            return filter == SynchronizedViewFilter<T>.Null;
+            source.AttachFilter(new SynchronizedViewFilter<T, TView>(filter));
+        }
+
+        public static bool IsNullFilter<T, TView>(this ISynchronizedViewFilter<T, TView> filter)
+        {
+            return filter == SynchronizedViewFilter<T, TView>.Null;
+        }
+
+        internal static bool IsMatch<T, TView>(this ISynchronizedViewFilter<T, TView> filter, (T, TView) item)
+        {
+            return filter.IsMatch(item.Item1, item.Item2);
         }
 
         internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, (T value, TView view) value, int index)
@@ -101,7 +111,7 @@ namespace ObservableCollections
 
         internal static void InvokeOnAdd<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, T value, TView view, int index)
         {
-            var isMatch = collection.Filter.IsMatch(value);
+            var isMatch = collection.Filter.IsMatch(value, view);
             if (isMatch)
             {
                 filteredCount++;
@@ -144,7 +154,7 @@ namespace ObservableCollections
 
         internal static void InvokeOnRemove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, T value, TView view, int oldIndex)
         {
-            var isMatch = collection.Filter.IsMatch(value);
+            var isMatch = collection.Filter.IsMatch(value, view);
             if (isMatch)
             {
                 filteredCount--;
@@ -188,7 +198,7 @@ namespace ObservableCollections
         internal static void InvokeOnMove<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, Action<RejectedViewChangedAction, int, int>? ev2, T value, TView view, int index, int oldIndex)
         {
             // move does not changes filtered-count
-            var isMatch = collection.Filter.IsMatch(value);
+            var isMatch = collection.Filter.IsMatch(value, view);
             if (isMatch)
             {
                 ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Move, true, newItem: (value, view), newStartingIndex: index, oldStartingIndex: oldIndex));
@@ -206,8 +216,8 @@ namespace ObservableCollections
 
         internal static void InvokeOnReplace<T, TView>(this ISynchronizedView<T, TView> collection, ref int filteredCount, NotifyViewChangedEventHandler<T, TView>? ev, T value, TView view, T oldValue, TView oldView, int index, int oldIndex = -1)
         {
-            var oldMatched = collection.Filter.IsMatch(oldValue);
-            var newMatched = collection.Filter.IsMatch(value);
+            var oldMatched = collection.Filter.IsMatch(oldValue, oldView);
+            var newMatched = collection.Filter.IsMatch(value, view);
             var bothMatched = oldMatched && newMatched;
 
             if (bothMatched)

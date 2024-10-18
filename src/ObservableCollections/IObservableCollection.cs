@@ -35,7 +35,7 @@ namespace ObservableCollections
     public interface ISynchronizedView<T, TView> : IReadOnlyCollection<TView>, IDisposable
     {
         object SyncRoot { get; }
-        ISynchronizedViewFilter<T> Filter { get; }
+        ISynchronizedViewFilter<T, TView> Filter { get; }
         IEnumerable<(T Value, TView View)> Filtered { get; }
         IEnumerable<(T Value, TView View)> Unfiltered { get; }
         int UnfilteredCount { get; }
@@ -44,7 +44,7 @@ namespace ObservableCollections
         event Action<RejectedViewChangedAction, int, int>? RejectedViewChanged;
         event Action<NotifyCollectionChangedAction>? CollectionStateChanged;
 
-        void AttachFilter(ISynchronizedViewFilter<T> filter);
+        void AttachFilter(ISynchronizedViewFilter<T, TView> filter);
         void ResetFilter();
         ISynchronizedViewList<TView> ToViewList();
         NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged();
