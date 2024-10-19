@@ -35,7 +35,16 @@ namespace ObservableCollections
 
         public void Post(CollectionEventDispatcherEventArgs ev)
         {
-            synchronizationContext.Post(callback, ev);
+            if (SynchronizationContext.Current == null)
+            {
+                // non-UI thread, post the event asynchronously
+                synchronizationContext.Post(callback, ev);
+            }
+            else
+            {
+                // UI thread, send the event synchronously
+                synchronizationContext.Send(callback, ev);
+            }
         }
 
         static void SendOrPostCallback(object? state)
