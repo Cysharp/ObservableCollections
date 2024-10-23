@@ -56,7 +56,6 @@ Observable<CollectionRemoveEvent<T>> IObservableCollection<T>.ObserveRemove()
 Observable<CollectionReplaceEvent<T>> IObservableCollection<T>.ObserveReplace() 
 Observable<CollectionMoveEvent<T>> IObservableCollection<T>.ObserveMove() 
 Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
-Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
 Observable<Unit> IObservableCollection<T>.ObserveClear<T>()
 Observable<(int Index, int Count)> IObservableCollection<T>.ObserveReverse<T>()
 Observable<(int Index, int Count, IComparer<T>? Comparer)> IObservableCollection<T>.ObserveSort<T>()
@@ -487,7 +486,7 @@ ObservableCollections provides these collections.
 
 ```csharp
 class ObservableList<T> : IList<T>, IReadOnlyList<T>, IObservableCollection<T>, IReadOnlyObservableList<T>
-class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>> where TKey : notnull
+class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IObservableCollection<KeyValuePair<TKey, TValue>>, IReadOnlyObservableDictionary<TKey, TValue> where TKey : notnull
 class ObservableHashSet<T> : IReadOnlySet<T>, IReadOnlyCollection<T>, IObservableCollection<T> where T : notnull
 class ObservableQueue<T> : IReadOnlyCollection<T>, IObservableCollection<T>
 class ObservableStack<T> : IReadOnlyCollection<T>, IObservableCollection<T>
@@ -684,7 +683,7 @@ public interface ISynchronizedViewList<out TView> : IReadOnlyList<TView>, IDispo
 }
 
 // Obsolete for public use
-public interface INotifyCollectionChangedSynchronizedViewList<out TView> : ISynchronizedViewList<TView>, INotifyCollectionChanged, INotifyPropertyChanged
+public interface INotifyCollectionChangedSynchronizedViewList<TView> : IList<TView>, IList, ISynchronizedViewList<TView>, INotifyCollectionChanged, INotifyPropertyChanged
 {
 }
 
