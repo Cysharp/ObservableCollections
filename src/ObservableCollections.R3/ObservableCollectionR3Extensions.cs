@@ -167,9 +167,11 @@ sealed class ObservableCollectionChanged<T>(IObservableCollection<T> collection,
                             eventArgs.Action,
                             item,
                             eventArgs.OldItem,
-                            i++,
+                            newStartingIndex: i,
                             eventArgs.OldStartingIndex,
                             eventArgs.SortOperation);
+
+                        if (eventArgs.NewStartingIndex != -1) i++;
 
                         observer.OnNext(newArgs);
                     }
