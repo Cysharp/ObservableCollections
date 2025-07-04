@@ -43,7 +43,7 @@ namespace ObservableCollections
             else
             {
                 // UI thread, send the event synchronously
-                synchronizationContext.Send(callback, ev);
+                callback(ev);
             }
         }
 
