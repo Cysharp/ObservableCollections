@@ -25,8 +25,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObservableCollections.R3.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaApp", "sandbox\AvaloniaApp\AvaloniaApp.csproj", "{48D7CA5F-9956-4CF0-908E-1DECA7FE4257}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinUI3App", "sandbox\WinUI3App\WinUI3App.csproj", "{89C05E9E-11B0-576E-6BF4-EBD0A0B1324C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,10 +63,6 @@ Global
 		{48D7CA5F-9956-4CF0-908E-1DECA7FE4257}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{48D7CA5F-9956-4CF0-908E-1DECA7FE4257}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{48D7CA5F-9956-4CF0-908E-1DECA7FE4257}.Release|Any CPU.Build.0 = Release|Any CPU
-		{89C05E9E-11B0-576E-6BF4-EBD0A0B1324C}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{89C05E9E-11B0-576E-6BF4-EBD0A0B1324C}.Debug|Any CPU.Build.0 = Debug|x64
-		{89C05E9E-11B0-576E-6BF4-EBD0A0B1324C}.Release|Any CPU.ActiveCfg = Release|x64
-		{89C05E9E-11B0-576E-6BF4-EBD0A0B1324C}.Release|Any CPU.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -82,7 +76,6 @@ Global
 		{D5950521-C5B3-4B92-834E-3B12CDDD8DD6} = {8F60DC54-F617-4841-8C79-6B0137500D1C}
 		{1205F414-EE6D-49C6-9500-3E62E2120EAF} = {B6D0425C-7902-4EFB-B0EA-99F164C20835}
 		{48D7CA5F-9956-4CF0-908E-1DECA7FE4257} = {FD836539-75F1-4707-BCFF-751B95DAE19C}
-		{89C05E9E-11B0-576E-6BF4-EBD0A0B1324C} = {FD836539-75F1-4707-BCFF-751B95DAE19C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4156A725-69F4-469F-9BBB-0EE9921CA83E}
