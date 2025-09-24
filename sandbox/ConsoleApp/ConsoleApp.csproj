@@ -1,17 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net8.0</TargetFramework>
-		<LangVersion>10.0</LangVersion>
-		<Nullable>enable</Nullable>
-		<IsPackable>false</IsPackable>
-	</PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\..\src\ObservableCollections.R3\ObservableCollections.R3.csproj" />
-		<ProjectReference Include="..\..\src\ObservableCollections\ObservableCollections.csproj" />
-		<PackageReference Include="R3" Version="1.0.0" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ObservableCollections.R3\ObservableCollections.R3.csproj" />
+    <ProjectReference Include="..\..\src\ObservableCollections\ObservableCollections.csproj" />
+    <PackageReference Include="R3" Version="1.0.0" />
+  </ItemGroup>
 
 </Project>
