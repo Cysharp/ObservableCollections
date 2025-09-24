@@ -1,32 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0</TargetFrameworks>
-		<ImplicitUsings>disable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<LangVersion>12</LangVersion>
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0</TargetFrameworks>
+    <LangVersion>12</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
 
-		<!-- NuGet Packaging -->
-		<PackageTags>collection</PackageTags>
-		<Description>R3 Extensions of ObservableCollections.</Description>
-		<SignAssembly>true</SignAssembly>
-		<IsPackable>true</IsPackable>
-	</PropertyGroup>
+    <!-- NuGet Packaging -->
+    <Description>R3 Extensions of ObservableCollections.</Description>
+    <SignAssembly>true</SignAssembly>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="PolySharp" Version="1.14.1">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="R3" Version="1.0.0" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PolySharp" Version="1.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="R3" Version="1.0.0" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\ObservableCollections\ObservableCollections.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Include="../../Icon.png" Pack="true" PackagePath="/" />
-		<EmbeddedResource Include="..\..\LICENSE" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ObservableCollections\ObservableCollections.csproj" />
+  </ItemGroup>
 </Project>

@@ -1,35 +1,29 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0</TargetFrameworks>
-		<Nullable>enable</Nullable>
-		<LangVersion>12.0</LangVersion>
-		<ImplicitUsings>disable</ImplicitUsings>
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0</TargetFrameworks>
+    <LangVersion>12</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
 
-		<!-- NuGet Packaging -->
-		<PackageTags>collection</PackageTags>
-		<Description>High performance observable collections and synchronized views, for WPF, Blazor, Unity.</Description>
-		<SignAssembly>true</SignAssembly>
-		<IsPackable>true</IsPackable>
-	</PropertyGroup>
+    <!-- NuGet Packaging -->
+    <Description>High performance observable collections and synchronized views, for WPF, Blazor, Unity.</Description>
+    <SignAssembly>true</SignAssembly>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
 
-	<ItemGroup Condition="$(TargetFramework) == 'netstandard2.0'">
-		<PackageReference Include="System.Memory" Version="4.5.4" />
-		<PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-	</ItemGroup>
-	<ItemGroup Condition="$(TargetFramework) == 'netstandard2.1'">
-		<PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-	</ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'netstandard2.0'">
+    <PackageReference Include="System.Memory" Version="4.5.4" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'netstandard2.1'">
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<None Include="../../Icon.png" Pack="true" PackagePath="/" />
-		<EmbeddedResource Include="..\..\LICENSE" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <PackageReference Include="PolySharp" Version="1.14.1">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PolySharp" Version="1.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>
