@@ -55,7 +55,9 @@ namespace ObservableCollections
             {
                 if (set.Add(item))
                 {
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, -1));
+                    // Calculate the index where the item was inserted
+                    var index = set.TakeWhile(x => set.Comparer.Compare(x, item) < 0).Count();
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, index));
                     return true;
                 }
 
@@ -67,22 +69,14 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                if (!items.TryGetNonEnumeratedCount(out var capacity))
+                foreach (var item in items)
                 {
-                    capacity = 4;
-                }
-
-                using (var list = new ResizableArray<T>(capacity))
-                {
-                    foreach (var item in items)
+                    if (set.Add(item))
                     {
-                        if (set.Add(item))
-                        {
-                            list.Add(item);
-                        }
+                        // Calculate the index where the item was inserted
+                        var index = set.TakeWhile(x => set.Comparer.Compare(x, item) < 0).Count();
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, index));
                     }
-
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(list.Span, -1));
                 }
             }
         }
@@ -96,17 +90,14 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                using (var list = new ResizableArray<T>(items.Length))
+                foreach (var item in items)
                 {
-                    foreach (var item in items)
+                    if (set.Add(item))
                     {
-                        if (set.Add(item))
-                        {
-                            list.Add(item);
-                        }
+                        // Calculate the index where the item was inserted
+                        var index = set.TakeWhile(x => set.Comparer.Compare(x, item) < 0).Count();
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(item, index));
                     }
-
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Add(list.Span, -1));
                 }
             }
         }
@@ -115,9 +106,12 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                if (set.Remove(item))
+                if (set.Contains(item))
                 {
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, -1));
+                    // Calculate the index before removing
+                    var index = set.TakeWhile(x => set.Comparer.Compare(x, item) < 0).Count();
+                    set.Remove(item);
+                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, index));
                     return true;
                 }
 
@@ -129,22 +123,15 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                if (!items.TryGetNonEnumeratedCount(out var capacity))
+                foreach (var item in items)
                 {
-                    capacity = 4;
-                }
-
-                using (var list = new ResizableArray<T>(capacity))
-                {
-                    foreach (var item in items)
+                    if (set.Contains(item))
                     {
-                        if (set.Remove(item))
-                        {
-                            list.Add(item);
-                        }
+                        // Calculate the index before removing
+                        var index = set.TakeWhile(x => set.Comparer.Compare(x, item) < 0).Count();
+                        set.Remove(item);
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, index));
                     }
-
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(list.Span, -1));
                 }
             }
         }
@@ -158,17 +145,15 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-                using (var list = new ResizableArray<T>(items.Length))
+                foreach (var item in items)
                 {
-                    foreach (var item in items)
+                    if (set.Contains(item))
                     {
-                        if (set.Remove(item))
-                        {
-                            list.Add(item);
-                        }
+                        // Calculate the index before removing
+                        var index = set.TakeWhile(x => set.Comparer.Compare(x, item) < 0).Count();
+                        set.Remove(item);
+                        CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(item, index));
                     }
-
-                    CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(list.Span, -1));
                 }
             }
         }

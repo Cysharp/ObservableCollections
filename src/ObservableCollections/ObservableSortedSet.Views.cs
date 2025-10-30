@@ -182,7 +182,7 @@ namespace ObservableCollections
                             {
                                 var v = (e.NewItem, selector(e.NewItem));
                                 dict.Add(e.NewItem, v);
-                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, -1);
+                                this.InvokeOnAdd(ref filteredCount, ViewChanged, RejectedViewChanged, v, e.NewStartingIndex);
                             }
                             else
                             {
@@ -200,16 +200,17 @@ namespace ObservableCollections
                             {
                                 if (dict.Remove(e.OldItem, out var value))
                                 {
-                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, value, -1);
+                                    this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, value, e.OldStartingIndex);
                                 }
                             }
                             else
                             {
+                                var i = e.OldStartingIndex;
                                 foreach (var item in e.OldItems)
                                 {
                                     if (dict.Remove(item, out var value))
                                     {
-                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, value, -1);
+                                        this.InvokeOnRemove(ref filteredCount, ViewChanged, RejectedViewChanged, value, i++);
                                     }
                                 }
                             }
