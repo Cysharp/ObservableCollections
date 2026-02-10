@@ -124,6 +124,14 @@ namespace ObservableCollections
                 }
             }
 
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(bool supportsRangeFeature, ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                lock (SyncRoot)
+                {
+                    return new FiltableSynchronizedViewList<T, TView>(this, supportsRangeFeature, collectionEventDispatcher);
+                }
+            }
+
             public IEnumerator<TView> GetEnumerator()
             {
                 lock (SyncRoot)
