@@ -161,7 +161,7 @@ public class ObservableCollectionExtensionsTest
         collection[1] = 444;
         events.Count.Should().Be(1);
     }
-    
+
     [Fact]
     public void ObserveDictionaryReplace()
     {
@@ -245,6 +245,27 @@ public class ObservableCollectionExtensionsTest
 
         collection.Clear();
         events.Count.Should().Be(3);
+    }
+
+    [Fact]
+    public void ObserveCountChanged_WithSideEffect()
+    {
+        var events = new List<int>();
+        var collection = new ObservableList<int>([]);
+
+        using var _ = collection.ObserveCountChanged().Subscribe(count =>
+        {
+            events.Add(count);
+            // Side effect - when count is 1, clear the list
+            if(count == 1) collection.Clear();
+        });
+
+        events.Should().BeEmpty();
+
+        collection.Add(12);
+
+        collection.Count.Should().Be(0);
+        events.Should().BeEquivalentTo([1, 0]);
     }
 
     [Fact]
