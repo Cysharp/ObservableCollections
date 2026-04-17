@@ -1,3 +1,5 @@
+using System.Collections.Specialized;
+using System.Diagnostics;
 using ObservableCollections;
 
 namespace ObservableCollections.Tests;
@@ -55,5 +57,26 @@ public class ToNotifyCollectionChangedTest
         e.MoveNext().Should().BeTrue();
         e.Current.Should().Be("$4");
         e.MoveNext().Should().BeFalse();
+    }
+
+    [Fact]
+    public void ToNotifyCollectionChanged_Move()
+    {
+        var list = new ObservableList<int> { 0, 1, 2, 3 };
+
+        var view = list.CreateView(i => i)
+            .ToNotifyCollectionChanged();
+
+        int moveEventCount = 0;
+
+        view.CollectionChanged += (_, e) =>
+        {
+            if (e.Action == NotifyCollectionChangedAction.Move)
+                moveEventCount++;
+        };
+
+        list.Move(0, 1);
+
+        moveEventCount.Should().Be(1);
     }
 }
