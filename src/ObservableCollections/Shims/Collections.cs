@@ -45,16 +45,32 @@ namespace System.Collections.Generic
         {
             if (!source.IsEmpty)
             {
-                ref var view = ref Unsafe.As<List<T>, CollectionsMarshal.ListView<T>>(ref list!);
-
-                if (view._items.Length - view._size < source.Length)
+                if (!CollectionsMarshal.IsLegacyList)
                 {
-                    Grow(ref view, checked(view._size + source.Length));
-                }
+                    ref var view = ref Unsafe.As<List<T>, CollectionsMarshal.ListView<T>>(ref list!);
 
-                source.CopyTo(view._items.AsSpan(view._size));
-                view._size += source.Length;
-                view._version++;
+                    if (view._items.Length - view._size < source.Length)
+                    {
+                        Grow(ref view._items, view._size, checked(view._size + source.Length));
+                    }
+
+                    source.CopyTo(view._items.AsSpan(view._size));
+                    view._size += source.Length;
+                    view._version++;
+                }
+                else
+                {
+                    ref var view = ref Unsafe.As<List<T>, CollectionsMarshal.LegacyListView<T>>(ref list!);
+
+                    if (view._items.Length - view._size < source.Length)
+                    {
+                        Grow(ref view._items, view._size, checked(view._size + source.Length));
+                    }
+
+                    source.CopyTo(view._items.AsSpan(view._size));
+                    view._size += source.Length;
+                    view._version++;
+                }
             }
         }
 
@@ -63,52 +79,73 @@ namespace System.Collections.Generic
         {
             if (!source.IsEmpty)
             {
-                ref var view = ref Unsafe.As<List<T>, CollectionsMarshal.ListView<T>>(ref list!);
-
-                if (view._items.Length - view._size < source.Length)
+                if (!CollectionsMarshal.IsLegacyList)
                 {
-                    Grow(ref view, checked(view._size + source.Length));
-                }
+                    ref var view = ref Unsafe.As<List<T>, CollectionsMarshal.ListView<T>>(ref list!);
 
-                if (index < view._size)
-                {
-                    Array.Copy(view._items, index, view._items, index + source.Length, view._size - index);
-                }
-
-                source.CopyTo(view._items.AsSpan(index));
-                view._size += source.Length;
-                view._version++;
-            }
-        }
-
-        static void Grow<T>(ref CollectionsMarshal.ListView<T> list, int capacity)
-        {
-            SetCapacity(ref list, GetNewCapacity(ref list, capacity));
-        }
-
-        static void SetCapacity<T>(ref CollectionsMarshal.ListView<T> list, int value)
-        {
-            if (value != list._items.Length)
-            {
-                if (value > 0)
-                {
-                    T[] newItems = new T[value];
-                    if (list._size > 0)
+                    if (view._items.Length - view._size < source.Length)
                     {
-                        Array.Copy(list._items, newItems, list._size);
+                        Grow(ref view._items, view._size, checked(view._size + source.Length));
                     }
-                    list._items = newItems;
+
+                    if (index < view._size)
+                    {
+                        Array.Copy(view._items, index, view._items, index + source.Length, view._size - index);
+                    }
+
+                    source.CopyTo(view._items.AsSpan(index));
+                    view._size += source.Length;
+                    view._version++;
                 }
                 else
                 {
-                    list._items = Array.Empty<T>();
+                    ref var view = ref Unsafe.As<List<T>, CollectionsMarshal.LegacyListView<T>>(ref list!);
+
+                    if (view._items.Length - view._size < source.Length)
+                    {
+                        Grow(ref view._items, view._size, checked(view._size + source.Length));
+                    }
+
+                    if (index < view._size)
+                    {
+                        Array.Copy(view._items, index, view._items, index + source.Length, view._size - index);
+                    }
+
+                    source.CopyTo(view._items.AsSpan(index));
+                    view._size += source.Length;
+                    view._version++;
                 }
             }
         }
 
-        static int GetNewCapacity<T>(ref CollectionsMarshal.ListView<T> list, int capacity)
+        static void Grow<T>(ref T[] items, int size, int capacity)
         {
-            int newCapacity = list._items.Length == 0 ? 4 : 2 * list._items.Length;
+            SetCapacity(ref items, size, GetNewCapacity(items.Length, capacity));
+        }
+
+        static void SetCapacity<T>(ref T[] items, int size, int capacity)
+        {
+            if (capacity != items.Length)
+            {
+                if (capacity > 0)
+                {
+                    T[] newItems = new T[capacity];
+                    if (size > 0)
+                    {
+                        Array.Copy(items, newItems, size);
+                    }
+                    items = newItems;
+                }
+                else
+                {
+                    items = Array.Empty<T>();
+                }
+            }
+        }
+
+        static int GetNewCapacity(int length, int capacity)
+        {
+            int newCapacity = length == 0 ? 4 : 2 * length;
 
             if ((uint)newCapacity > ArrayMaxLength) newCapacity = ArrayMaxLength;
 

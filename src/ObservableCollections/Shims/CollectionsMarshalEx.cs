@@ -12,6 +12,26 @@ namespace System.Runtime.InteropServices;
 
 internal static class CollectionsMarshal
 {
+    internal static readonly bool IsLegacyList;
+
+#if NETSTANDARD2_0 || NETSTANDARD2_1
+    static CollectionsMarshal()
+    {
+        int listSize = 0;
+        try
+        {
+            listSize = typeof(List<>).GetFields(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Length;
+        }
+        catch
+        {
+            listSize = 3;
+        }
+
+        // In .NET Framework, List<T> has a _syncRoot field, so the number of fields becomes 4.
+        IsLegacyList = listSize == 4;
+    }
+#endif
+
     /// <summary>
     /// similar as AsSpan but modify size to create fixed-size span.
     /// </summary>
@@ -19,8 +39,16 @@ internal static class CollectionsMarshal
     {
         if (list is null) return default;
 
-        ref var view = ref Unsafe.As<List<T>, ListView<T>>(ref list!);
-        return view._items.AsSpan(0, view._size);
+        if (IsLegacyList)
+        {
+            ref var view = ref Unsafe.As<List<T>, LegacyListView<T>>(ref list!);
+            return view._items.AsSpan(0, list.Count);
+        }
+        else
+        {
+            ref var view = ref Unsafe.As<List<T>, ListView<T>>(ref list!);
+            return view._items.AsSpan(0, list.Count);
+        }
     }
 
     internal sealed class ListView<T>
@@ -28,6 +56,14 @@ internal static class CollectionsMarshal
         public T[] _items;
         public int _size;
         public int _version;
+    }
+
+    internal sealed class LegacyListView<T>
+    {
+        public T[] _items;
+        public int _size;
+        public int _version;
+        public Object _syncRoot; // in .NET Framework
     }
 }
 
