@@ -46,6 +46,11 @@ namespace ObservableCollections
             return new NonFilteredSynchronizedViewList<T, TView>(CreateView(transform), isSupportRangeFeature: false, collectionEventDispatcher, converter);
         }
 
+        public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged<TView>(Func<T, TView> transform, bool supportsRangeFeature, WritableViewChangedEventHandler<T, TView>? converter, ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            return new NonFilteredSynchronizedViewList<T, TView>(CreateView(transform), supportsRangeFeature, collectionEventDispatcher, converter);
+        }
+
         internal sealed class View<TView> : ISynchronizedView<T, TView>, IWritableSynchronizedView<T, TView>
         {
             public ISynchronizedViewFilter<T, TView> Filter
@@ -152,6 +157,11 @@ namespace ObservableCollections
             public NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(ICollectionEventDispatcher? collectionEventDispatcher)
             {
                 return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: false, collectionEventDispatcher);
+            }
+
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged(bool supportsRangeFeature, ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new FiltableSynchronizedViewList<T, TView>(this, supportsRangeFeature, collectionEventDispatcher);
             }
 
             public IEnumerator<TView> GetEnumerator()
@@ -432,9 +442,26 @@ namespace ObservableCollections
                                 });
             }
 
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(bool supportsRangeFeature, ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new FiltableSynchronizedViewList<T, TView>(this,
+                    supportsRangeFeature,
+                    eventDispatcher: collectionEventDispatcher,
+                    converter: static (TView newView, T originalValue, ref bool setValue) =>
+                    {
+                        setValue = true;
+                        return originalValue;
+                    });
+            }
+
             public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher)
             {
                 return new FiltableSynchronizedViewList<T, TView>(this, isSupportRangeFeature: false, collectionEventDispatcher, converter);
+            }
+
+            public NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(bool supportsRangeFeature, WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher)
+            {
+                return new FiltableSynchronizedViewList<T, TView>(this, supportsRangeFeature, collectionEventDispatcher, converter);
             }
 
             #endregion
