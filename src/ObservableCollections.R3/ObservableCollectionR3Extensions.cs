@@ -438,8 +438,9 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
                 case NotifyCollectionChangedAction.Add:
                 case NotifyCollectionChangedAction.Remove:
                 case NotifyCollectionChangedAction.Reset when countPrev != collection.Count:
-                    countPrev = collection.Count;
-                    observer.OnNext(collection.Count);
+                    var count = collection.Count;
+                    countPrev = count;
+                    observer.OnNext(count);
                     break;
             }
         }
