@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-#if !NET7_0_OR_GREATER
+#if NETSTANDARD
 
 #pragma warning disable CS0649
 #pragma warning disable CS8618
