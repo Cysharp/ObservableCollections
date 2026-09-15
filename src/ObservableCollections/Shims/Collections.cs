@@ -38,7 +38,6 @@ namespace System.Collections.Generic
         }
 
 #if !NET8_0_OR_GREATER
-#pragma warning disable CS0436
 
         // CollectionExtensions.AddRange
         public static void AddRange<T>(this List<T> list, ReadOnlySpan<T> source)
@@ -154,7 +153,6 @@ namespace System.Collections.Generic
             return newCapacity;
         }
 
-#pragma warning restore CS0436
 #endif
 
 #if !NET6_0_OR_GREATER

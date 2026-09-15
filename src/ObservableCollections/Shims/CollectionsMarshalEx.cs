@@ -14,7 +14,6 @@ internal static class CollectionsMarshal
 {
     internal static readonly bool IsLegacyList;
 
-#if NETSTANDARD2_0 || NETSTANDARD2_1
     static CollectionsMarshal()
     {
         int listSize = 0;
@@ -30,7 +29,6 @@ internal static class CollectionsMarshal
         // In .NET Framework, List<T> has a _syncRoot field, so the number of fields becomes 4.
         IsLegacyList = listSize == 4;
     }
-#endif
 
     /// <summary>
     /// similar as AsSpan but modify size to create fixed-size span.
