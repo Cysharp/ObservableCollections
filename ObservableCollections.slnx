@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/sandbox/">
+    <Project Path="sandbox/AvaloniaApp/AvaloniaApp.csproj" />
+    <Project Path="sandbox/BlazorApp/BlazorApp.csproj" />
+    <Project Path="sandbox/ConsoleApp/ConsoleApp.csproj" />
+    <Project Path="sandbox/WpfApp/WpfApp.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ObservableCollections.R3/ObservableCollections.R3.csproj" />
+    <Project Path="src/ObservableCollections/ObservableCollections.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ObservableCollections.R3.Tests/ObservableCollections.R3.Tests.csproj" />
+    <Project Path="tests/ObservableCollections.Tests/ObservableCollections.Tests.csproj" />
+  </Folder>
+</Solution>
