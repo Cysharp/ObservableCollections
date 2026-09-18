@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -124,8 +124,24 @@ namespace ObservableCollections
         public abstract bool Remove(TView item);
         public abstract void RemoveAt(int index);
         public abstract void Clear();
-
         public abstract bool Contains(TView item);
+
+        public virtual void CopyTo(Span<TView> span)
+        {
+            lock (gate)
+            {
+                var count = Count;
+                if (span.Length < count)
+                {
+                    throw new ArgumentException("Destination is too short.", nameof(span));
+                }
+
+                for (var i = 0; i < count; ++i)
+                {
+                    span[i] = this[i];
+                }
+            }
+        }
 
         bool IList.Contains(object? value)
         {
@@ -163,13 +179,69 @@ namespace ObservableCollections
         {
             Clear();
         }
+
         void IList.Clear()
         {
             Clear();
         }
 
-        void ICollection<TView>.CopyTo(TView[] array, int arrayIndex) => throw new NotSupportedException();
-        void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
+        void ICollection<TView>.CopyTo(TView[] array, int arrayIndex)
+        {
+            if (array is null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            CopyTo(array.AsSpan(arrayIndex));
+        }
+
+        void ICollection.CopyTo(Array array, int arrayIndex)
+        {
+            if (array is null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            if (arrayIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (array.Rank != 1)
+            {
+                throw new ArgumentException("Only single dimensional arrays are supported.", nameof(array));
+            }
+
+            if (array.GetLowerBound(0) != 0)
+            {
+                throw new ArgumentException("The lower bound of target array must be zero.", nameof(array));
+            }
+
+            if (array is TView[] typedArray)
+            {
+                CopyTo(typedArray.AsSpan(arrayIndex));
+            }
+            else
+            {
+                var index = arrayIndex;
+
+                foreach (var item in this)
+                {
+                    try
+                    {
+                        array.SetValue(item, index++);
+                    }
+                    catch (IndexOutOfRangeException e)
+                    {
+                        throw new ArgumentException("Destination is too short.", nameof(array), e);
+                    }
+                    catch (InvalidCastException e)
+                    {
+                        throw new ArgumentException("Object cannot be stored in an array of this type.", nameof(array), e);
+                    }
+                }
+            }
+        }
 
         void IList<TView>.Insert(int index, TView item)
         {

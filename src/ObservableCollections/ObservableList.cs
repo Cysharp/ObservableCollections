@@ -134,9 +134,21 @@ namespace ObservableCollections
 
         public void CopyTo(T[] array, int arrayIndex)
         {
+            if (array is null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            CopyTo(array.AsSpan(arrayIndex));
+        }
+
+        public void CopyTo(Span<T> span)
+        {
             lock (SyncRoot)
             {
-                list.CopyTo(array, arrayIndex);
+#pragma warning disable CS0436
+                CollectionsMarshal.AsSpan(list).CopyTo(span);
+#pragma warning restore
             }
         }
 
