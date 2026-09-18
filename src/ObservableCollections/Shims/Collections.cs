@@ -37,8 +37,7 @@ namespace System.Collections.Generic
             return false;
         }
 
-#if !NET8_0_OR_GREATER
-#pragma warning disable CS0436
+#if NETSTANDARD
 
         // CollectionExtensions.AddRange
         public static void AddRange<T>(this List<T> list, ReadOnlySpan<T> source)
@@ -154,10 +153,9 @@ namespace System.Collections.Generic
             return newCapacity;
         }
 
-#pragma warning restore CS0436
 #endif
 
-#if !NET6_0_OR_GREATER
+#if NETSTANDARD
 
         public static bool TryGetNonEnumeratedCount<T>(this IEnumerable<T> source, out int count)
         {
@@ -178,7 +176,7 @@ namespace System.Collections.Generic
 #endif
     }
 
-#if !NET5_0_OR_GREATER
+#if NETSTANDARD
 
     internal interface IReadOnlySet<T> : System.Collections.Generic.IEnumerable<T>, System.Collections.Generic.IReadOnlyCollection<T>
     {
