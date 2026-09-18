@@ -1,10 +1,11 @@
-using ObservableCollections.Internal;
+﻿using ObservableCollections.Internal;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace ObservableCollections;
@@ -14,15 +15,31 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new("Count");
     static readonly Action<NotifyCollectionChangedEventArgs> raiseChangedEventInvoke = RaiseChangedEvent;
 
+    const string PendingChangeHint = "Wait until the pending notifications are dispatched, or change the source collection directly.";
+
     readonly ISynchronizedView<T, TView> parent;
     readonly AlternateIndexList<TView> listView;
     readonly bool isSupportRangeFeature; // WPF, Avalonia etc does not support range notification
 
     readonly ICollectionEventDispatcher eventDispatcher;
+    readonly DeferredViewList<TView>? deferred; // null = notification is not deferred, listView is directly visible
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
-    public override event NotifyCollectionChangedEventHandler? CollectionChanged;
-    public override event PropertyChangedEventHandler? PropertyChanged;
+    NotifyCollectionChangedEventHandler? collectionChanged;
+    PropertyChangedEventHandler? propertyChanged;
+
+    // locked by gate so that "no subscriber" can be determined atomically with applying a change
+    public override event NotifyCollectionChangedEventHandler? CollectionChanged
+    {
+        add { lock (gate) { collectionChanged += value; } }
+        remove { lock (gate) { collectionChanged -= value; } }
+    }
+
+    public override event PropertyChangedEventHandler? PropertyChanged
+    {
+        add { lock (gate) { propertyChanged += value; } }
+        remove { lock (gate) { propertyChanged -= value; } }
+    }
 
     public FiltableSynchronizedViewList(ISynchronizedView<T, TView> parent, bool isSupportRangeFeature, ICollectionEventDispatcher? eventDispatcher = null, WritableViewChangedEventHandler<T, TView>? converter = null)
     {
@@ -33,6 +50,8 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         lock (parent.SyncRoot)
         {
             listView = new AlternateIndexList<TView>(IterateFilteredIndexedViewsOfParent());
+            // when a dispatcher defers the notification, defer the visible list too(see: issue #115)
+            deferred = eventDispatcher == null ? null : new DeferredViewList<TView>(listView);
             parent.ViewChanged += Parent_ViewChanged;
             parent.RejectedViewChanged += Parent_RejectedViewChanged;
         }
@@ -116,6 +135,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                             if (e.OldStartingIndex == -1) // can't gurantee correct remove if index is not provided
                             {
                                 index = listView.Remove(e.OldItem.View);
+                                if (index == -1) return; // not in the view, listView is not changed
                             }
                             else
                             {
@@ -126,10 +146,13 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                         {
                             if (e.OldStartingIndex == -1)
                             {
-                                foreach (var view in e.OldViews) // index is unknown, can't do batching
+                                var removedSpan = e.OldViews;
+                                for (int i = 0; i < removedSpan.Length; i++) // index is unknown, can't do batching
                                 {
-                                    listView.Remove(view);
-                                    OnCollectionChanged(e.WithOldStartingIndex(index));
+                                    var removedIndex = listView.Remove(removedSpan[i]);
+                                    if (removedIndex == -1) continue; // not in the view, listView is not changed
+                                    var removedEv = new SynchronizedViewChangedEventArgs<T, TView>(e.Action, true, oldItem: (e.OldValues[i], removedSpan[i]), oldStartingIndex: removedIndex);
+                                    OnCollectionChanged(removedEv);
                                 }
                                 return;
                             }
@@ -233,14 +256,14 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
     void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
     {
-        if (CollectionChanged == null && PropertyChanged == null) return;
+        if (deferred == null && collectionChanged == null && propertyChanged == null) return;
 
         switch (args.Action)
         {
             case NotifyCollectionChangedAction.Add:
                 if (args.IsSingleItem)
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewItem.View, args.NewStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewItem.View, args.NewStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -250,7 +273,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                 }
                 else
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewViews.ToArray(), args.NewStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewViews.ToArray(), args.NewStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -262,7 +285,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             case NotifyCollectionChangedAction.Remove:
                 if (args.IsSingleItem)
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldItem.View, args.OldStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldItem.View, args.OldStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -272,7 +295,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                 }
                 else
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldViews.ToArray(), args.OldStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldViews.ToArray(), args.OldStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -282,16 +305,16 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                 }
                 break;
             case NotifyCollectionChangedAction.Reset:
-                eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Reset)
+                Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Reset)
                 {
                     Collection = this,
                     Invoker = raiseChangedEventInvoke,
                     IsInvokeCollectionChanged = true,
                     IsInvokePropertyChanged = true
-                });
+                }, deferred == null ? null : listView.ToArray()); // Reset does not carry items
                 break;
             case NotifyCollectionChangedAction.Replace:
-                eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewItem.View, args.OldItem.View, args.NewStartingIndex)
+                Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewItem.View, args.OldItem.View, args.NewStartingIndex)
                 {
                     Collection = this,
                     Invoker = raiseChangedEventInvoke,
@@ -300,7 +323,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                 });
                 break;
             case NotifyCollectionChangedAction.Move:
-                eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewItem.View, args.NewStartingIndex, args.OldStartingIndex)
+                Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewItem.View, args.NewStartingIndex, args.OldStartingIndex)
                 {
                     Collection = this,
                     Invoker = raiseChangedEventInvoke,
@@ -311,19 +334,116 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         }
     }
 
+    void Publish(CollectionEventDispatcherEventArgs ev, TView[]? resetSnapshot = null)
+    {
+        // called inside gate
+        if (deferred == null)
+        {
+            eventDispatcher.Post(ev);
+            return;
+        }
+
+        if (deferred.PendingCount == 0 && collectionChanged == null && propertyChanged == null)
+        {
+            // there is no notification to be consistent with, so apply it here
+            deferred.ApplyWithoutNotification(ev, resetSnapshot);
+            return;
+        }
+
+        deferred.Enqueue(ev, resetSnapshot);
+        eventDispatcher.Post(ev);
+    }
+
     static void RaiseChangedEvent(NotifyCollectionChangedEventArgs e)
     {
         var e2 = (CollectionEventDispatcherEventArgs)e;
         var self = (FiltableSynchronizedViewList<T, TView>)e2.Collection;
+        self.InvokeChangedEvent(e2);
+    }
 
-        if (e2.IsInvokeCollectionChanged)
+    void InvokeChangedEvent(CollectionEventDispatcherEventArgs e)
+    {
+        if (deferred == null)
         {
-            self.CollectionChanged?.Invoke(self, e);
+            RaiseChangedEventCore(e);
+            return;
         }
-        if (e2.IsInvokePropertyChanged)
+
+        List<Exception>? exceptions = null;
+
+        while (true)
         {
-            self.PropertyChanged?.Invoke(self, CountPropertyChangedEventArgs);
+            CollectionEventDispatcherEventArgs applied;
+            lock (gate)
+            {
+                // apply the change to the visible list at the same time as raising the notification
+                if (!deferred.TryApplyNext(e, out applied)) break; // already applied
+            }
+
+            try
+            {
+                // do not raise inside gate, a subscriber may touch the source collection
+                RaiseChangedEventCore(applied);
+            }
+            catch (Exception ex)
+            {
+                // a subscriber must not stop the remaining changes from being applied and raised
+                (exceptions ??= new()).Add(ex);
+            }
+
+            if (ReferenceEquals(applied, e)) break;
         }
+
+        if (exceptions != null)
+        {
+            if (exceptions.Count == 1)
+            {
+                ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+            }
+
+            throw new AggregateException(exceptions);
+        }
+    }
+
+    void RaiseChangedEventCore(CollectionEventDispatcherEventArgs e)
+    {
+        if (e.IsInvokeCollectionChanged)
+        {
+            collectionChanged?.Invoke(this, e);
+        }
+        if (e.IsInvokePropertyChanged)
+        {
+            propertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+        }
+    }
+
+    /// <summary>
+    /// Validates an index of the visible list and translates it into an index of listView.
+    /// Throws ArgumentOutOfRangeException when the index is out of the range of the visible list, and
+    /// InvalidOperationException when a pending change makes it impossible to translate. An insertion point
+    /// survives a pending remove of the element at that position, so only a pending reset fails it.
+    /// </summary>
+    int ToListViewIndex(int index, bool isInsertionPoint)
+    {
+        // called inside gate
+        // validate before translating, an untrackable index is -1 and a caller may pass -1 too
+        var count = deferred == null ? listView.Count : deferred.Count;
+        var max = isInsertionPoint ? count : count - 1;
+        if (index < 0 || index > max)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The index is out of the range of the collection. Count: " + count);
+        }
+
+        if (deferred == null) return index;
+
+        var listViewIndex = deferred.ToWriterIndex(index, isInsertionPoint, out var reason);
+        if (listViewIndex == DeferredViewList<TView>.UntrackableIndex)
+        {
+            throw new InvalidOperationException(reason == UntrackableReason.Reset
+                ? "The collection has been reset and the notification is not dispatched yet, so no index can be resolved. " + PendingChangeHint
+                : "The element at index " + index + " has been removed and the notification is not dispatched yet. " + PendingChangeHint);
+        }
+        return listViewIndex;
     }
 
     public override TView this[int index]
@@ -332,7 +452,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         {
             lock (gate)
             {
-                return listView[index];
+                return deferred == null ? listView[index] : deferred[index];
             }
         }
         set
@@ -344,19 +464,44 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             else
             {
                 var writableView = parent as IWritableSynchronizedView<T, TView>;
-                var originalIndex = listView.GetAlternateIndex(index);
-                var (originalValue, _) = writableView!.GetAt(originalIndex);
 
-                // update view
-                writableView.SetViewAt(originalIndex, value);
-                listView[index] = value;
+                int listViewIndex;
+                int originalIndex;
+                lock (gate)
+                {
+                    listViewIndex = ToListViewIndex(index, isInsertionPoint: false);
+                    originalIndex = listView.GetAlternateIndex(listViewIndex);
+                }
+
+                var (originalValue, _) = writableView!.GetAt(originalIndex);
 
                 var setValue = true;
                 var newOriginal = converter!(value, originalValue, ref setValue);
 
+                // update view
+                writableView.SetViewAt(originalIndex, value);
+
                 if (setValue)
                 {
+                    // the Replace of the source updates listView and the visible list, with a notification.
+                    // do not touch listView here, it would be an unnotified change if the source write fails
                     writableView.SetToSourceCollection(originalIndex, newOriginal);
+                }
+                else
+                {
+                    // the converter rejected the source write, so this is the only notification of the change
+                    lock (gate)
+                    {
+                        var oldView = listView[listViewIndex];
+                        listView[listViewIndex] = value;
+                        Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, value, oldView, listViewIndex)
+                        {
+                            Collection = this,
+                            Invoker = raiseChangedEventInvoke,
+                            IsInvokeCollectionChanged = true,
+                            IsInvokePropertyChanged = false
+                        });
+                    }
                 }
             }
         }
@@ -368,7 +513,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         {
             lock (gate)
             {
-                return listView.Count;
+                return deferred == null ? listView.Count : deferred.Count;
             }
         }
     }
@@ -379,7 +524,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     {
         lock (gate)
         {
-            foreach (var item in listView)
+            foreach (var item in deferred == null ? listView : deferred.Items)
             {
                 yield return item;
             }
@@ -417,15 +562,37 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         else
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
+
+            int originalIndex;
+            lock (gate)
+            {
+                var listViewIndex = ToListViewIndex(index, isInsertionPoint: true);
+
+                // when the insertion point is the tail of the view, the source index is not determined, so append
+                originalIndex = listViewIndex < listView.Count ? listView.GetAlternateIndex(listViewIndex) : -1;
+            }
+
             if (typeof(T) == typeof(TView) && item is T tItem)
             {
-                writableView!.InsertIntoSourceCollection(index, tItem);
+                InsertIntoSourceCollection(writableView!, originalIndex, tItem);
                 return;
             }
             var setValue = false;
             var newOriginal = converter!(item, default!, ref setValue);
 
-            writableView!.InsertIntoSourceCollection(index, newOriginal);
+            InsertIntoSourceCollection(writableView!, originalIndex, newOriginal);
+        }
+    }
+
+    static void InsertIntoSourceCollection(IWritableSynchronizedView<T, TView> writableView, int originalIndex, T value)
+    {
+        if (originalIndex == -1)
+        {
+            writableView.AddToSourceCollection(value);
+        }
+        else
+        {
+            writableView.InsertIntoSourceCollection(originalIndex, value);
         }
     }
 
@@ -459,7 +626,14 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         else
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
-            writableView!.RemoveAtSourceCollection(index);
+
+            int originalIndex;
+            lock (gate)
+            {
+                originalIndex = listView.GetAlternateIndex(ToListViewIndex(index, isInsertionPoint: false));
+            }
+
+            writableView!.RemoveAtSourceCollection(originalIndex);
         }
     }
 
@@ -480,6 +654,11 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     {
         lock (gate)
         {
+            if (deferred != null)
+            {
+                return deferred.Contains(item);
+            }
+
             foreach (var listItem in listView)
             {
                 if (EqualityComparer<TView>.Default.Equals(listItem, item))
@@ -495,6 +674,11 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     {
         lock (gate)
         {
+            if (deferred != null)
+            {
+                return deferred.IndexOf(item);
+            }
+
             var index = 0;
             foreach (var listItem in listView)
             {
@@ -520,16 +704,31 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     static readonly PropertyChangedEventArgs CountPropertyChangedEventArgs = new("Count");
     static readonly Action<NotifyCollectionChangedEventArgs> raiseChangedEventInvoke = RaiseChangedEvent;
 
+    const string PendingChangeHint = "Wait until the pending notifications are dispatched, or change the source collection directly.";
+
     readonly ISynchronizedView<T, TView> parent;
     readonly List<TView> listView; // no filter can be faster
     readonly bool isSupportRangeFeature; // WPF, Avalonia etc does not support range notification
 
     readonly ICollectionEventDispatcher eventDispatcher;
+    readonly DeferredViewList<TView>? deferred; // null = notification is not deferred, listView is directly visible
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
-    public override event NotifyCollectionChangedEventHandler? CollectionChanged;
-    public override event PropertyChangedEventHandler? PropertyChanged;
+    NotifyCollectionChangedEventHandler? collectionChanged;
+    PropertyChangedEventHandler? propertyChanged;
 
+    // locked by gate so that "no subscriber" can be determined atomically with applying a change
+    public override event NotifyCollectionChangedEventHandler? CollectionChanged
+    {
+        add { lock (gate) { collectionChanged += value; } }
+        remove { lock (gate) { collectionChanged -= value; } }
+    }
+
+    public override event PropertyChangedEventHandler? PropertyChanged
+    {
+        add { lock (gate) { propertyChanged += value; } }
+        remove { lock (gate) { propertyChanged -= value; } }
+    }
 
     public NonFilteredSynchronizedViewList(ISynchronizedView<T, TView> parent, bool isSupportRangeFeature, ICollectionEventDispatcher? eventDispatcher, WritableViewChangedEventHandler<T, TView>? converter)
     {
@@ -540,6 +739,8 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         lock (parent.SyncRoot)
         {
             listView = parent.ToList(); // guranteed non-filtered
+            // when a dispatcher defers the notification, defer the visible list too(see: issue #115)
+            deferred = eventDispatcher == null ? null : new DeferredViewList<TView>(listView);
             parent.ViewChanged += Parent_ViewChanged;
             // no register RejectedViewChanged(beacuse non filtered)
         }
@@ -599,6 +800,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                             if (e.OldStartingIndex == -1) // can't gurantee correct remove if index is not provided
                             {
                                 var index = listView.IndexOf(e.OldItem.View);
+                                if (index == -1) return; // not in the view, listView is not changed
                                 listView.RemoveAt(index);
                                 OnCollectionChanged(e.WithOldStartingIndex(index));
                                 return;
@@ -612,11 +814,14 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                         {
                             if (e.OldStartingIndex == -1)
                             {
-                                foreach (var view in e.OldViews) // index is unknown, can't do batching
+                                var removedSpan = e.OldViews;
+                                for (int i = 0; i < removedSpan.Length; i++) // index is unknown, can't do batching
                                 {
-                                    var index = listView.IndexOf(view);
-                                    listView.RemoveAt(index);
-                                    OnCollectionChanged(e.WithOldStartingIndex(index));
+                                    var removedIndex = listView.IndexOf(removedSpan[i]);
+                                    if (removedIndex == -1) continue; // not in the view, listView is not changed
+                                    listView.RemoveAt(removedIndex);
+                                    var removedEv = new SynchronizedViewChangedEventArgs<T, TView>(e.Action, true, oldItem: (e.OldValues[i], removedSpan[i]), oldStartingIndex: removedIndex);
+                                    OnCollectionChanged(removedEv);
                                 }
                                 return;
                             }
@@ -735,14 +940,14 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
     void OnCollectionChanged(in SynchronizedViewChangedEventArgs<T, TView> args)
     {
-        if (CollectionChanged == null && PropertyChanged == null) return;
+        if (deferred == null && collectionChanged == null && propertyChanged == null) return;
 
         switch (args.Action)
         {
             case NotifyCollectionChangedAction.Add:
                 if (args.IsSingleItem)
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewItem.View, args.NewStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewItem.View, args.NewStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -752,7 +957,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                 }
                 else
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewViews.ToArray(), args.NewStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Add, args.NewViews.ToArray(), args.NewStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -764,7 +969,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             case NotifyCollectionChangedAction.Remove:
                 if (args.IsSingleItem)
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldItem.View, args.OldStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldItem.View, args.OldStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -774,7 +979,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                 }
                 else
                 {
-                    eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldViews.ToArray(), args.OldStartingIndex)
+                    Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Remove, args.OldViews.ToArray(), args.OldStartingIndex)
                     {
                         Collection = this,
                         Invoker = raiseChangedEventInvoke,
@@ -784,16 +989,16 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                 }
                 break;
             case NotifyCollectionChangedAction.Reset:
-                eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Reset)
+                Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Reset)
                 {
                     Collection = this,
                     Invoker = raiseChangedEventInvoke,
                     IsInvokeCollectionChanged = true,
                     IsInvokePropertyChanged = true
-                });
+                }, deferred == null ? null : listView.ToArray()); // Reset does not carry items
                 break;
             case NotifyCollectionChangedAction.Replace:
-                eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewItem.View, args.OldItem.View, args.NewStartingIndex)
+                Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, args.NewItem.View, args.OldItem.View, args.NewStartingIndex)
                 {
                     Collection = this,
                     Invoker = raiseChangedEventInvoke,
@@ -802,7 +1007,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                 });
                 break;
             case NotifyCollectionChangedAction.Move:
-                eventDispatcher.Post(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewItem.View, args.NewStartingIndex, args.OldStartingIndex)
+                Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Move, args.NewItem.View, args.NewStartingIndex, args.OldStartingIndex)
                 {
                     Collection = this,
                     Invoker = raiseChangedEventInvoke,
@@ -813,19 +1018,116 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         }
     }
 
+    void Publish(CollectionEventDispatcherEventArgs ev, TView[]? resetSnapshot = null)
+    {
+        // called inside gate
+        if (deferred == null)
+        {
+            eventDispatcher.Post(ev);
+            return;
+        }
+
+        if (deferred.PendingCount == 0 && collectionChanged == null && propertyChanged == null)
+        {
+            // there is no notification to be consistent with, so apply it here
+            deferred.ApplyWithoutNotification(ev, resetSnapshot);
+            return;
+        }
+
+        deferred.Enqueue(ev, resetSnapshot);
+        eventDispatcher.Post(ev);
+    }
+
     static void RaiseChangedEvent(NotifyCollectionChangedEventArgs e)
     {
         var e2 = (CollectionEventDispatcherEventArgs)e;
         var self = (NonFilteredSynchronizedViewList<T, TView>)e2.Collection;
+        self.InvokeChangedEvent(e2);
+    }
 
-        if (e2.IsInvokeCollectionChanged)
+    void InvokeChangedEvent(CollectionEventDispatcherEventArgs e)
+    {
+        if (deferred == null)
         {
-            self.CollectionChanged?.Invoke(self, e);
+            RaiseChangedEventCore(e);
+            return;
         }
-        if (e2.IsInvokePropertyChanged)
+
+        List<Exception>? exceptions = null;
+
+        while (true)
         {
-            self.PropertyChanged?.Invoke(self, CountPropertyChangedEventArgs);
+            CollectionEventDispatcherEventArgs applied;
+            lock (gate)
+            {
+                // apply the change to the visible list at the same time as raising the notification
+                if (!deferred.TryApplyNext(e, out applied)) break; // already applied
+            }
+
+            try
+            {
+                // do not raise inside gate, a subscriber may touch the source collection
+                RaiseChangedEventCore(applied);
+            }
+            catch (Exception ex)
+            {
+                // a subscriber must not stop the remaining changes from being applied and raised
+                (exceptions ??= new()).Add(ex);
+            }
+
+            if (ReferenceEquals(applied, e)) break;
         }
+
+        if (exceptions != null)
+        {
+            if (exceptions.Count == 1)
+            {
+                ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+            }
+
+            throw new AggregateException(exceptions);
+        }
+    }
+
+    void RaiseChangedEventCore(CollectionEventDispatcherEventArgs e)
+    {
+        if (e.IsInvokeCollectionChanged)
+        {
+            collectionChanged?.Invoke(this, e);
+        }
+        if (e.IsInvokePropertyChanged)
+        {
+            propertyChanged?.Invoke(this, CountPropertyChangedEventArgs);
+        }
+    }
+
+    /// <summary>
+    /// Validates an index of the visible list and translates it into an index of listView(it is same as the source index).
+    /// Throws ArgumentOutOfRangeException when the index is out of the range of the visible list, and
+    /// InvalidOperationException when a pending change makes it impossible to translate. An insertion point
+    /// survives a pending remove of the element at that position, so only a pending reset fails it.
+    /// </summary>
+    int ToListViewIndex(int index, bool isInsertionPoint)
+    {
+        // called inside gate
+        // validate before translating, an untrackable index is -1 and a caller may pass -1 too
+        var count = deferred == null ? listView.Count : deferred.Count;
+        var max = isInsertionPoint ? count : count - 1;
+        if (index < 0 || index > max)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The index is out of the range of the collection. Count: " + count);
+        }
+
+        if (deferred == null) return index;
+
+        var listViewIndex = deferred.ToWriterIndex(index, isInsertionPoint, out var reason);
+        if (listViewIndex == DeferredViewList<TView>.UntrackableIndex)
+        {
+            throw new InvalidOperationException(reason == UntrackableReason.Reset
+                ? "The collection has been reset and the notification is not dispatched yet, so no index can be resolved. " + PendingChangeHint
+                : "The element at index " + index + " has been removed and the notification is not dispatched yet. " + PendingChangeHint);
+        }
+        return listViewIndex;
     }
 
     public override TView this[int index]
@@ -834,7 +1136,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         {
             lock (gate)
             {
-                return listView[index];
+                return deferred == null ? listView[index] : deferred[index];
             }
         }
         set
@@ -846,18 +1148,42 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             else
             {
                 var writableView = parent as IWritableSynchronizedView<T, TView>;
-                var (originalValue, _) = writableView!.GetAt(index);
 
-                // update view
-                writableView.SetViewAt(index, value);
-                listView[index] = value;
+                int listViewIndex;
+                lock (gate)
+                {
+                    listViewIndex = ToListViewIndex(index, isInsertionPoint: false);
+                }
+
+                var (originalValue, _) = writableView!.GetAt(listViewIndex);
 
                 var setValue = true;
                 var newOriginal = converter!(value, originalValue, ref setValue);
 
+                // update view
+                writableView.SetViewAt(listViewIndex, value);
+
                 if (setValue)
                 {
-                    writableView.SetToSourceCollection(index, newOriginal);
+                    // the Replace of the source updates listView and the visible list, with a notification.
+                    // do not touch listView here, it would be an unnotified change if the source write fails
+                    writableView.SetToSourceCollection(listViewIndex, newOriginal);
+                }
+                else
+                {
+                    // the converter rejected the source write, so this is the only notification of the change
+                    lock (gate)
+                    {
+                        var oldView = listView[listViewIndex];
+                        listView[listViewIndex] = value;
+                        Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, value, oldView, listViewIndex)
+                        {
+                            Collection = this,
+                            Invoker = raiseChangedEventInvoke,
+                            IsInvokeCollectionChanged = true,
+                            IsInvokePropertyChanged = false
+                        });
+                    }
                 }
             }
         }
@@ -869,7 +1195,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         {
             lock (gate)
             {
-                return listView.Count;
+                return deferred == null ? listView.Count : deferred.Count;
             }
         }
     }
@@ -880,7 +1206,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     {
         lock (gate)
         {
-            foreach (var item in listView)
+            foreach (var item in deferred == null ? listView : deferred.Items)
             {
                 yield return item;
             }
@@ -918,15 +1244,22 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         else
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
+
+            int originalIndex;
+            lock (gate)
+            {
+                originalIndex = ToListViewIndex(index, isInsertionPoint: true);
+            }
+
             if (typeof(T) == typeof(TView) && item is T tItem)
             {
-                writableView!.InsertIntoSourceCollection(index, tItem);
+                writableView!.InsertIntoSourceCollection(originalIndex, tItem);
                 return;
             }
             var setValue = false;
             var newOriginal = converter!(item, default!, ref setValue);
 
-            writableView!.InsertIntoSourceCollection(index, newOriginal);
+            writableView!.InsertIntoSourceCollection(originalIndex, newOriginal);
         }
     }
 
@@ -960,7 +1293,14 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         else
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
-            writableView!.RemoveAtSourceCollection(index);
+
+            int originalIndex;
+            lock (gate)
+            {
+                originalIndex = ToListViewIndex(index, isInsertionPoint: false);
+            }
+
+            writableView!.RemoveAtSourceCollection(originalIndex);
         }
     }
 
@@ -981,6 +1321,11 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     {
         lock (gate)
         {
+            if (deferred != null)
+            {
+                return deferred.Contains(item);
+            }
+
             foreach (var listItem in listView)
             {
                 if (EqualityComparer<TView>.Default.Equals(listItem, item))
@@ -996,6 +1341,11 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     {
         lock (gate)
         {
+            if (deferred != null)
+            {
+                return deferred.IndexOf(item);
+            }
+
             var index = 0;
             foreach (var listItem in listView)
             {

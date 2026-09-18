@@ -1,6 +1,4 @@
-using System.Collections.Specialized;
-using System.Diagnostics;
-using ObservableCollections;
+﻿using System.Collections.Specialized;
 
 namespace ObservableCollections.Tests;
 
