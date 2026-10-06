@@ -34,7 +34,7 @@ public interface IObservableCollection<T> : IReadOnlyCollection<T>
     ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform);
 }
 ```
- 
+
 SynchronizedView helps to separate between Model and View (ViewModel). We will use ObservableCollections as the Model and generate SynchronizedView as the View (ViewModel). This architecture can be applied not only to WPF, but also to Blazor, Unity, etc.
 
 ![image](https://user-images.githubusercontent.com/46207/131979264-2463403b-0fba-474b-8f49-277c2abe1b05.png)
@@ -53,8 +53,8 @@ If you want to handle each change event with Rx, you can monitor it with the fol
 Observable<CollectionChangedEvent<T>> IObservableCollection<T>.ObserveChanged()
 Observable<CollectionAddEvent<T>> IObservableCollection<T>.ObserveAdd()
 Observable<CollectionRemoveEvent<T>> IObservableCollection<T>.ObserveRemove()
-Observable<CollectionReplaceEvent<T>> IObservableCollection<T>.ObserveReplace() 
-Observable<CollectionMoveEvent<T>> IObservableCollection<T>.ObserveMove() 
+Observable<CollectionReplaceEvent<T>> IObservableCollection<T>.ObserveReplace()
+Observable<CollectionMoveEvent<T>> IObservableCollection<T>.ObserveMove()
 Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
 Observable<Unit> IObservableCollection<T>.ObserveClear<T>()
 Observable<(int Index, int Count)> IObservableCollection<T>.ObserveReverse<T>()
@@ -210,7 +210,7 @@ foreach (var v in view)
     Console.WriteLine(v);
 }
 
-// also affect Sort Operations    
+// also affect Sort Operations
 list.Sort();
 foreach (var v in view)
 {
@@ -358,6 +358,8 @@ public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDi
 ```
 
 `ToNotifyCollectionChanged()` can also be called without going through a View. In this case, it's guaranteed that no filters will be applied, making it faster. If you want to apply filters, please generate a View before calling it. Additionally, `ObservableList` has a variation called `ToNotifyCollectionChangedSlim()`. This option doesn't generate a list for the View and shares the actual data, making it the fastest and most memory-efficient option. However, range operations such as `AddRange`, `InsertRange` and `RemoveRange` are not supported by WPF (or Avalonia), so they will throw runtime exceptions.
+
+There is one more limitation on `ToNotifyCollectionChangedSlim()`. Because it shares the actual data instead of holding its own list, its content always reflects the source collection immediately, even while notifications are still queued in the `ICollectionEventDispatcher`. When you mutate the collection from a thread other than the dispatcher thread, a subscriber that receives a notification later may observe a state that has already moved on, so the index in the notification may not match the content. `ToNotifyCollectionChanged()` does not have this problem; it defers the visible content together with the notification. If you combine `ToNotifyCollectionChangedSlim()` with a dispatcher, mutate the collection on the dispatcher thread.
 
 Views and ToNotifyCollectionChanged are internally connected by events, so they need to be `Dispose` to release those connections.
 
@@ -622,7 +624,7 @@ public static class SynchronizedViewExtensions
     public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, bool> filter)
     {
     }
-    
+
     public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> filter)
     {
     }

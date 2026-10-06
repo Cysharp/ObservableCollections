@@ -32,6 +32,12 @@ public partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
     /// <summary>
     /// Create faster, compact INotifyCollectionChanged view, however it does not support ***Range.
     /// </summary>
+    /// <remarks>
+    /// This view shares the data with the source collection instead of holding its own list, so its content can not be
+    /// deferred with the notification. When the collection is mutated from a thread other than the dispatcher thread,
+    /// a subscriber may observe a content that is ahead of the notification it receives(see: issue #115).
+    /// Mutate the collection on the dispatcher thread, or use ToNotifyCollectionChanged instead.
+    /// </remarks>
     public NotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChangedSlim(ICollectionEventDispatcher? collectionEventDispatcher)
     {
         return new ObservableListSynchronizedViewList<T>(this, collectionEventDispatcher);
