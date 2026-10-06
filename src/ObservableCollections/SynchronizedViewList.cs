@@ -688,7 +688,6 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                     else
                     {
 #if NET6_0_OR_GREATER
-#pragma warning disable CS0436
                         if (parent is ObservableList<T>.View<TView> observableListView && typeof(T) == typeof(TView))
                         {
                             var comparer = new ViewComparer(e.SortOperation.Comparer ?? Comparer<T>.Default);
@@ -696,7 +695,6 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                             viewSpan.Sort(comparer);
                         }
                         else
-#pragma warning restore CS0436
 #endif
                         {
                             // can not get source Span, do Clear and Refresh

@@ -255,9 +255,7 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-#pragma warning disable CS0436
                 var range = CollectionsMarshal.AsSpan(list).Slice(index, count);
-#pragma warning restore CS0436
                 // require copy before remove
                 using (var xs = new CloneCollection<T>(range))
                 {
