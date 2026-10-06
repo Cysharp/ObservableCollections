@@ -416,10 +416,11 @@ sealed class SynchronizedViewCountChanged<T, TView>(ISynchronizedView<T, TView> 
                 case NotifyCollectionChangedAction.Add:
                 case NotifyCollectionChangedAction.Remove:
                 case NotifyCollectionChangedAction.Reset when countPrev != source.Count:
-                    observer.OnNext(source.Count);
+                    var count = source.Count;
+                    countPrev = count;
+                    observer.OnNext(count);
                     break;
             }
-            countPrev = source.Count;
         }
     }
 }
