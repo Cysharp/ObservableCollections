@@ -16,7 +16,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
     readonly ISynchronizedView<T, TView> parent;
     readonly AlternateIndexList<TView> listView;
-    readonly bool isSupportRangeFeature; // WPF, Avalonia etc does not support range notification
+    readonly bool isSupportRangeFeature; // WPF, etc does not support range notification
 
     readonly ICollectionEventDispatcher eventDispatcher;
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
@@ -522,7 +522,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
     readonly ISynchronizedView<T, TView> parent;
     readonly List<TView> listView; // no filter can be faster
-    readonly bool isSupportRangeFeature; // WPF, Avalonia etc does not support range notification
+    readonly bool isSupportRangeFeature; // WPF, etc does not support range notification
 
     readonly ICollectionEventDispatcher eventDispatcher;
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly

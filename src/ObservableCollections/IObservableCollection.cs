@@ -83,7 +83,7 @@ namespace ObservableCollections
     {
     }
 
-    // IColleciton<T>.Count and ICollection.Count will be ambigious so use abstract class instead of interface
+    // ICollection<T>.Count and ICollection.Count will be ambiguous so use abstract class instead of interface
     public abstract class NotifyCollectionChangedSynchronizedViewList<TView> :
         INotifyCollectionChangedSynchronizedViewList<TView>,
         IWritableSynchronizedViewList<TView>,
@@ -231,6 +231,12 @@ namespace ObservableCollections
         {
             // Optimized for non filtered
             return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform), isSupportRangeFeature: false, collectionEventDispatcher, null);
+        }
+
+        public static NotifyCollectionChangedSynchronizedViewList<TView> ToNotifyCollectionChanged<T, TView>(this IObservableCollection<T> collection, Func<T, TView> transform, bool supportsRangeFeature, ICollectionEventDispatcher? collectionEventDispatcher)
+        {
+            // Optimized for non filtered
+            return new NonFilteredSynchronizedViewList<T, TView>(collection.CreateView(transform), supportsRangeFeature, collectionEventDispatcher, null);
         }
     }
 }
