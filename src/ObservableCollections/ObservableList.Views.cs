@@ -250,7 +250,8 @@ namespace ObservableCollections
                                 list.InsertRange(e.NewStartingIndex, valueViews.Span);
 #else
                                 // List<T>.InsertRange takes only an IEnumerable<T>, and a span cannot be one.
-                                // CloneCollection exposes the copy as an ICollection<T>, so List<T> inserts it with a single bulk copy.
+                                // CloneCollection exposes the copy as an ICollection<T>, so List<T> inserts all the elements at once
+                                // (one capacity check and one shift of the following elements) instead of one by one.
                                 using (var xs = new CloneCollection<(T, TView)>(valueViews.Span))
                                 {
                                     list.InsertRange(e.NewStartingIndex, xs.AsEnumerable());

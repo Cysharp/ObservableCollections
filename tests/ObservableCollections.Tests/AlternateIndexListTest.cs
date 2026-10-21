@@ -115,8 +115,8 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that TryReplaceByValue reports the position in the list of the replaced element,
-    /// and that it reports failure with -1 and leaves the list untouched when no element has the searched value.
+    /// Guarantees that TryReplaceByValue returns true, reports the position in the list of the replaced element and keeps its alternate index,
+    /// and that it returns false, reports -1 and leaves the list untouched when no element has the searched value.
     /// </summary>
     [Fact]
     public void TryReplaceByValueReportsResult()
@@ -136,8 +136,9 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that Remove removes only the first element that has the value, compares values with the default equality comparer
-    /// including null, and returns -1 without modifying the list when no element has the value.
+    /// Guarantees that Remove removes only the first element whose value is equal to the given one by the default equality comparer
+    /// (not by reference, and including null), returns its position in the list and shifts the alternate indexes of the following elements
+    /// down by one, and that it returns -1 without modifying the list when no element has the value.
     /// </summary>
     [Fact]
     public void RemoveByValue()
@@ -151,7 +152,9 @@ public class AlternateIndexListTest
         list.Remove("zoo").Should().Be(-1);
         list.GetIndexedValues().Should().Equal((0, "foo"), (1, null), (2, "foo"));
 
-        list.Remove("foo").Should().Be(0);
+        // A string instance different from the interned literal, so that a reference comparison would not find it.
+        var foo = new string("foo".ToCharArray());
+        list.Remove(foo).Should().Be(0);
         list.GetIndexedValues().Should().Equal((0, null), (1, "foo"));
 
         list.Remove(null).Should().Be(0);
@@ -257,9 +260,10 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that InsertRange keeps every element in order and shifts the alternate indexes of the following elements
-    /// by the number of inserted elements, both when it fills an empty list beyond the default capacity of the backing array (4)
-    /// and when an insertion into the middle of the list grows the backing array (from 16 to 32).
+    /// Guarantees that InsertRange returns the insertion position, assigns consecutive alternate indexes starting at the given one
+    /// to the inserted values, and keeps every element in order, both when it fills an empty list beyond the default capacity
+    /// of the backing array (4) and when an insertion into the middle grows the backing array (from 16 to 32).
+    /// In the latter case it also shifts the alternate indexes of the following elements by the number of inserted elements.
     /// </summary>
     [Fact]
     public void InsertRangeGrowsBackingArray()
@@ -278,7 +282,8 @@ public class AlternateIndexListTest
 
     /// <summary>
     /// Guarantees that RemoveRange removes the given number of elements starting at the element with the given alternate index,
-    /// also when the alternate indexes are not contiguous, and shifts the alternate indexes of the following elements by that number.
+    /// also when the alternate indexes are not contiguous, shifts the alternate indexes of the following elements by that number,
+    /// and returns the position in the list (not the alternate index) of the first removed element.
     /// </summary>
     [Fact]
     public void RemoveRangeSparse()
@@ -315,8 +320,10 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that operations on an empty list behave as on an empty List&lt;T&gt;: lookups fail,
-    /// and inserting, removing nothing and clearing are accepted.
+    /// Guarantees that every operation is safe on an empty list: lookups and value-based operations report failure (false or -1),
+    /// RemoveAt throws InvalidOperationException because no element has the alternate index, removing zero elements,
+    /// UpdateAlternateIndex and Clear are accepted and leave the list empty, and Insert then stores the element
+    /// with the given alternate index at position 0.
     /// </summary>
     [Fact]
     public void EmptyList()
@@ -342,8 +349,9 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that the list can be reused after Clear and Clear(values): the old elements do not reappear,
-    /// and new elements are stored and ordered as in a new list.
+    /// Guarantees that the list can be reused after Clear and Clear(values). The list starts with 10 elements so that its backing array
+    /// keeps slots beyond Count after Clear. The old elements do not reappear, Clear(values) stores exactly the given elements,
+    /// and later inserts are ordered by alternate index and shift the alternate indexes of the following elements.
     /// </summary>
     [Fact]
     public void ReuseAfterClear()
@@ -366,8 +374,9 @@ public class AlternateIndexListTest
 
     /// <summary>
     /// Modifying the value or the alternate index of an element, or removing zero elements, is not a structural change.
-    /// This guarantees that such operations during enumeration do not invalidate the enumeration
-    /// and that the enumeration observes the modified values.
+    /// This guarantees that such operations during enumeration do not invalidate the enumeration,
+    /// that the enumeration observes the modified values, and that the modifications, including those to elements
+    /// already returned, are kept in the list.
     /// </summary>
     [Fact]
     public void NonStructuralChangeDuringEnumerationContinues()
@@ -397,8 +406,8 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that enumeration throws InvalidOperationException from the next MoveNext when the list is structurally changed
-    /// or sorted (by TryReplaceAlternateIndex) during enumeration, as List&lt;T&gt; does,
+    /// Guarantees that, once enumeration has started, the next MoveNext throws InvalidOperationException after the list
+    /// is structurally changed or sorted (by TryReplaceAlternateIndex), as List&lt;T&gt; does,
     /// including when the change happens after the last element has been returned.
     /// </summary>
     [Theory]

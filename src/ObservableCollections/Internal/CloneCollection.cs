@@ -72,9 +72,9 @@ namespace ObservableCollections.Internal
 
         public CloneCollection(List<T> source, int index, int count)
         {
-            // ObservableList<T>.RemoveRange used to take this range with Span<T>.Slice, so an invalid range threw ArgumentOutOfRangeException.
-            // Validate it the same way to keep that contract. Without this, List<T>.CopyTo would throw ArgumentException
-            // for a range that extends past the end.
+            // ObservableList<T>.RemoveRange throws ArgumentOutOfRangeException for an invalid range, before the list is modified
+            // or a notification is raised. Validate the range the same way as Span<T>.Slice(index, count) does to keep that contract.
+            // Without this, List<T>.CopyTo would throw ArgumentException for a range that extends past the end.
             if ((ulong)(uint)index + (uint)count > (uint)source.Count)
             {
                 throw new ArgumentOutOfRangeException();

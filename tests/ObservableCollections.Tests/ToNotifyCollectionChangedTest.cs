@@ -62,7 +62,8 @@ public class ToNotifyCollectionChangedTest
 
     /// <summary>
     /// Inserting an element that the filter rejects only shifts the alternate indexes of the filtered view,
-    /// and replacing an element that the filter accepts only replaces a value in it; neither is a structural change of the view.
+    /// and replacing an element that the filter accepts with a value that it also accepts only replaces a value in it;
+    /// neither is a structural change of the view.
     /// This guarantees that doing so on the same thread while the filtered view is being enumerated does not break the enumeration,
     /// that the enumeration observes the replaced value, and that the alternate indexes were actually shifted,
     /// so that a later replacement still reaches the right element.
@@ -101,8 +102,10 @@ public class ToNotifyCollectionChangedTest
 
     /// <summary>
     /// Guarantees that a filtered view whose alternate indexes are not contiguous follows InsertRange into the middle, RemoveRange and AddRange
-    /// of the source when the filter accepts all the inserted or removed elements, both with and without range notifications,
-    /// and that the alternate indexes of the elements after the range are shifted so that replacing them still reaches the right element.
+    /// of the source when the filter accepts all the inserted or removed elements. It is tested both with range notifications
+    /// (the view uses AlternateIndexList.InsertRange and RemoveRange) and without them (the view inserts and removes element by element).
+    /// After each operation, an element after the range is replaced, which reaches the right element only if its alternate index
+    /// was shifted by exactly the number of inserted or removed elements.
     /// </summary>
     [Theory]
     [InlineData(true)]
@@ -119,16 +122,19 @@ public class ToNotifyCollectionChangedTest
 
         list.InsertRange(2, new[] { 6, 8 }); // [1, 2, 6, 8, 3, 4]
         viewList.Should().Equal("$2", "$6", "$8", "$4");
+        list[5] = 40; // replaces 4, whose alternate index must have been shifted from 3 to 5
+        viewList.Should().Equal("$2", "$6", "$8", "$40");
 
-        list.RemoveRange(2, 2); // [1, 2, 3, 4]
-        viewList.Should().Equal("$2", "$4");
+        list.RemoveRange(2, 2); // [1, 2, 3, 40]
+        viewList.Should().Equal("$2", "$40");
+        list[3] = 44; // replaces 40, whose alternate index must have been shifted from 5 to 3
+        viewList.Should().Equal("$2", "$44");
 
-        list.AddRange(new[] { 10, 12 }); // [1, 2, 3, 4, 10, 12]
-        viewList.Should().Equal("$2", "$4", "$10", "$12");
-
-        list[3] = 14;
-        list[5] = 16;
-        viewList.Should().Equal("$2", "$14", "$10", "$16");
+        list.AddRange(new[] { 10, 12 }); // [1, 2, 3, 44, 10, 12]
+        viewList.Should().Equal("$2", "$44", "$10", "$12");
+        list[3] = 46; // appending must not shift the preceding elements
+        list[5] = 16; // the appended elements get the alternate indexes of their source indexes
+        viewList.Should().Equal("$2", "$46", "$10", "$16");
     }
 
     [Fact]

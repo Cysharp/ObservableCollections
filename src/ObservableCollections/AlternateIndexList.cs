@@ -188,7 +188,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     // Assigns consecutive alternate indexes to the values while they are inserted.
     // It is both the sequence and its single enumerator, so it can be enumerated only once,
-    // and ConsumedCount is the number of inserted values only after IndexedValueList.InsertRange has enumerated it to the end.
+    // and ConsumedCount equals the number of inserted values only once IndexedValueList.InsertRange has enumerated it to the end.
     class InsertIterator(int startingIndex, IEnumerable<T> values) : IEnumerable<IndexedValue>, IEnumerator<IndexedValue>
     {
         IEnumerator<T> iter = values.GetEnumerator();
@@ -226,9 +226,9 @@ public class AlternateIndexList<T> : IEnumerable<T>
     // Its operations follow List<T>, with one deliberate difference: modifying an element in place through the indexer
     // or AsSpan is not a structural change, so it does not invalidate enumeration. FiltableSynchronizedViewList enumerates
     // this list while holding a reentrant lock, and the source collection can be changed on the same thread during
-    // that enumeration. Adding an element that the filter rejects only shifts alternate indexes, and replacing an element
-    // only replaces a value; neither must break the enumeration. This is also how the list behaved when it was modified
-    // through a span over the backing array of List<T>.
+    // that enumeration. Inserting an element that the filter rejects only shifts the alternate indexes of the following elements,
+    // and replacing an element with a value that the filter also accepts only replaces a value; neither must be allowed
+    // to break the enumeration.
     sealed class IndexedValueList
     {
         const int DefaultCapacity = 4;
@@ -241,7 +241,8 @@ public class AlternateIndexList<T> : IEnumerable<T>
         public int Count => size;
 
         // Returns a reference so that the caller can modify the element in place.
-        // The reference points into the current backing array, so do not keep it across an operation that may grow the list.
+        // The reference points into the current backing array. Do not keep it across an operation that adds, removes or reorders elements:
+        // the slot may then hold a different element, and growing the list replaces the backing array.
         public ref IndexedValue this[int index]
         {
             get
@@ -254,7 +255,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
             }
         }
 
-        // The returned span aliases the backing array. It is invalidated by any structural change, so do not keep it across one.
+        // The returned span aliases the backing array. Do not keep it across an operation that adds, removes or reorders elements.
         public Span<IndexedValue> AsSpan() => items.AsSpan(0, size);
 
         public int BinarySearch(IndexedValue item)
@@ -414,8 +415,10 @@ public class AlternateIndexList<T> : IEnumerable<T>
             Array.Resize(ref items, newCapacity);
         }
 
-        // Like List<T>.Enumerator, this captures the version when it is created and throws InvalidOperationException
-        // from MoveNext once the list has been structurally changed or sorted, including after the last element.
+        // Like List<T>.Enumerator, this captures the version when it is created, and MoveNext throws InvalidOperationException
+        // if the version has changed since then, even when the change happens after the last element has been returned.
+        // Every operation changes the version except modifying an element in place through the indexer or AsSpan,
+        // and adding or removing zero elements.
         public struct Enumerator
         {
             readonly IndexedValueList list;
