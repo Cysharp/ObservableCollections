@@ -1,15 +1,15 @@
-﻿using System;
+﻿using ObservableCollections.Internal;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace ObservableCollections;
 
 public class AlternateIndexList<T> : IEnumerable<T>
 {
-    readonly IndexedValueList list; // alternate index is ordered
+    readonly RefList<IndexedValue> list; // alternate index is ordered
 
     public AlternateIndexList()
     {
@@ -69,7 +69,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public int Remove(T value)
     {
-        var index = list.IndexOfValue(value);
+        var index = IndexOfValue(value);
         if (index != -1)
         {
             list.RemoveAt(index);
@@ -145,7 +145,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public bool TryReplaceByValue(T searchValue, T replaceValue, out int replacedIndex)
     {
-        replacedIndex = list.IndexOfValue(searchValue);
+        replacedIndex = IndexOfValue(searchValue);
         if (replacedIndex != -1)
         {
             list[replacedIndex].Value = replaceValue;
@@ -186,9 +186,22 @@ public class AlternateIndexList<T> : IEnumerable<T>
         }
     }
 
+    int IndexOfValue(T value)
+    {
+        var span = list.AsSpan();
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (EqualityComparer<T>.Default.Equals(span[i].Value, value))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     // Assigns consecutive alternate indexes to the values while they are inserted.
     // It is both the sequence and its single enumerator, so it can be enumerated only once,
-    // and ConsumedCount equals the number of inserted values only once IndexedValueList.InsertRange has enumerated it to the end.
+    // and ConsumedCount equals the number of inserted values only once RefList<T>.InsertRange has enumerated it to the end.
     class InsertIterator(int startingIndex, IEnumerable<T> values) : IEnumerable<IndexedValue>, IEnumerator<IndexedValue>
     {
         IEnumerator<T> iter = values.GetEnumerator();
@@ -218,241 +231,6 @@ public class AlternateIndexList<T> : IEnumerable<T>
         public IEnumerator<IndexedValue> GetEnumerator() => this;
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    }
-
-    // A growable list of IndexedValue that owns its backing array, so that the elements can be modified in place
-    // without relying on the private field layout of List<T>.
-    //
-    // Its operations follow List<T>, with one deliberate difference: modifying an element in place through the indexer
-    // or AsSpan is not a structural change, so it does not invalidate enumeration. FiltableSynchronizedViewList enumerates
-    // this list while holding a reentrant lock, and the source collection can be changed on the same thread during
-    // that enumeration. Inserting an element that the filter rejects only shifts the alternate indexes of the following elements,
-    // and replacing an element with a value that the filter also accepts only replaces a value; neither must be allowed
-    // to break the enumeration.
-    sealed class IndexedValueList
-    {
-        const int DefaultCapacity = 4;
-        const int ArrayMaxLength = 0x7FFFFFC7; // Array.MaxLength, which is not available on netstandard
-
-        IndexedValue[] items = Array.Empty<IndexedValue>();
-        int size;
-        int version;
-
-        public int Count => size;
-
-        // Returns a reference so that the caller can modify the element in place.
-        // The reference points into the current backing array. Do not keep it across an operation that adds, removes or reorders elements:
-        // the slot may then hold a different element, and growing the list replaces the backing array.
-        public ref IndexedValue this[int index]
-        {
-            get
-            {
-                if ((uint)index >= (uint)size)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(index));
-                }
-                return ref items[index];
-            }
-        }
-
-        // The returned span aliases the backing array. Do not keep it across an operation that adds, removes or reorders elements.
-        public Span<IndexedValue> AsSpan() => items.AsSpan(0, size);
-
-        public int BinarySearch(IndexedValue item)
-        {
-            return Array.BinarySearch(items, 0, size, item, null);
-        }
-
-        public int IndexOfValue(T value)
-        {
-            var span = AsSpan();
-            for (int i = 0; i < span.Length; i++)
-            {
-                if (EqualityComparer<T>.Default.Equals(span[i].Value, value))
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        public void Add(IndexedValue item)
-        {
-            if (size == items.Length)
-            {
-                Grow(size + 1);
-            }
-            items[size++] = item;
-            version++;
-        }
-
-        public void AddRange(IEnumerable<IndexedValue> source)
-        {
-            foreach (var item in source)
-            {
-                Add(item);
-            }
-        }
-
-        public void Insert(int index, IndexedValue item)
-        {
-            if ((uint)index > (uint)size)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            if (size == items.Length)
-            {
-                Grow(size + 1);
-            }
-            if (index < size)
-            {
-                Array.Copy(items, index, items, index + 1, size - index);
-            }
-            items[index] = item;
-            size++;
-            version++;
-        }
-
-        // Like List<T>.InsertRange with a source that is not an ICollection<T>, the elements are inserted one by one,
-        // because the number of elements is not known in advance.
-        public void InsertRange(int index, IEnumerable<IndexedValue> source)
-        {
-            if ((uint)index > (uint)size)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            foreach (var item in source)
-            {
-                Insert(index++, item);
-            }
-        }
-
-        public void RemoveAt(int index)
-        {
-            if ((uint)index >= (uint)size)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-
-            size--;
-            if (index < size)
-            {
-                Array.Copy(items, index + 1, items, index, size - index);
-            }
-            if (RuntimeHelpersEx.IsReferenceOrContainsReferences<IndexedValue>())
-            {
-                items[size] = default; // do not keep the reference alive
-            }
-            version++;
-        }
-
-        public void RemoveRange(int index, int count)
-        {
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index));
-            }
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
-            if (size - index < count)
-            {
-                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
-            }
-
-            if (count > 0)
-            {
-                size -= count;
-                if (index < size)
-                {
-                    Array.Copy(items, index + count, items, index, size - index);
-                }
-                if (RuntimeHelpersEx.IsReferenceOrContainsReferences<IndexedValue>())
-                {
-                    Array.Clear(items, size, count); // do not keep the references alive
-                }
-                version++;
-            }
-        }
-
-        // Like List<T>.Sort, this invalidates enumeration even when there is nothing to reorder.
-        public void Sort()
-        {
-            if (size > 1)
-            {
-                Array.Sort(items, 0, size, null);
-            }
-            version++;
-        }
-
-        // Like List<T>.Clear, this invalidates enumeration even when the list is already empty.
-        public void Clear()
-        {
-            if (RuntimeHelpersEx.IsReferenceOrContainsReferences<IndexedValue>() && size > 0)
-            {
-                Array.Clear(items, 0, size); // do not keep the references alive
-            }
-            size = 0;
-            version++;
-        }
-
-        public Enumerator GetEnumerator() => new(this);
-
-        void Grow(int minimumCapacity)
-        {
-            var newCapacity = items.Length == 0 ? DefaultCapacity : 2 * items.Length;
-            if ((uint)newCapacity > ArrayMaxLength)
-            {
-                newCapacity = ArrayMaxLength;
-            }
-            if (newCapacity < minimumCapacity)
-            {
-                newCapacity = minimumCapacity;
-            }
-            Array.Resize(ref items, newCapacity);
-        }
-
-        // Like List<T>.Enumerator, this captures the version when it is created, and MoveNext throws InvalidOperationException
-        // if the version has changed since then, even when the change happens after the last element has been returned.
-        // Every operation changes the version except modifying an element in place through the indexer or AsSpan,
-        // and adding or removing zero elements.
-        public struct Enumerator
-        {
-            readonly IndexedValueList list;
-            readonly int version;
-            int index;
-            IndexedValue current;
-
-            internal Enumerator(IndexedValueList list)
-            {
-                this.list = list;
-                this.version = list.version;
-                this.index = 0;
-                this.current = default;
-            }
-
-            public IndexedValue Current => current;
-
-            public bool MoveNext()
-            {
-                if (version != list.version)
-                {
-                    throw new InvalidOperationException("Collection was modified; enumeration operation may not execute.");
-                }
-
-                if (index < list.size)
-                {
-                    current = list.items[index++];
-                    return true;
-                }
-
-                current = default;
-                return false;
-            }
-        }
     }
 
     struct IndexedValue : IComparable<IndexedValue>
