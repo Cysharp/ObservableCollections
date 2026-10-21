@@ -246,9 +246,11 @@ namespace ObservableCollections
                                     }
                                 }
 
-#if NET8_0_OR_GREATER // List<T>.InsertRange(int, ReadOnlySpan<T>) is available since .NET 8
+#if NET8_0_OR_GREATER // CollectionExtensions.InsertRange<T>(List<T>, int, ReadOnlySpan<T>) is an extension method added in .NET 8
                                 list.InsertRange(e.NewStartingIndex, valueViews.Span);
 #else
+                                // List<T>.InsertRange takes only an IEnumerable<T>, and a span cannot be one.
+                                // CloneCollection exposes the copy as an ICollection<T>, so List<T> inserts it with a single bulk copy.
                                 using (var xs = new CloneCollection<(T, TView)>(valueViews.Span))
                                 {
                                     list.InsertRange(e.NewStartingIndex, xs.AsEnumerable());

@@ -115,11 +115,11 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that TryReplaceByValue reports failure with -1 and leaves the list untouched
-    /// when no element has the searched value, and reports the position in the list of the replaced element otherwise.
+    /// Guarantees that TryReplaceByValue reports the position in the list of the replaced element,
+    /// and that it reports failure with -1 and leaves the list untouched when no element has the searched value.
     /// </summary>
     [Fact]
-    public void TryReplaceByValueNotFound()
+    public void TryReplaceByValueReportsResult()
     {
         var list = new AlternateIndexList<string>();
 
@@ -133,6 +133,29 @@ public class AlternateIndexListTest
         list.TryReplaceByValue("bar", "new-bar", out var replacedIndex).Should().BeTrue();
         replacedIndex.Should().Be(1);
         list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"));
+    }
+
+    /// <summary>
+    /// Guarantees that Remove removes only the first element that has the value, compares values with the default equality comparer
+    /// including null, and returns -1 without modifying the list when no element has the value.
+    /// </summary>
+    [Fact]
+    public void RemoveByValue()
+    {
+        var list = new AlternateIndexList<string>();
+
+        list.Insert(0, "foo");
+        list.Insert(1, null);
+        list.Insert(2, "foo");
+
+        list.Remove("zoo").Should().Be(-1);
+        list.GetIndexedValues().Should().Equal((0, "foo"), (1, null), (2, "foo"));
+
+        list.Remove("foo").Should().Be(0);
+        list.GetIndexedValues().Should().Equal((0, null), (1, "foo"));
+
+        list.Remove(null).Should().Be(0);
+        list.GetIndexedValues().Should().Equal((0, "foo"));
     }
 
     /// <summary>
@@ -220,12 +243,11 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// The list starts with a capacity of 4 and grows by doubling. This guarantees that elements added beyond that capacity
-    /// are all kept in order, and that removing the first element shifts the alternate index of every following element
-    /// up to the last one, which is past the initial capacity.
+    /// Guarantees that a list built from more elements than the default capacity of its backing array (4) keeps them all in order,
+    /// and that RemoveAt shifts the alternate index of every following element up to the last one, which lies past that capacity.
     /// </summary>
     [Fact]
-    public void RemoveShiftsAllFollowingAlternateIndexes()
+    public void RemoveAtShiftsAllFollowingAlternateIndexes()
     {
         var list = new AlternateIndexList<string>(Enumerable.Range(0, 20).Select(x => (x * 2, x.ToString())));
         list.GetIndexedValues().Should().Equal(Enumerable.Range(0, 20).Select(x => (x * 2, x.ToString())));
@@ -235,28 +257,42 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that InsertRange into an empty list keeps every element in order when the number of inserted elements
-    /// exceeds the initial capacity, and that inserting into the middle shifts the following elements behind the inserted ones.
+    /// Guarantees that InsertRange keeps every element in order and shifts the alternate indexes of the following elements
+    /// by the number of inserted elements, both when it fills an empty list beyond the default capacity of the backing array (4)
+    /// and when an insertion into the middle of the list grows the backing array (from 16 to 32).
     /// </summary>
     [Fact]
-    public void InsertRangeBeyondInitialCapacity()
+    public void InsertRangeGrowsBackingArray()
     {
         var list = new AlternateIndexList<int>();
 
         list.InsertRange(0, Enumerable.Range(0, 10)).Should().Be(0);
         list.GetIndexedValues().Should().Equal(Enumerable.Range(0, 10).Select(x => (x, x)));
 
-        list.InsertRange(5, new[] { 100, 101 }).Should().Be(5);
+        list.InsertRange(5, Enumerable.Range(100, 7)).Should().Be(5);
         list.GetIndexedValues().Should().Equal(
             Enumerable.Range(0, 5).Select(x => (x, x))
-                .Concat(new[] { (5, 100), (6, 101) })
-                .Concat(Enumerable.Range(5, 5).Select(x => (x + 2, x))));
+                .Concat(Enumerable.Range(0, 7).Select(x => (x + 5, x + 100)))
+                .Concat(Enumerable.Range(5, 5).Select(x => (x + 7, x))));
     }
 
     /// <summary>
-    /// Guarantees that RemoveRange removes the elements from the given alternate index up to the end of the list,
-    /// that removing zero elements changes nothing, and that a range that does not fit in the list throws an ArgumentException
-    /// without modifying the list, as List&lt;T&gt;.RemoveRange does.
+    /// Guarantees that RemoveRange removes the given number of elements starting at the element with the given alternate index,
+    /// also when the alternate indexes are not contiguous, and shifts the alternate indexes of the following elements by that number.
+    /// </summary>
+    [Fact]
+    public void RemoveRangeSparse()
+    {
+        var list = new AlternateIndexList<string>(new[] { (0, "a"), (2, "b"), (5, "c"), (9, "d"), (12, "e") });
+
+        list.RemoveRange(2, 2).Should().Be(1);
+        list.GetIndexedValues().Should().Equal((0, "a"), (7, "d"), (10, "e"));
+    }
+
+    /// <summary>
+    /// Guarantees that removing zero elements changes nothing, that removing the elements up to the end of the list is accepted,
+    /// and that an invalid range is rejected without modifying the list, with the same exceptions as List&lt;T&gt;.RemoveRange:
+    /// exactly ArgumentException for a range that extends past the end, and ArgumentOutOfRangeException for a negative count.
     /// </summary>
     [Fact]
     public void RemoveRangeBounds()
@@ -270,8 +306,8 @@ public class AlternateIndexListTest
         list.RemoveRange(1, 0);
         list.GetIndexedValues().Should().Equal((0, "foo"), (1, "bar"), (2, "baz"));
 
-        list.Invoking(x => x.RemoveRange(1, 3)).Should().Throw<ArgumentException>();
-        list.Invoking(x => x.RemoveRange(0, -1)).Should().Throw<ArgumentOutOfRangeException>();
+        list.Invoking(x => x.RemoveRange(1, 3)).Should().ThrowExactly<ArgumentException>();
+        list.Invoking(x => x.RemoveRange(0, -1)).Should().ThrowExactly<ArgumentOutOfRangeException>();
         list.GetIndexedValues().Should().Equal((0, "foo"), (1, "bar"), (2, "baz"));
 
         list.RemoveRange(1, 2);
@@ -279,12 +315,62 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Modifying the value or the alternate index of an element is not a structural change.
-    /// This guarantees that such modifications during enumeration do not invalidate the enumeration
+    /// Guarantees that operations on an empty list behave as on an empty List&lt;T&gt;: lookups fail,
+    /// and inserting, removing nothing and clearing are accepted.
+    /// </summary>
+    [Fact]
+    public void EmptyList()
+    {
+        var list = new AlternateIndexList<string>();
+
+        list.Count.Should().Be(0);
+        list.Should().BeEmpty();
+        list.TryGetAtAlternateIndex(0, out _).Should().BeFalse();
+        list.TrySetAtAlternateIndex(0, "foo", out _).Should().BeFalse();
+        list.TryReplaceAlternateIndex(0, 1).Should().BeFalse();
+        list.TryReplaceByValue("foo", "bar", out _).Should().BeFalse();
+        list.Remove("foo").Should().Be(-1);
+        list.Invoking(x => x.RemoveAt(0)).Should().Throw<InvalidOperationException>();
+
+        list.RemoveRange(0, 0);
+        list.UpdateAlternateIndex(0, 1);
+        list.Clear();
+        list.Should().BeEmpty();
+
+        list.Insert(3, "foo").Should().Be(0);
+        list.GetIndexedValues().Should().Equal((3, "foo"));
+    }
+
+    /// <summary>
+    /// Guarantees that the list can be reused after Clear and Clear(values): the old elements do not reappear,
+    /// and new elements are stored and ordered as in a new list.
+    /// </summary>
+    [Fact]
+    public void ReuseAfterClear()
+    {
+        var list = new AlternateIndexList<string>(Enumerable.Range(0, 10).Select(x => (x, x.ToString())));
+
+        list.Clear();
+        list.Should().BeEmpty();
+
+        list.Insert(1, "foo");
+        list.Insert(0, "bar");
+        list.GetIndexedValues().Should().Equal((0, "bar"), (2, "foo"));
+
+        list.Clear(new[] { (5, "x"), (7, "y") });
+        list.GetIndexedValues().Should().Equal((5, "x"), (7, "y"));
+
+        list.Insert(6, "z");
+        list.GetIndexedValues().Should().Equal((5, "x"), (6, "z"), (8, "y"));
+    }
+
+    /// <summary>
+    /// Modifying the value or the alternate index of an element, or removing zero elements, is not a structural change.
+    /// This guarantees that such operations during enumeration do not invalidate the enumeration
     /// and that the enumeration observes the modified values.
     /// </summary>
     [Fact]
-    public void InPlaceModificationDuringEnumerationContinues()
+    public void NonStructuralChangeDuringEnumerationContinues()
     {
         var list = new AlternateIndexList<string>();
 
@@ -302,6 +388,7 @@ public class AlternateIndexListTest
                 list.TrySetAtAlternateIndex(4, "new-baz", out _);
                 list.TryReplaceByValue("foo", "new-foo", out _);
                 list.UpdateAlternateIndex(1, 1);
+                list.RemoveRange(0, 0);
             }
         }
 
@@ -310,8 +397,9 @@ public class AlternateIndexListTest
     }
 
     /// <summary>
-    /// Guarantees that, like the enumerator of List&lt;T&gt;, enumeration throws InvalidOperationException
-    /// when the list is structurally changed or reordered during enumeration, even if the change happens at the last element.
+    /// Guarantees that enumeration throws InvalidOperationException from the next MoveNext when the list is structurally changed
+    /// or sorted (by TryReplaceAlternateIndex) during enumeration, as List&lt;T&gt; does,
+    /// including when the change happens after the last element has been returned.
     /// </summary>
     [Theory]
     [InlineData("Insert")]
@@ -352,5 +440,23 @@ public class AlternateIndexListTest
 
             e.Invoking(x => x.MoveNext()).Should().Throw<InvalidOperationException>();
         }
+    }
+
+    /// <summary>
+    /// Guarantees that sorting a list with a single element (by TryReplaceAlternateIndex) still invalidates enumeration,
+    /// as List&lt;T&gt;.Sort does even when there is nothing to reorder.
+    /// </summary>
+    [Fact]
+    public void TrivialSortDuringEnumerationThrows()
+    {
+        var list = new AlternateIndexList<string>();
+        list.Insert(0, "foo");
+
+        using var e = list.GetEnumerator();
+        e.MoveNext().Should().BeTrue();
+
+        list.TryReplaceAlternateIndex(0, 1).Should().BeTrue();
+
+        e.Invoking(x => x.MoveNext()).Should().Throw<InvalidOperationException>();
     }
 }

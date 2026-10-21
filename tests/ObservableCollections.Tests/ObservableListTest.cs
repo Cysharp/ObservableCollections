@@ -98,8 +98,9 @@ namespace ObservableCollections.Tests
         }
 
         /// <summary>
-        /// Guarantees that RemoveRange accepts every range that ends exactly at the end of the list,
-        /// including an empty range at the end and an empty range of an empty list.
+        /// A range that ends exactly at Count is the boundary that the range check of RemoveRange must still accept.
+        /// This guarantees that such ranges (the whole list, a tail, an empty range at the end, and an empty range of an empty list)
+        /// are removed, and that the notifications carry exactly the removed elements.
         /// </summary>
         [Theory]
         [InlineData(new int[] { 10, 20, 30 }, 0, 3, new int[] { 10, 20, 30 }, new int[0])]
