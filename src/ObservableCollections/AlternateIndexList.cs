@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-#if NET6_0_OR_GREATER
+#if !NETSTANDARD
 using System.Runtime.InteropServices;
 #endif
 
@@ -25,18 +25,18 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public void UpdateAlternateIndex(int startIndex, int incr)
     {
-#if NET6_0_OR_GREATER
-        var span = CollectionsMarshal.AsSpan(list);
-        for (int i = startIndex; i < span.Length; i++)
-        {
-            span[i].AlternateIndex += incr;
-        }
-#else
+#if NETSTANDARD
         for (int i = startIndex; i < list.Count; i++)
         {
             var item = list[i];
             item.AlternateIndex += incr;
             list[i] = item;
+        }
+#else
+        var span = CollectionsMarshal.AsSpan(list);
+        for (int i = startIndex; i < span.Length; i++)
+        {
+            span[i].AlternateIndex += incr;
         }
 #endif
     }
@@ -45,23 +45,23 @@ public class AlternateIndexList<T> : IEnumerable<T>
     // netstandard has no public API to access the backing array of List<T>, so the element is read, modified and written back there.
     void SetValue(int index, T value)
     {
-#if NET6_0_OR_GREATER
-        CollectionsMarshal.AsSpan(list)[index].Value = value;
-#else
+#if NETSTANDARD
         var item = list[index];
         item.Value = value;
         list[index] = item;
+#else
+        CollectionsMarshal.AsSpan(list)[index].Value = value;
 #endif
     }
 
     void SetAlternateIndex(int index, int alternateIndex)
     {
-#if NET6_0_OR_GREATER
-        CollectionsMarshal.AsSpan(list)[index].AlternateIndex = alternateIndex;
-#else
+#if NETSTANDARD
         var item = list[index];
         item.AlternateIndex = alternateIndex;
         list[index] = item;
+#else
+        CollectionsMarshal.AsSpan(list)[index].AlternateIndex = alternateIndex;
 #endif
     }
 
