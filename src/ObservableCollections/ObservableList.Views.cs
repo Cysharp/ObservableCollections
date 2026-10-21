@@ -246,7 +246,7 @@ namespace ObservableCollections
                                     }
                                 }
 
-#if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER // List<T>.InsertRange(int, ReadOnlySpan<T>) is available since .NET 8
                                 list.InsertRange(e.NewStartingIndex, valueViews.Span);
 #else
                                 using (var xs = new CloneCollection<(T, TView)>(valueViews.Span))

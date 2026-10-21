@@ -3,15 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-#if !NETSTANDARD
-using System.Runtime.InteropServices;
-#endif
 
 namespace ObservableCollections;
 
 public class AlternateIndexList<T> : IEnumerable<T>
 {
-    List<IndexedValue> list; // alternate index is ordered
+    IndexedValueList list; // alternate index is ordered
 
     public AlternateIndexList()
     {
@@ -20,55 +17,23 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public AlternateIndexList(IEnumerable<(int OrderedAlternateIndex, T Value)> values)
     {
-        this.list = values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)).ToList();
+        this.list = new();
+        this.list.AddRange(values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)));
     }
 
     public void UpdateAlternateIndex(int startIndex, int incr)
     {
-#if NETSTANDARD
-        for (int i = startIndex; i < list.Count; i++)
-        {
-            var item = list[i];
-            item.AlternateIndex += incr;
-            list[i] = item;
-        }
-#else
-        var span = CollectionsMarshal.AsSpan(list);
+        var span = list.AsSpan();
         for (int i = startIndex; i < span.Length; i++)
         {
             span[i].AlternateIndex += incr;
         }
-#endif
-    }
-
-    // IndexedValue is a struct, so an element can not be modified in place through the List<T> indexer.
-    // netstandard has no public API to access the backing array of List<T>, so the element is read, modified and written back there.
-    void SetValue(int index, T value)
-    {
-#if NETSTANDARD
-        var item = list[index];
-        item.Value = value;
-        list[index] = item;
-#else
-        CollectionsMarshal.AsSpan(list)[index].Value = value;
-#endif
-    }
-
-    void SetAlternateIndex(int index, int alternateIndex)
-    {
-#if NETSTANDARD
-        var item = list[index];
-        item.AlternateIndex = alternateIndex;
-        list[index] = item;
-#else
-        CollectionsMarshal.AsSpan(list)[index].AlternateIndex = alternateIndex;
-#endif
     }
 
     public T this[int index]
     {
         get => list[index].Value;
-        set => SetValue(index, value);
+        set => list[index].Value = value;
     }
 
     public int GetAlternateIndex(int index) => list[index].AlternateIndex;
@@ -103,7 +68,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public int Remove(T value)
     {
-        var index = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, value));
+        var index = list.IndexOfValue(value);
         if (index != -1)
         {
             list.RemoveAt(index);
@@ -159,7 +124,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
         {
             return false;
         }
-        SetValue(setIndex, value);
+        list[setIndex].Value = value;
         return true;
     }
 
@@ -172,17 +137,17 @@ public class AlternateIndexList<T> : IEnumerable<T>
             return false;
         }
 
-        SetAlternateIndex(index, setAlternateIndex);
+        list[index].AlternateIndex = setAlternateIndex;
         list.Sort(); // needs sort to keep order
         return true;
     }
 
     public bool TryReplaceByValue(T searchValue, T replaceValue, out int replacedIndex)
     {
-        replacedIndex = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, searchValue));
+        replacedIndex = list.IndexOfValue(searchValue);
         if (replacedIndex != -1)
         {
-            SetValue(replacedIndex, replaceValue);
+            list[replacedIndex].Value = replaceValue;
             return true;
         }
         return false;
@@ -249,6 +214,195 @@ public class AlternateIndexList<T> : IEnumerable<T>
         public IEnumerator<IndexedValue> GetEnumerator() => this;
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    // A growable list that owns its backing array, so that the elements can be modified in place
+    // without relying on the private field layout of List<T>.
+    // It follows the behavior of List<T> for the operations used above, except that modifying an element in place
+    // does not invalidate enumeration, because it is not a structural change.
+    sealed class IndexedValueList
+    {
+        const int DefaultCapacity = 4;
+
+        IndexedValue[] items = Array.Empty<IndexedValue>();
+        int count;
+        int version;
+
+        public int Count => count;
+
+        // Returns a reference so that the caller can modify the element in place.
+        public ref IndexedValue this[int index]
+        {
+            get
+            {
+                if ((uint)index >= (uint)count)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+                return ref items[index];
+            }
+        }
+
+        // The returned span aliases the backing array. It is invalidated by any structural change, so do not keep it across one.
+        public Span<IndexedValue> AsSpan() => items.AsSpan(0, count);
+
+        public int BinarySearch(IndexedValue item)
+        {
+            return Array.BinarySearch(items, 0, count, item, null);
+        }
+
+        public int IndexOfValue(T value)
+        {
+            var span = AsSpan();
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (EqualityComparer<T>.Default.Equals(span[i].Value, value))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public void Add(IndexedValue item)
+        {
+            if (count == items.Length)
+            {
+                Grow(count + 1);
+            }
+            items[count++] = item;
+            version++;
+        }
+
+        public void AddRange(IEnumerable<IndexedValue> source)
+        {
+            foreach (var item in source)
+            {
+                Add(item);
+            }
+        }
+
+        public void Insert(int index, IndexedValue item)
+        {
+            if ((uint)index > (uint)count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+
+            if (count == items.Length)
+            {
+                Grow(count + 1);
+            }
+            if (index < count)
+            {
+                Array.Copy(items, index, items, index + 1, count - index);
+            }
+            items[index] = item;
+            count++;
+            version++;
+        }
+
+        // Like List<T>.InsertRange with a source that is not an ICollection<T>, the elements are inserted one by one,
+        // because the number of elements is not known in advance.
+        public void InsertRange(int index, IEnumerable<IndexedValue> source)
+        {
+            if ((uint)index > (uint)count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+
+            foreach (var item in source)
+            {
+                Insert(index++, item);
+            }
+        }
+
+        public void RemoveAt(int index)
+        {
+            if ((uint)index >= (uint)count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+
+            count--;
+            if (index < count)
+            {
+                Array.Copy(items, index + 1, items, index, count - index);
+            }
+            items[count] = default; // do not keep the reference alive
+            version++;
+        }
+
+        public void RemoveRange(int index, int count)
+        {
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count));
+            }
+            if (this.count - index < count)
+            {
+                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+            }
+
+            if (count > 0)
+            {
+                this.count -= count;
+                if (index < this.count)
+                {
+                    Array.Copy(items, index + count, items, index, this.count - index);
+                }
+                Array.Clear(items, this.count, count); // do not keep the references alive
+                version++;
+            }
+        }
+
+        public void Sort()
+        {
+            if (count > 1)
+            {
+                Array.Sort(items, 0, count, null);
+            }
+            version++;
+        }
+
+        public void Clear()
+        {
+            if (count > 0)
+            {
+                Array.Clear(items, 0, count); // do not keep the references alive
+                count = 0;
+            }
+            version++;
+        }
+
+        // Like the enumerator of List<T>, this throws InvalidOperationException when the list is structurally changed during enumeration.
+        public IEnumerator<IndexedValue> GetEnumerator()
+        {
+            var version = this.version;
+            for (int i = 0; i < count; i++)
+            {
+                yield return items[i];
+
+                if (version != this.version)
+                {
+                    throw new InvalidOperationException("Collection was modified; enumeration operation may not execute.");
+                }
+            }
+        }
+
+        void Grow(int minimumCapacity)
+        {
+            var newCapacity = items.Length == 0 ? DefaultCapacity : items.Length * 2;
+            if (newCapacity < minimumCapacity)
+            {
+                newCapacity = minimumCapacity;
+            }
+            Array.Resize(ref items, newCapacity);
+        }
     }
 
     struct IndexedValue : IComparable<IndexedValue>

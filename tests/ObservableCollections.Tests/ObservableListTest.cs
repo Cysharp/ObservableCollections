@@ -98,7 +98,30 @@ namespace ObservableCollections.Tests
         }
 
         /// <summary>
-        /// Guarantees that RemoveRange rejects a range that does not fit in the list with ArgumentOutOfRangeException,
+        /// Guarantees that RemoveRange accepts every range that ends exactly at the end of the list,
+        /// including an empty range at the end and an empty range of an empty list.
+        /// </summary>
+        [Theory]
+        [InlineData(new int[] { 10, 20, 30 }, 0, 3, new int[] { 10, 20, 30 }, new int[0])]
+        [InlineData(new int[] { 10, 20, 30 }, 1, 2, new int[] { 20, 30 }, new int[] { 10 })]
+        [InlineData(new int[] { 10, 20, 30 }, 3, 0, new int[0], new int[] { 10, 20, 30 })]
+        [InlineData(new int[0], 0, 0, new int[0], new int[0])]
+        public void RemoveRangeAcceptsRangeEndingAtCount(int[] initial, int index, int count, int[] expectedRemoved, int[] expectedRemaining)
+        {
+            var list = new ObservableList<int>(initial);
+
+            var removed = new List<int>();
+            list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) => removed.AddRange(e.OldItems.ToArray());
+
+            list.RemoveRange(index, count);
+
+            list.Should().Equal(expectedRemaining);
+            removed.Should().Equal(expectedRemoved);
+        }
+
+        /// <summary>
+        /// Guarantees that RemoveRange rejects, with ArgumentOutOfRangeException, a negative index or count,
+        /// a range that extends past the end of the list, and a range whose end overflows int,
         /// without modifying the list or raising a notification.
         /// </summary>
         [Theory]
