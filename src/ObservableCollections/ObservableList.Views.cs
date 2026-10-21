@@ -246,7 +246,14 @@ namespace ObservableCollections
                                     }
                                 }
 
+#if NET8_0_OR_GREATER
                                 list.InsertRange(e.NewStartingIndex, valueViews.Span);
+#else
+                                using (var xs = new CloneCollection<(T, TView)>(valueViews.Span))
+                                {
+                                    list.InsertRange(e.NewStartingIndex, xs.AsEnumerable());
+                                }
+#endif
                                 this.InvokeOnAddRange(ViewChanged, RejectedViewChanged, e.NewItems, views.Span, isMatchAll, matches.Span, e.NewStartingIndex);
                             }
                             break;

@@ -1,4 +1,5 @@
 ﻿using ObservableCollections.Internal;
+using System.Linq;
 
 namespace ObservableCollections.Tests;
 
@@ -109,5 +110,77 @@ public class AlternateIndexListTest
 
         list.TryReplaceByValue("bar", "new-bar", out var i);
         list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"), (4, "baz"));
+    }
+
+    /// <summary>
+    /// Guarantees that setting an element through the indexer replaces only the value of that element
+    /// and leaves its alternate index and the other elements untouched.
+    /// </summary>
+    [Fact]
+    public void IndexerSet()
+    {
+        var list = new AlternateIndexList<string>();
+
+        list.Insert(0, "foo");
+        list.Insert(2, "bar");
+        list.Insert(4, "baz");
+
+        list[1] = "new-bar";
+        list[1].Should().Be("new-bar");
+        list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"), (4, "baz"));
+    }
+
+    /// <summary>
+    /// Guarantees that TrySetAtAlternateIndex replaces only the value of the element at the given alternate index,
+    /// reports its position, and fails without modifying the list when the alternate index does not exist.
+    /// </summary>
+    [Fact]
+    public void TrySetAtAlternateIndex()
+    {
+        var list = new AlternateIndexList<string>();
+
+        list.Insert(0, "foo");
+        list.Insert(2, "bar");
+        list.Insert(4, "baz");
+
+        list.TrySetAtAlternateIndex(2, "new-bar", out var setIndex).Should().BeTrue();
+        setIndex.Should().Be(1);
+        list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"), (4, "baz"));
+
+        list.TrySetAtAlternateIndex(3, "zoo", out _).Should().BeFalse();
+        list.GetIndexedValues().Should().Equal((0, "foo"), (2, "new-bar"), (4, "baz"));
+    }
+
+    /// <summary>
+    /// Guarantees that TryReplaceAlternateIndex changes the alternate index of the element and moves it
+    /// to the position that keeps the list ordered by alternate index, and fails when the alternate index does not exist.
+    /// </summary>
+    [Fact]
+    public void TryReplaceAlternateIndex()
+    {
+        var list = new AlternateIndexList<string>();
+
+        list.Insert(0, "foo");
+        list.Insert(2, "bar");
+        list.Insert(4, "baz");
+
+        list.TryReplaceAlternateIndex(0, 3).Should().BeTrue();
+        list.GetIndexedValues().Should().Equal((2, "bar"), (3, "foo"), (4, "baz"));
+
+        list.TryReplaceAlternateIndex(1, 5).Should().BeFalse();
+        list.GetIndexedValues().Should().Equal((2, "bar"), (3, "foo"), (4, "baz"));
+    }
+
+    /// <summary>
+    /// Guarantees that removing an element shifts the alternate index of every following element,
+    /// including the last one, so the shifted range is not cut short.
+    /// </summary>
+    [Fact]
+    public void RemoveShiftsAllFollowingAlternateIndexes()
+    {
+        var list = new AlternateIndexList<string>(Enumerable.Range(0, 20).Select(x => (x * 2, x.ToString())));
+
+        list.RemoveAt(0);
+        list.GetIndexedValues().Should().Equal(Enumerable.Range(1, 19).Select(x => (x * 2 - 1, x.ToString())));
     }
 }

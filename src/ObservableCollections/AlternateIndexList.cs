@@ -1,11 +1,11 @@
-﻿#pragma warning disable CS0436
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+#if NET6_0_OR_GREATER
 using System.Runtime.InteropServices;
+#endif
 
 namespace ObservableCollections;
 
@@ -25,17 +25,50 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public void UpdateAlternateIndex(int startIndex, int incr)
     {
+#if NET6_0_OR_GREATER
         var span = CollectionsMarshal.AsSpan(list);
         for (int i = startIndex; i < span.Length; i++)
         {
             span[i].AlternateIndex += incr;
         }
+#else
+        for (int i = startIndex; i < list.Count; i++)
+        {
+            var item = list[i];
+            item.AlternateIndex += incr;
+            list[i] = item;
+        }
+#endif
+    }
+
+    // IndexedValue is a struct, so an element can not be modified in place through the List<T> indexer.
+    // netstandard has no public API to access the backing array of List<T>, so the element is read, modified and written back there.
+    void SetValue(int index, T value)
+    {
+#if NET6_0_OR_GREATER
+        CollectionsMarshal.AsSpan(list)[index].Value = value;
+#else
+        var item = list[index];
+        item.Value = value;
+        list[index] = item;
+#endif
+    }
+
+    void SetAlternateIndex(int index, int alternateIndex)
+    {
+#if NET6_0_OR_GREATER
+        CollectionsMarshal.AsSpan(list)[index].AlternateIndex = alternateIndex;
+#else
+        var item = list[index];
+        item.AlternateIndex = alternateIndex;
+        list[index] = item;
+#endif
     }
 
     public T this[int index]
     {
         get => list[index].Value;
-        set => CollectionsMarshal.AsSpan(list)[index].Value = value;
+        set => SetValue(index, value);
     }
 
     public int GetAlternateIndex(int index) => list[index].AlternateIndex;
@@ -126,7 +159,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
         {
             return false;
         }
-        CollectionsMarshal.AsSpan(list)[setIndex].Value = value;
+        SetValue(setIndex, value);
         return true;
     }
 
@@ -139,8 +172,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
             return false;
         }
 
-        var span = CollectionsMarshal.AsSpan(list);
-        span[index].AlternateIndex = setAlternateIndex;
+        SetAlternateIndex(index, setAlternateIndex);
         list.Sort(); // needs sort to keep order
         return true;
     }
@@ -150,7 +182,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
         replacedIndex = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, searchValue));
         if (replacedIndex != -1)
         {
-            CollectionsMarshal.AsSpan(list)[replacedIndex].Value = replaceValue;
+            SetValue(replacedIndex, replaceValue);
             return true;
         }
         return false;

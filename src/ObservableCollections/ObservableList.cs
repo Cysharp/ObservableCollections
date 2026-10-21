@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
@@ -255,11 +254,8 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-#pragma warning disable CS0436
-                var range = CollectionsMarshal.AsSpan(list).Slice(index, count);
-#pragma warning restore CS0436
                 // require copy before remove
-                using (var xs = new CloneCollection<T>(range))
+                using (var xs = new CloneCollection<T>(list, index, count))
                 {
                     list.RemoveRange(index, count);
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(xs.Span, index));

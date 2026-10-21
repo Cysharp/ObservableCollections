@@ -70,6 +70,20 @@ namespace ObservableCollections.Internal
             this.length = source.Length;
         }
 
+        public CloneCollection(List<T> source, int index, int count)
+        {
+            // Same validation as Span<T>.Slice(index, count), so an out-of-range argument throws ArgumentOutOfRangeException as before.
+            if ((ulong)(uint)index + (uint)count > (uint)source.Count)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+
+            var array = ArrayPool<T>.Shared.Rent(count);
+            source.CopyTo(index, array, 0, count);
+            this.array = array;
+            this.length = count;
+        }
+
         static void TryEnsureCapacity(ref T[] array, int index)
         {
             if (array.Length == index)

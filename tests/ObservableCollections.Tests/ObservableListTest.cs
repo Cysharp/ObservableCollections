@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -67,6 +68,56 @@ namespace ObservableCollections.Tests
 
             list.RemoveRange(2, 2);
             Equal2(100, 400, 200, 300);
+        }
+
+        /// <summary>
+        /// Guarantees that RemoveRange removes exactly the requested range and raises a single Remove notification
+        /// that carries the removed elements in order together with the starting index of the range.
+        /// </summary>
+        [Fact]
+        public void RemoveRangeNotifiesRemovedItems()
+        {
+            var list = new ObservableList<int>(new[] { 10, 20, 30, 40, 50 });
+
+            var actions = new List<NotifyCollectionChangedAction>();
+            var oldItems = new List<int[]>();
+            var oldStartingIndexes = new List<int>();
+            list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) =>
+            {
+                actions.Add(e.Action);
+                oldItems.Add(e.OldItems.ToArray());
+                oldStartingIndexes.Add(e.OldStartingIndex);
+            };
+
+            list.RemoveRange(1, 3);
+
+            list.Should().Equal(10, 50);
+            actions.Should().Equal(NotifyCollectionChangedAction.Remove);
+            oldItems.Should().ContainSingle().Which.Should().Equal(20, 30, 40);
+            oldStartingIndexes.Should().Equal(1);
+        }
+
+        /// <summary>
+        /// Guarantees that RemoveRange rejects a range that does not fit in the list with ArgumentOutOfRangeException,
+        /// without modifying the list or raising a notification.
+        /// </summary>
+        [Theory]
+        [InlineData(-1, 1)]
+        [InlineData(0, -1)]
+        [InlineData(3, 1)]
+        [InlineData(2, 2)]
+        [InlineData(int.MaxValue, int.MaxValue)]
+        public void RemoveRangeRejectsOutOfRange(int index, int count)
+        {
+            var list = new ObservableList<int>(new[] { 10, 20, 30 });
+
+            var raised = false;
+            list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) => raised = true;
+
+            list.Invoking(x => x.RemoveRange(index, count)).Should().Throw<ArgumentOutOfRangeException>();
+
+            list.Should().Equal(10, 20, 30);
+            raised.Should().BeFalse();
         }
 
         //[Fact]
