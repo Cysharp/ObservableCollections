@@ -411,7 +411,11 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
 {
     protected override IDisposable SubscribeCore(Observer<int> observer)
     {
-        return new _ObservableCollectionCountChanged(collection, notifyCurrentCount, observer, cancellationToken);
+        // hold the lock so no change can slip in between attaching and notifying the current count
+        lock (collection.SyncRoot)
+        {
+            return new _ObservableCollectionCountChanged(collection, notifyCurrentCount, observer, cancellationToken);
+        }
     }
 
     sealed class _ObservableCollectionCountChanged : ObservableCollectionObserverBase<T, int>
@@ -424,12 +428,13 @@ sealed class ObservableCollectionCountChanged<T>(IObservableCollection<T> collec
             Observer<int> observer,
             CancellationToken cancellationToken) : base(collection, observer, cancellationToken)
         {
-            this.countPrev = collection.Count;
             if (notifyCurrentCount)
             {
                 observer.OnNext(collection.Count);
             }
         }
+
+        protected override void OnBeforeAttach() => countPrev = collection.Count;
 
         protected override void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs)
         {
@@ -564,6 +569,7 @@ abstract class ObservableCollectionObserverBase<T, TEvent> : IDisposable
         this.observer = observer;
         this.handlerDelegate = Handler;
 
+        OnBeforeAttach();
         collection.CollectionChanged += handlerDelegate;
 
         if (cancellationToken.CanBeCanceled)
@@ -582,6 +588,9 @@ abstract class ObservableCollectionObserverBase<T, TEvent> : IDisposable
         collection.CollectionChanged -= handlerDelegate;
         cancellationTokenRegistration.Dispose();
     }
+
+    // Runs before Handler can be invoked; derived state read by Handler must be initialized here, not in the derived constructor.
+    protected virtual void OnBeforeAttach() { }
 
     protected abstract void Handler(in NotifyCollectionChangedEventArgs<T> eventArgs);
 }
