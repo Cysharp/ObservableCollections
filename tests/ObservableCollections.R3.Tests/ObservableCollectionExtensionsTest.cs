@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using R3;
@@ -256,5 +258,38 @@ public class ObservableCollectionExtensionsTest
         var subscription = collection.ObserveCountChanged(notifyCurrentCount: true)
             .Subscribe(count => events.Add(count));
         events[0].Should().Be(3);
+    }
+
+    // Simulates another thread clearing the collection right after the handler is attached, before the subscription finishes.
+    [Fact]
+    public void ObserveCountChanged_ChangeWhileSubscribing()
+    {
+        var inner = new ObservableList<int>([1, 2, 3]);
+        var events = new List<int>();
+
+        using var _ = new MutateOnAttach<int>(inner, x => x.Clear())
+            .ObserveCountChanged()
+            .Subscribe(count => events.Add(count));
+
+        events.Should().Equal(0);
+    }
+
+    sealed class MutateOnAttach<T>(ObservableList<T> inner, Action<ObservableList<T>> mutate) : IObservableCollection<T>
+    {
+        public int Count => inner.Count;
+        public object SyncRoot => inner.SyncRoot;
+        public ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform) => inner.CreateView(transform);
+        public IEnumerator<T> GetEnumerator() => inner.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public event NotifyCollectionChangedEventHandler<T>? CollectionChanged
+        {
+            add
+            {
+                inner.CollectionChanged += value;
+                mutate(inner);
+            }
+            remove => inner.CollectionChanged -= value;
+        }
     }
 }
