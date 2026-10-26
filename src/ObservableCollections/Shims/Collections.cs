@@ -31,7 +31,7 @@ namespace System.Collections.Generic
             return false;
         }
 
-#if !NET6_0_OR_GREATER
+#if NETSTANDARD
 
         public static bool TryGetNonEnumeratedCount<T>(this IEnumerable<T> source, out int count)
         {
@@ -52,7 +52,7 @@ namespace System.Collections.Generic
 #endif
     }
 
-#if !NET5_0_OR_GREATER
+#if NETSTANDARD
 
     internal interface IReadOnlySet<T> : System.Collections.Generic.IEnumerable<T>, System.Collections.Generic.IReadOnlyCollection<T>
     {
