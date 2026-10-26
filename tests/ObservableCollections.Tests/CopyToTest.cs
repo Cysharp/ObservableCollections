@@ -117,6 +117,32 @@ public class ObservableListCopyToTest
 
         act.Should().ThrowExactly<ArgumentOutOfRangeException>();
     }
+
+    /// <summary>
+    /// Ensures ArgumentException is thrown when arrayIndex is beyond the end of the array, whether or not the collection has items.
+    /// </summary>
+    [Fact]
+    public void ArrayIndexBeyondLengthThrows()
+    {
+        Action nonEmpty = () => CreateSource().CopyTo(new int[3], 4);
+        Action empty = () => new ObservableList<int>().CopyTo(new int[3], 4);
+
+        nonEmpty.Should().ThrowExactly<ArgumentException>();
+        empty.Should().ThrowExactly<ArgumentException>();
+    }
+
+    /// <summary>
+    /// Ensures an empty collection can be copied to the end of the array, as List&lt;T&gt;.CopyTo allows.
+    /// </summary>
+    [Fact]
+    public void CopyToEndOfArrayFromEmpty()
+    {
+        var destination = new[] { -1, -1, -1 };
+
+        new ObservableList<int>().CopyTo(destination, 3);
+
+        destination.Should().Equal(-1, -1, -1);
+    }
 }
 
 /// <summary>
@@ -258,6 +284,42 @@ public abstract class SynchronizedViewListCopyToTestBase
         Action act = () => ((ICollection<int>)CreateViewList()).CopyTo(new int[3], -1);
 
         act.Should().ThrowExactly<ArgumentOutOfRangeException>();
+    }
+
+    /// <summary>
+    /// Ensures ArgumentException is thrown by both CopyTo interfaces when arrayIndex is beyond the end of the array,
+    /// including for an empty collection, where nothing would be written.
+    /// </summary>
+    [Fact]
+    public void ArrayIndexBeyondLengthThrows()
+    {
+        var nonEmpty = CreateViewList();
+        var empty = CreateViewList(new ObservableList<int>());
+
+        Action generic = () => ((ICollection<int>)nonEmpty).CopyTo(new int[3], 4);
+        Action genericEmpty = () => ((ICollection<int>)empty).CopyTo(new int[3], 4);
+        Action nonGenericTyped = () => ((ICollection)nonEmpty).CopyTo(new int[3], 4);
+        Action nonGenericObjectEmpty = () => ((ICollection)empty).CopyTo(new object[3], 4);
+
+        generic.Should().ThrowExactly<ArgumentException>();
+        genericEmpty.Should().ThrowExactly<ArgumentException>();
+        nonGenericTyped.Should().ThrowExactly<ArgumentException>();
+        nonGenericObjectEmpty.Should().ThrowExactly<ArgumentException>();
+    }
+
+    /// <summary>
+    /// Ensures an empty collection can be copied to the end of the array through both CopyTo interfaces.
+    /// </summary>
+    [Fact]
+    public void CopyToEndOfArrayFromEmpty()
+    {
+        var empty = CreateViewList(new ObservableList<int>());
+
+        Action generic = () => ((ICollection<int>)empty).CopyTo(new int[3], 3);
+        Action nonGeneric = () => ((ICollection)empty).CopyTo(new object[3], 3);
+
+        generic.Should().NotThrow();
+        nonGeneric.Should().NotThrow();
     }
 }
 

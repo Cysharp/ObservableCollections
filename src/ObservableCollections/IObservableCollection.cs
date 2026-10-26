@@ -192,6 +192,16 @@ namespace ObservableCollections
                 throw new ArgumentNullException(nameof(array));
             }
 
+            if (arrayIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (arrayIndex > array.Length)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(array));
+            }
+
             CopyTo(array.AsSpan(arrayIndex));
         }
 
@@ -215,6 +225,11 @@ namespace ObservableCollections
             if (array.GetLowerBound(0) != 0)
             {
                 throw new ArgumentException("The lower bound of target array must be zero.", nameof(array));
+            }
+
+            if (arrayIndex > array.Length)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(array));
             }
 
             if (array is TView[] typedArray)

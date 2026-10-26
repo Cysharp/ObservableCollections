@@ -1032,9 +1032,19 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     {
         lock (gate)
         {
-#pragma warning disable CS0436
+#if NET8_0_OR_GREATER
             CollectionsMarshal.AsSpan(listView).CopyTo(span);
-#pragma warning restore
+#else
+            if (span.Length < listView.Count)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(span));
+            }
+
+            for (var i = 0; i < listView.Count; ++i)
+            {
+                span[i] = listView[i];
+            }
+#endif
         }
     }
 

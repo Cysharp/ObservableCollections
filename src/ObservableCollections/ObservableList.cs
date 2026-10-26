@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace ObservableCollections
 {
@@ -138,6 +139,16 @@ namespace ObservableCollections
                 throw new ArgumentNullException(nameof(array));
             }
 
+            if (arrayIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (arrayIndex > array.Length)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(array));
+            }
+
             CopyTo(array.AsSpan(arrayIndex));
         }
 
@@ -145,9 +156,19 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-#pragma warning disable CS0436
+#if NET8_0_OR_GREATER
                 CollectionsMarshal.AsSpan(list).CopyTo(span);
-#pragma warning restore
+#else
+                if (span.Length < list.Count)
+                {
+                    throw new ArgumentException("Destination is too short.", nameof(span));
+                }
+
+                for (var i = 0; i < list.Count; ++i)
+                {
+                    span[i] = list[i];
+                }
+#endif
             }
         }
 
