@@ -42,7 +42,7 @@ namespace ObservableCollections
                 this.SyncRoot = new object();
                 lock (source.SyncRoot)
                 {
-                    this.stack = new Stack<(T, TView)>(source.stack.Select(x => (x, selector(x))));
+                    this.stack = new Stack<(T, TView)>(source.stack.Reverse().Select(x => (x, selector(x))));
                     this.filteredCount = stack.Count;
                     this.source.CollectionChanged += SourceCollectionChanged;
                 }
