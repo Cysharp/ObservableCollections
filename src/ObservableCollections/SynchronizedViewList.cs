@@ -1,4 +1,4 @@
-using ObservableCollections.Internal;
+﻿using ObservableCollections.Internal;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -508,6 +508,26 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         return -1;
     }
 
+    /// <inheritdoc />
+    public override void CopyTo(Span<TView> span)
+    {
+        lock (gate)
+        {
+            var local = listView;
+            var sourceLength = local.Count;
+
+            if (span.Length < sourceLength)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(span));
+            }
+
+            for (var i = 0; i < sourceLength; ++i)
+            {
+                span[i] = local[i];
+            }
+        }
+    }
+
     public override void Dispose()
     {
         parent.ViewChanged -= Parent_ViewChanged;
@@ -1005,6 +1025,27 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             }
         }
         return -1;
+    }
+
+    /// <inheritdoc />
+    public override void CopyTo(Span<TView> span)
+    {
+        lock (gate)
+        {
+#if NET8_0_OR_GREATER
+            CollectionsMarshal.AsSpan(listView).CopyTo(span);
+#else
+            if (span.Length < listView.Count)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(span));
+            }
+
+            for (var i = 0; i < listView.Count; ++i)
+            {
+                span[i] = listView[i];
+            }
+#endif
+        }
     }
 
     public override void Dispose()

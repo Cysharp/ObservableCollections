@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Text;
 
 namespace ObservableCollections;
 
@@ -217,5 +215,11 @@ internal sealed class ObservableListSynchronizedViewList<T> : NotifyCollectionCh
     public override int IndexOf(T item)
     {
         return parent.IndexOf(item);
+    }
+
+    /// <inheritdoc />
+    public override void CopyTo(Span<T> span)
+    {
+        parent.CopyTo(span);
     }
 }
