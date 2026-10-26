@@ -2,8 +2,8 @@
 
   <!--
     Runs the same test suite as ObservableCollections.Tests, but against the netstandard2.1
-    compilation of the library instead of the net* one. That asset is the only place where the
-    Unsafe.As-based shims in Shims/CollectionsMarshalEx.cs and Shims/Collections.cs survive,
+    compilation of the library instead of the net* one. That asset takes the netstandard-only
+    #if branches (the shims in Shims/ and the fallbacks for BCL APIs that later runtimes provide),
     and it is the asset Unity consumes, so it needs runtime coverage of its own.
   -->
 
