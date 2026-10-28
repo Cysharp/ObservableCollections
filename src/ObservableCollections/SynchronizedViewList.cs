@@ -387,7 +387,8 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             }
             catch (Exception ex)
             {
-                // a subscriber must not stop the remaining changes from being applied and raised
+                // a subscriber must not stop the changes up to e from being applied and raised.
+                // newer changes are left to their own callbacks, which the dispatcher runs in order
                 (exceptions ??= new()).Add(ex);
             }
 
@@ -478,18 +479,18 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                 var setValue = true;
                 var newOriginal = converter!(value, originalValue, ref setValue);
 
-                // update view
-                writableView.SetViewAt(originalIndex, value);
-
                 if (setValue)
                 {
-                    // the Replace of the source updates listView and the visible list, with a notification.
-                    // do not touch listView here, it would be an unnotified change if the source write fails
+                    // the Replace of the source updates the parent, listView and the visible list, with a notification.
+                    // do not touch listView here, it would be an unnotified change if the source write fails.
+                    // do not touch the parent either, it reads the old view from there, and a Replace that takes
+                    // the element out of the filter has to find the old view to remove it
                     writableView.SetToSourceCollection(originalIndex, newOriginal);
                 }
                 else
                 {
                     // the converter rejected the source write, so this is the only notification of the change
+                    writableView.SetViewAt(originalIndex, value);
                     lock (gate)
                     {
                         var oldView = listView[listViewIndex];
@@ -697,6 +698,12 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     {
         lock (gate)
         {
+            if (deferred != null)
+            {
+                deferred.CopyTo(span);
+                return;
+            }
+
             var local = listView;
             var sourceLength = local.Count;
 
@@ -1089,7 +1096,8 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             }
             catch (Exception ex)
             {
-                // a subscriber must not stop the remaining changes from being applied and raised
+                // a subscriber must not stop the changes up to e from being applied and raised.
+                // newer changes are left to their own callbacks, which the dispatcher runs in order
                 (exceptions ??= new()).Add(ex);
             }
 
@@ -1178,18 +1186,17 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                 var setValue = true;
                 var newOriginal = converter!(value, originalValue, ref setValue);
 
-                // update view
-                writableView.SetViewAt(listViewIndex, value);
-
                 if (setValue)
                 {
-                    // the Replace of the source updates listView and the visible list, with a notification.
-                    // do not touch listView here, it would be an unnotified change if the source write fails
+                    // the Replace of the source updates the parent, listView and the visible list, with a notification.
+                    // do not touch listView here, it would be an unnotified change if the source write fails.
+                    // do not touch the parent either, it reads the old view from there
                     writableView.SetToSourceCollection(listViewIndex, newOriginal);
                 }
                 else
                 {
                     // the converter rejected the source write, so this is the only notification of the change
+                    writableView.SetViewAt(listViewIndex, value);
                     lock (gate)
                     {
                         var oldView = listView[listViewIndex];
@@ -1382,6 +1389,12 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     {
         lock (gate)
         {
+            if (deferred != null)
+            {
+                deferred.CopyTo(span);
+                return;
+            }
+
 #if NET8_0_OR_GREATER
             CollectionsMarshal.AsSpan(listView).CopyTo(span);
 #else

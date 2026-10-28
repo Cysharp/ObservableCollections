@@ -645,4 +645,42 @@ public class DeferredNotificationTest
             notify.Dispose();
         }
     }
+
+    /// <summary>
+    /// CopyTo must copy the content that the subscribers have been notified of, the same content as Count and the
+    /// indexer return. If it copied the writer-side content, a destination sized by Count would be too short while an
+    /// Add is pending, and a larger one would expose an element that no notification has announced yet.
+    /// Covers both the filtered view and the view without a filter.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CopyToCopiesPublishedContent(bool filtered)
+    {
+        var list = new ObservableList<int>();
+        list.Add(1);
+
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        using var view = list.CreateView(x => $"${x}");
+        using var notify = filtered
+            ? view.ToNotifyCollectionChanged(dispatcher)
+            : list.ToNotifyCollectionChanged(x => $"${x}", dispatcher);
+
+        notify.CollectionChanged += (_, _) => { };
+
+        list.Add(2);
+
+        notify.Count.Should().Be(1);
+
+        var destination = new string[notify.Count];
+        notify.CopyTo(destination.AsSpan());
+        destination.Should().Equal(new[] { "$1" });
+
+        dispatcher.Pump();
+
+        destination = new string[notify.Count];
+        notify.CopyTo(destination.AsSpan());
+        destination.Should().Equal(new[] { "$1", "$2" });
+    }
 }

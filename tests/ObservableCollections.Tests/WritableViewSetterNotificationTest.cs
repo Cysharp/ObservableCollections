@@ -174,4 +174,51 @@ public class WritableViewSetterNotificationTest
         events.Should().BeEmpty();
         bindable.Should().Equal(new[] { "$2", "$4" });
     }
+
+    /// <summary>
+    /// When the setter writes a value that the filter rejects, the Replace of the source takes the element out of the
+    /// filtered view, and that Remove is the notification of the change.
+    /// To remove the element, the view has to find the old one. So the setter must not overwrite the old view in the
+    /// parent before the source write, and it must not change the visible content by itself either.
+    /// Covers both raising immediately and deferring with a dispatcher.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SetterTakingElementOutOfFilterRemovesIt(bool withDispatcher)
+    {
+        var list = new ObservableList<int>();
+        list.Add(2);
+        list.Add(4);
+        list.Add(6);
+
+        using var view = list.CreateWritableView(x => $"${x}");
+        view.AttachFilter(x => x % 2 == 0);
+
+        var dispatcher = withDispatcher ? new QueuedCollectionEventDispatcher() : null;
+        using var bindable = view.ToWritableNotifyCollectionChanged(ToOriginal, dispatcher);
+
+        var events = new List<NotifyCollectionChangedEventArgs>();
+        bindable.CollectionChanged += (_, e) => events.Add(e);
+
+        bindable[0] = "$3";
+
+        list.Should().Equal(new[] { 3, 4, 6 });
+
+        if (dispatcher != null)
+        {
+            // Deferred, so nothing has changed yet.
+            bindable.Should().Equal(new[] { "$2", "$4", "$6" });
+            events.Should().BeEmpty();
+
+            dispatcher.Pump();
+        }
+
+        bindable.Should().Equal(new[] { "$4", "$6" });
+
+        events.Should().HaveCount(1);
+        events[0].Action.Should().Be(NotifyCollectionChangedAction.Remove);
+        events[0].OldStartingIndex.Should().Be(0);
+        events[0].OldItems![0].Should().Be("$2");
+    }
 }

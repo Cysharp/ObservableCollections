@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
 
 namespace ObservableCollections.Internal
 {
@@ -27,7 +27,9 @@ namespace ObservableCollections.Internal
         /// <summary>Returned by ToWriterIndex when the index can not be tracked.</summary>
         public const int UntrackableIndex = -1;
 
-        readonly List<TView> published;
+        // a RefList, not a List, so that a Replace does not break an enumeration of the published content,
+        // as with the alternate index list of a filtered view
+        readonly RefList<TView> published = new();
         readonly Queue<PendingChange> pending = new();
 
         // each pending change gets an increasing sequence and they are applied in that order,
@@ -37,7 +39,7 @@ namespace ObservableCollections.Internal
 
         public DeferredViewList(IEnumerable<TView> initialItems)
         {
-            published = initialItems.ToList();
+            published.AddRange(initialItems);
         }
 
         public int PendingCount => pending.Count;
@@ -46,11 +48,41 @@ namespace ObservableCollections.Internal
 
         public TView this[int index] => published[index];
 
-        public IEnumerable<TView> Items => published;
+        public IEnumerable<TView> Items
+        {
+            get
+            {
+                foreach (var item in published)
+                {
+                    yield return item;
+                }
+            }
+        }
 
-        public bool Contains(TView item) => published.Contains(item);
+        public bool Contains(TView item) => IndexOf(item) >= 0;
 
-        public int IndexOf(TView item) => published.IndexOf(item);
+        public int IndexOf(TView item)
+        {
+            var span = published.AsSpan();
+            for (var i = 0; i < span.Length; i++)
+            {
+                if (EqualityComparer<TView>.Default.Equals(span[i], item))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public void CopyTo(Span<TView> span)
+        {
+            if (span.Length < published.Count)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(span));
+            }
+
+            published.AsSpan().CopyTo(span);
+        }
 
         public void Enqueue(CollectionEventDispatcherEventArgs ev, TView[]? resetSnapshot)
         {
