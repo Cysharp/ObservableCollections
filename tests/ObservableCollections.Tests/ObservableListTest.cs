@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -67,6 +68,80 @@ namespace ObservableCollections.Tests
 
             list.RemoveRange(2, 2);
             Equal2(100, 400, 200, 300);
+        }
+
+        /// <summary>
+        /// Guarantees that RemoveRange removes exactly the requested range and raises a single Remove notification
+        /// that carries the removed elements in order together with the starting index of the range.
+        /// </summary>
+        [Fact]
+        public void RemoveRangeNotifiesRemovedItems()
+        {
+            var list = new ObservableList<int>(new[] { 10, 20, 30, 40, 50 });
+
+            var actions = new List<NotifyCollectionChangedAction>();
+            var oldItems = new List<int[]>();
+            var oldStartingIndexes = new List<int>();
+            list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) =>
+            {
+                actions.Add(e.Action);
+                oldItems.Add(e.OldItems.ToArray());
+                oldStartingIndexes.Add(e.OldStartingIndex);
+            };
+
+            list.RemoveRange(1, 3);
+
+            list.Should().Equal(10, 50);
+            actions.Should().Equal(NotifyCollectionChangedAction.Remove);
+            oldItems.Should().ContainSingle().Which.Should().Equal(20, 30, 40);
+            oldStartingIndexes.Should().Equal(1);
+        }
+
+        /// <summary>
+        /// A range that ends exactly at Count is the boundary that the range check of RemoveRange must still accept.
+        /// This guarantees that such ranges (the whole list, a tail, an empty range at the end, and an empty range of an empty list)
+        /// are accepted, that exactly the elements in them are removed, and that the notifications carry exactly those elements.
+        /// </summary>
+        [Theory]
+        [InlineData(new int[] { 10, 20, 30 }, 0, 3, new int[] { 10, 20, 30 }, new int[0])]
+        [InlineData(new int[] { 10, 20, 30 }, 1, 2, new int[] { 20, 30 }, new int[] { 10 })]
+        [InlineData(new int[] { 10, 20, 30 }, 3, 0, new int[0], new int[] { 10, 20, 30 })]
+        [InlineData(new int[0], 0, 0, new int[0], new int[0])]
+        public void RemoveRangeAcceptsRangeEndingAtCount(int[] initial, int index, int count, int[] expectedRemoved, int[] expectedRemaining)
+        {
+            var list = new ObservableList<int>(initial);
+
+            var removed = new List<int>();
+            list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) => removed.AddRange(e.OldItems.ToArray());
+
+            list.RemoveRange(index, count);
+
+            list.Should().Equal(expectedRemaining);
+            removed.Should().Equal(expectedRemoved);
+        }
+
+        /// <summary>
+        /// Guarantees that RemoveRange rejects, with ArgumentOutOfRangeException, a negative index or count,
+        /// a range that extends past the end of the list, and a range whose end overflows int,
+        /// without modifying the list or raising a notification.
+        /// </summary>
+        [Theory]
+        [InlineData(-1, 1)]
+        [InlineData(0, -1)]
+        [InlineData(3, 1)]
+        [InlineData(2, 2)]
+        [InlineData(int.MaxValue, int.MaxValue)]
+        public void RemoveRangeRejectsOutOfRange(int index, int count)
+        {
+            var list = new ObservableList<int>(new[] { 10, 20, 30 });
+
+            var raised = false;
+            list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) => raised = true;
+
+            list.Invoking(x => x.RemoveRange(index, count)).Should().Throw<ArgumentOutOfRangeException>();
+
+            list.Should().Equal(10, 20, 30);
+            raised.Should().BeFalse();
         }
 
         //[Fact]

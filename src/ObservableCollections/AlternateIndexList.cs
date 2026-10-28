@@ -1,17 +1,15 @@
-﻿#pragma warning disable CS0436
-
+﻿using ObservableCollections.Internal;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace ObservableCollections;
 
 public class AlternateIndexList<T> : IEnumerable<T>
 {
-    List<IndexedValue> list; // alternate index is ordered
+    readonly RefList<IndexedValue> list; // alternate index is ordered
 
     public AlternateIndexList()
     {
@@ -20,12 +18,13 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public AlternateIndexList(IEnumerable<(int OrderedAlternateIndex, T Value)> values)
     {
-        this.list = values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)).ToList();
+        this.list = new();
+        this.list.AddRange(values.Select(x => new IndexedValue(x.OrderedAlternateIndex, x.Value)));
     }
 
     public void UpdateAlternateIndex(int startIndex, int incr)
     {
-        var span = CollectionsMarshal.AsSpan(list);
+        var span = list.AsSpan();
         for (int i = startIndex; i < span.Length; i++)
         {
             span[i].AlternateIndex += incr;
@@ -35,7 +34,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
     public T this[int index]
     {
         get => list[index].Value;
-        set => CollectionsMarshal.AsSpan(list)[index].Value = value;
+        set => list[index].Value = value;
     }
 
     public int GetAlternateIndex(int index) => list[index].AlternateIndex;
@@ -70,7 +69,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
 
     public int Remove(T value)
     {
-        var index = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, value));
+        var index = IndexOfValue(value);
         if (index != -1)
         {
             list.RemoveAt(index);
@@ -126,7 +125,7 @@ public class AlternateIndexList<T> : IEnumerable<T>
         {
             return false;
         }
-        CollectionsMarshal.AsSpan(list)[setIndex].Value = value;
+        list[setIndex].Value = value;
         return true;
     }
 
@@ -139,18 +138,17 @@ public class AlternateIndexList<T> : IEnumerable<T>
             return false;
         }
 
-        var span = CollectionsMarshal.AsSpan(list);
-        span[index].AlternateIndex = setAlternateIndex;
+        list[index].AlternateIndex = setAlternateIndex;
         list.Sort(); // needs sort to keep order
         return true;
     }
 
     public bool TryReplaceByValue(T searchValue, T replaceValue, out int replacedIndex)
     {
-        replacedIndex = list.FindIndex(x => EqualityComparer<T>.Default.Equals(x.Value, searchValue));
+        replacedIndex = IndexOfValue(searchValue);
         if (replacedIndex != -1)
         {
-            CollectionsMarshal.AsSpan(list)[replacedIndex].Value = replaceValue;
+            list[replacedIndex].Value = replaceValue;
             return true;
         }
         return false;
@@ -188,6 +186,22 @@ public class AlternateIndexList<T> : IEnumerable<T>
         }
     }
 
+    int IndexOfValue(T value)
+    {
+        var span = list.AsSpan();
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (EqualityComparer<T>.Default.Equals(span[i].Value, value))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // Assigns consecutive alternate indexes to the values while they are inserted.
+    // It is both the sequence and its single enumerator, so it can be enumerated only once,
+    // and ConsumedCount equals the number of inserted values only once RefList<T>.InsertRange has enumerated it to the end.
     class InsertIterator(int startingIndex, IEnumerable<T> values) : IEnumerable<IndexedValue>, IEnumerator<IndexedValue>
     {
         IEnumerator<T> iter = values.GetEnumerator();

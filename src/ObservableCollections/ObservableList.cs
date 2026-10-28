@@ -134,9 +134,41 @@ namespace ObservableCollections
 
         public void CopyTo(T[] array, int arrayIndex)
         {
+            if (array is null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            if (arrayIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (arrayIndex > array.Length)
+            {
+                throw new ArgumentException("Destination is too short.", nameof(array));
+            }
+
+            CopyTo(array.AsSpan(arrayIndex));
+        }
+
+        public void CopyTo(Span<T> span)
+        {
             lock (SyncRoot)
             {
-                list.CopyTo(array, arrayIndex);
+#if NET8_0_OR_GREATER
+                CollectionsMarshal.AsSpan(list).CopyTo(span);
+#else
+                if (span.Length < list.Count)
+                {
+                    throw new ArgumentException("Destination is too short.", nameof(span));
+                }
+
+                for (var i = 0; i < list.Count; ++i)
+                {
+                    span[i] = list[i];
+                }
+#endif
             }
         }
 
@@ -255,11 +287,8 @@ namespace ObservableCollections
         {
             lock (SyncRoot)
             {
-#pragma warning disable CS0436
-                var range = CollectionsMarshal.AsSpan(list).Slice(index, count);
-#pragma warning restore CS0436
                 // require copy before remove
-                using (var xs = new CloneCollection<T>(range))
+                using (var xs = new CloneCollection<T>(list, index, count))
                 {
                     list.RemoveRange(index, count);
                     CollectionChanged?.Invoke(NotifyCollectionChangedEventArgs<T>.Remove(xs.Span, index));
