@@ -10,12 +10,18 @@ namespace ObservableCollections.Tests;
 /// </summary>
 internal sealed class TestUiThread : IDisposable
 {
-    readonly QueuedSynchronizationContext context = new();
+    readonly QueuedSynchronizationContext context;
     readonly BlockingCollection<Action> work = new();
     readonly Thread thread;
 
-    public TestUiThread(string name)
+    /// <param name="name">The name of the thread.</param>
+    /// <param name="renewContextPerOperation">
+    /// Mimics WPF: every Invoke and every pumped callback runs under a new SynchronizationContext instance.
+    /// </param>
+    public TestUiThread(string name, bool renewContextPerOperation = false)
     {
+        context = new QueuedSynchronizationContext(renewContextPerOperation);
+
         thread = new Thread(Run)
         {
             IsBackground = true,
@@ -33,10 +39,9 @@ internal sealed class TestUiThread : IDisposable
 
     void Run()
     {
-        SynchronizationContext.SetSynchronizationContext(context);
-
         foreach (var action in work.GetConsumingEnumerable())
         {
+            SynchronizationContext.SetSynchronizationContext(context.CreateOperationContext());
             action();
         }
     }

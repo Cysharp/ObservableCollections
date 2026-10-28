@@ -26,31 +26,56 @@ namespace ObservableCollections
         public static ICollectionEventDispatcher Current => current.Value;
 
         readonly SynchronizationContext synchronizationContext;
-        static readonly SendOrPostCallback callback = SendOrPostCallback;
+        static readonly SendOrPostCallback invokeCallback = InvokeEvent;
+        static readonly SendOrPostCallback probeBoundThreadCallback = ProbeBoundThread;
+
+        // The thread that synchronizationContext dispatches to, or 0 while it is not known yet.
+        // Managed thread IDs are always positive.
+        int boundThreadId;
 
         public SynchronizationContextCollectionEventDispatcher(SynchronizationContext synchronizationContext)
         {
             this.synchronizationContext = synchronizationContext;
+
+            if (SynchronizationContext.Current == synchronizationContext)
+            {
+                boundThreadId = Environment.CurrentManagedThreadId;
+            }
+            else
+            {
+                // created off the bound thread, so ask the context which thread it dispatches to.
+                // until the answer arrives, every event is posted, which only delays it.
+                synchronizationContext.Post(probeBoundThreadCallback, this);
+            }
         }
 
         public void Post(CollectionEventDispatcherEventArgs ev)
         {
-            if (SynchronizationContext.Current == synchronizationContext)
+            // compare threads, not instances. WPF installs a new DispatcherSynchronizationContext for every dispatcher
+            // operation, so SynchronizationContext.Current on the bound thread is usually another instance.
+            if (Environment.CurrentManagedThreadId == Volatile.Read(ref boundThreadId)
+                || SynchronizationContext.Current == synchronizationContext)
             {
                 // on the bound thread, send the event synchronously
-                callback(ev);
+                invokeCallback(ev);
             }
             else
             {
                 // another thread(it may have its own SynchronizationContext), post the event asynchronously
-                synchronizationContext.Post(callback, ev);
+                synchronizationContext.Post(invokeCallback, ev);
             }
         }
 
-        static void SendOrPostCallback(object? state)
+        static void InvokeEvent(object? state)
         {
             var ev = (CollectionEventDispatcherEventArgs)state!;
             ev.Invoke();
+        }
+
+        static void ProbeBoundThread(object? state)
+        {
+            var self = (SynchronizationContextCollectionEventDispatcher)state!;
+            Volatile.Write(ref self.boundThreadId, Environment.CurrentManagedThreadId);
         }
     }
 
