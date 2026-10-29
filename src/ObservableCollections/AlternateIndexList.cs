@@ -106,15 +106,15 @@ public class AlternateIndexList<T> : IEnumerable<T>
         return index;
     }
 
-    public bool TryGetAtAlternateIndex(int alternateIndex, [MaybeNullWhen(true)] out T value)
+    public bool TryGetAtAlternateIndex(int alternateIndex, [MaybeNullWhen(false)] out T value)
     {
         var index = list.BinarySearch(alternateIndex);
         if (index < 0)
         {
-            value = default!;
+            value = default;
             return false;
         }
-        value = list[index].Value!;
+        value = list[index].Value;
         return true;
     }
 

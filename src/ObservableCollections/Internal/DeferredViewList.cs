@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ObservableCollections.Internal
 {
@@ -106,13 +107,13 @@ namespace ObservableCollections.Internal
         /// calls again until it is <paramref name="ev"/> itself.
         /// Returns false when <paramref name="ev"/> has been applied already.
         /// </summary>
-        public bool TryApplyNext(CollectionEventDispatcherEventArgs ev, out CollectionEventDispatcherEventArgs applied)
+        public bool TryApplyNext(CollectionEventDispatcherEventArgs ev, [MaybeNullWhen(false)] out CollectionEventDispatcherEventArgs applied)
         {
             // an event is pending exactly while it is newer than the last applied one. an event that was
             // never enqueued has a sequence of 0, which is never newer, so it is reported as applied.
             if (ev.DeferredSequence <= lastAppliedSequence)
             {
-                applied = null!;
+                applied = null;
                 return false;
             }
 

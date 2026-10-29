@@ -379,7 +379,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
         while (true)
         {
-            CollectionEventDispatcherEventArgs applied;
+            CollectionEventDispatcherEventArgs? applied;
             ExceptionDispatchInfo? catchUpException = null;
             lock (gate)
             {
@@ -1125,7 +1125,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
         while (true)
         {
-            CollectionEventDispatcherEventArgs applied;
+            CollectionEventDispatcherEventArgs? applied;
             ExceptionDispatchInfo? catchUpException = null;
             lock (gate)
             {
