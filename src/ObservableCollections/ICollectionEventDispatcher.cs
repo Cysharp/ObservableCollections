@@ -11,6 +11,24 @@ namespace ObservableCollections
         void Post(CollectionEventDispatcherEventArgs ev);
     }
 
+    /// <summary>
+    /// Raises the events through a <see cref="SynchronizationContext"/>.
+    /// An event is raised synchronously when it occurs within the context, and is posted to the context otherwise.
+    /// </summary>
+    /// <remarks>
+    /// The context must run every posted callback on one dedicated thread, such as a UI thread, and only that thread
+    /// may have it as <see cref="SynchronizationContext.Current"/>. Being on that thread is taken as being within the
+    /// context, as the UI frameworks themselves tell thread access. A context that runs callbacks on pool threads,
+    /// such as the one of Blazor Server, does not satisfy this; an event may then be raised synchronously outside the
+    /// context. For such a context, implement <see cref="ICollectionEventDispatcher"/> with the dispatcher of the
+    /// framework.
+    /// <para>
+    /// The thread is known only when the dispatcher is created within the context. When it is created on another
+    /// thread, only an event that occurs while the very same context instance is current is raised synchronously.
+    /// Some frameworks, WPF for example, install a new context instance for every operation, so create the dispatcher
+    /// on the UI thread to raise the changes made on the UI thread synchronously.
+    /// </para>
+    /// </remarks>
     public class SynchronizationContextCollectionEventDispatcher : ICollectionEventDispatcher
     {
         static readonly Lazy<ICollectionEventDispatcher> current = new(() =>
@@ -28,11 +46,10 @@ namespace ObservableCollections
 
         readonly SynchronizationContext synchronizationContext;
         static readonly SendOrPostCallback invokeCallback = InvokeEvent;
-        static readonly SendOrPostCallback probeBoundThreadCallback = ProbeBoundThread;
 
-        // The thread that synchronizationContext dispatches to, or 0 while it is not known yet.
-        // Managed thread IDs are always positive.
-        int boundThreadId;
+        // The thread that synchronizationContext dispatches to, or 0 when the dispatcher was created on another thread.
+        // Managed thread IDs are always positive. It relies on the context running on one dedicated thread, see remarks.
+        readonly int boundThreadId;
 
         public SynchronizationContextCollectionEventDispatcher(SynchronizationContext synchronizationContext)
         {
@@ -42,19 +59,13 @@ namespace ObservableCollections
             {
                 boundThreadId = Environment.CurrentManagedThreadId;
             }
-            else
-            {
-                // created off the bound thread, so ask the context which thread it dispatches to.
-                // until the answer arrives, every event is posted, which only delays it.
-                synchronizationContext.Post(probeBoundThreadCallback, this);
-            }
         }
 
         public void Post(CollectionEventDispatcherEventArgs ev)
         {
-            // compare threads, not instances. WPF installs a new DispatcherSynchronizationContext for every dispatcher
-            // operation, so SynchronizationContext.Current on the bound thread is usually another instance.
-            if (Environment.CurrentManagedThreadId == Volatile.Read(ref boundThreadId)
+            // compare threads, not only instances. WPF installs a new DispatcherSynchronizationContext for every
+            // dispatcher operation, so SynchronizationContext.Current on the bound thread is usually another instance.
+            if (Environment.CurrentManagedThreadId == boundThreadId
                 || SynchronizationContext.Current == synchronizationContext)
             {
                 // on the bound thread, send the event synchronously
@@ -71,12 +82,6 @@ namespace ObservableCollections
         {
             var ev = (CollectionEventDispatcherEventArgs)state!;
             ev.Invoke();
-        }
-
-        static void ProbeBoundThread(object? state)
-        {
-            var self = (SynchronizationContextCollectionEventDispatcher)state!;
-            Volatile.Write(ref self.boundThreadId, Environment.CurrentManagedThreadId);
         }
     }
 

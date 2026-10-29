@@ -1,6 +1,5 @@
 using System.Collections.Specialized;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace ObservableCollections.Tests;
 
@@ -63,21 +62,22 @@ public class RenewedSynchronizationContextTest
     }
 
     /// <summary>
-    /// A dispatcher created off the bound thread learns the bound thread from the context itself.
-    /// Until the context runs the posted probe, changes on the UI thread are only deferred; after that, they are
-    /// raised synchronously, while changes from another thread are still deferred.
+    /// A dispatcher created off the bound thread cannot tell the bound thread, and must not guess it by posting
+    /// anything to the context. Verifies that it posts nothing when created, that it then raises a change on the UI
+    /// thread under a renewed context instance by posting it, which only delays it, and that the visible content
+    /// still stays consistent with the notifications.
     /// </summary>
     [Fact]
-    public void DispatcherCreatedOffBoundThreadLearnsBoundThread()
+    public void DispatcherCreatedOffBoundThreadPostsChangesOnUiThread()
     {
         using var ui = new TestUiThread("ui", renewContextPerOperation: true);
 
         var list = new ObservableList<int>();
         using var view = list.CreateView(x => $"${x}");
 
-        // Created on the test thread, so the dispatcher cannot tell the bound thread yet.
+        // Created on the test thread, so the dispatcher cannot tell the bound thread.
         var dispatcher = new SynchronizationContextCollectionEventDispatcher(ui.Context);
-        ui.PendingCount.Should().Be(1);
+        ui.PendingCount.Should().Be(0);
 
         NotifyCollectionChangedSynchronizedViewList<string> notify = null!;
         NotifyCollectionChangedContractTracker<string> tracker = null!;
@@ -90,33 +90,24 @@ public class RenewedSynchronizationContextTest
 
         try
         {
-            // Not resolved yet, so even a change on the UI thread is deferred.
-            ui.Invoke(() => list.Add(1));
+            var countRightAfterAdd = -1;
 
-            ui.PendingCount.Should().Be(2);
+            ui.Invoke(() =>
+            {
+                list.Add(1);
+                countRightAfterAdd = notify.Count;
+            });
+
+            // Deferred, and the view does not show the change ahead of its notification.
+            countRightAfterAdd.Should().Be(0);
+            ui.PendingCount.Should().Be(1);
             tracker.Actions.Should().BeEmpty();
 
             ui.Pump();
 
             tracker.Actions.Should().Equal(new[] { NotifyCollectionChangedAction.Add });
-
-            // Resolved, so a change on the UI thread is raised synchronously.
-            ui.Invoke(() => list.Add(2));
-
-            ui.PendingCount.Should().Be(0);
-            tracker.Actions.Should().HaveCount(2);
-
-            // A change from another thread is still deferred.
-            Task.Run(() => list.Add(3)).Wait();
-
-            ui.PendingCount.Should().Be(1);
-            tracker.Actions.Should().HaveCount(2);
-
-            ui.Pump();
-
-            tracker.Actions.Should().HaveCount(3);
             tracker.Violations.Should().BeEmpty();
-            notify.Should().Equal(new[] { "$1", "$2", "$3" });
+            notify.Should().Equal(new[] { "$1" });
         }
         finally
         {

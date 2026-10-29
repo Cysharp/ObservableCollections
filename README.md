@@ -348,14 +348,24 @@ public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDi
 {
     public void Post(CollectionEventDispatcherEventArgs ev)
     {
-        dispatcher.InvokeAsync(() =>
+        if (dispatcher.CheckAccess())
         {
-            // notify in dispatcher
+            // already on the dispatcher thread, notify synchronously so that the change is visible right away
             ev.Invoke();
-        });
+        }
+        else
+        {
+            dispatcher.InvokeAsync(() =>
+            {
+                // notify in dispatcher
+                ev.Invoke();
+            });
+        }
     }
 }
 ```
+
+`SynchronizationContextCollectionEventDispatcher` notifies synchronously when the change is made on the thread that the context dispatches to, and posts the notification otherwise. It assumes that the context runs every posted callback on one dedicated thread, as the contexts of WPF, WinForms, WinUI, Avalonia, MAUI and Unity do. A context that runs callbacks on pool threads, such as the one of Blazor Server, does not satisfy this, so implement `ICollectionEventDispatcher` with the dispatcher of that framework instead, as above. The thread is known only when the dispatcher is created on that thread, so create it on the UI thread. Otherwise, a change made on the UI thread may also be posted and become visible a little later.
 
 `ToNotifyCollectionChanged()` can also be called without going through a View. In this case, it's guaranteed that no filters will be applied, making it faster. If you want to apply filters, please generate a View before calling it. Additionally, `ObservableList` has a variation called `ToNotifyCollectionChangedSlim()`. This option doesn't generate a list for the View and shares the actual data, making it the fastest and most memory-efficient option. However, range operations such as `AddRange`, `InsertRange` and `RemoveRange` are not supported by WPF (or Avalonia), so they will throw runtime exceptions.
 

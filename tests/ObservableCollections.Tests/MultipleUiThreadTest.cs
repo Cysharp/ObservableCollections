@@ -7,7 +7,7 @@ namespace ObservableCollections.Tests;
 /// <summary>
 /// When a process has more than one thread with a SynchronizationContext.
 /// SynchronizationContextCollectionEventDispatcher must decide whether to raise synchronously by
-/// "is SynchronizationContext.Current the one I am bound to", not by "is SynchronizationContext.Current null".
+/// "is this the thread my context dispatches to", not by "is SynchronizationContext.Current null".
 /// </summary>
 public class MultipleUiThreadTest
 {
