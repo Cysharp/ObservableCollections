@@ -13,6 +13,10 @@ namespace ObservableCollections.Tests;
 /// </summary>
 public class DeferredNotificationConsistencyTest
 {
+    /// <summary>
+    /// Verifies that changes made on a worker thread are deferred, and that whenever a notification is raised, the
+    /// visible content matches the content rebuilt from the notifications so far.
+    /// </summary>
     [Fact]
     public void WorkerThreadMutation()
     {
@@ -45,6 +49,11 @@ public class DeferredNotificationConsistencyTest
         tracker.Violations.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// Verifies that changes made on a worker thread to a filtered view are deferred, and that whenever a
+    /// notification is raised, the visible content matches the content rebuilt from the notifications so far.
+    /// The indexes of the notifications are those in the view, not in the source.
+    /// </summary>
     [Fact]
     public void WorkerThreadMutation_Filter()
     {

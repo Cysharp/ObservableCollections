@@ -64,7 +64,9 @@ public class WritableViewSetterNotificationTest
     }
 
     /// <summary>
-    /// The same guarantee is required for a view without a filter (NonFilteredSynchronizedViewList).
+    /// Verifies that, on a view without a filter (NonFilteredSynchronizedViewList), a write that the converter
+    /// rejects (setValue == false) leaves the source unchanged, but still changes the visible content and raises a
+    /// Replace for it.
     /// </summary>
     [Fact]
     public void ConverterRejectedWriteRaisesReplaceOnNonFilteredView()
@@ -143,7 +145,8 @@ public class WritableViewSetterNotificationTest
     }
 
     /// <summary>
-    /// The same applies to a filtered view. Here the view index and the source index differ.
+    /// Verifies that, on a filtered view, a setter whose write to the source fails leaves the visible content
+    /// unchanged and raises no notification. Here the index in the view and the index in the source differ.
     /// </summary>
     [Fact]
     public void FailedSourceWriteDoesNotChangeVisibleContentSilentlyOnFilteredView()

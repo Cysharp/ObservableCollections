@@ -17,6 +17,10 @@ public class WritableViewIndexTranslationTest
         return int.Parse(newView.Substring(1));
     }
 
+    /// <summary>
+    /// Verifies that RemoveAt on a filtered writable view removes the element the caller sees at the index, by
+    /// translating the index in the view into the index in the source.
+    /// </summary>
     [Fact]
     public void RemoveAt()
     {
@@ -40,6 +44,10 @@ public class WritableViewIndexTranslationTest
         bindable[0].Should().Be("$2");
     }
 
+    /// <summary>
+    /// Verifies that Insert on a filtered writable view inserts right before the element the caller sees at the
+    /// index, by translating the index in the view into the index in the source.
+    /// </summary>
     [Fact]
     public void Insert()
     {

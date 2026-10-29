@@ -63,7 +63,9 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// The same guarantee is required for a view without a filter (NonFilteredSynchronizedViewList).
+    /// Verifies that changes made on a worker thread to a view without a filter (NonFilteredSynchronizedViewList)
+    /// are deferred, and that whenever a notification is raised, the visible content matches the content rebuilt
+    /// from the notifications so far.
     /// </summary>
     [Fact]
     public void NonFiltered_WorkerThreadMutation()
@@ -161,8 +163,9 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// A positional write during deferral translates the visible index through the pending changes before
-    /// passing it to the source.
+    /// Verifies that RemoveAt while a notification is pending removes the element the caller sees at the index,
+    /// even though a pending Insert has shifted it in the source, and that the notifications then rebuild the
+    /// resulting content.
     /// </summary>
     [Fact]
     public void RemoveAtDuringPendingNotification()
@@ -195,6 +198,11 @@ public class DeferredNotificationTest
         notify.Should().Equal(new[] { "$0", "$1", "$3", "$4" });
     }
 
+    /// <summary>
+    /// Verifies that Insert while a notification is pending takes the index in the content the caller sees, and
+    /// inserts right before the element at that index even though a pending Insert has shifted the source.
+    /// Also verifies that the notifications then rebuild that content.
+    /// </summary>
     [Fact]
     public void InsertDuringPendingNotification()
     {
@@ -288,7 +296,8 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// Also works on a filtered view, combined with the reverse lookup (view index → source index).
+    /// Verifies that RemoveAt on a filtered view while a notification is pending removes the element the caller sees
+    /// at the index. The index is translated through the pending changes, and then from the view into the source.
     /// </summary>
     [Fact]
     public void RemoveAtDuringPendingNotification_Filter()
@@ -324,8 +333,9 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// When the target element itself has been removed by a pending change, there is nothing to translate
-    /// to, so the operation fails.
+    /// Verifies that RemoveAt throws InvalidOperationException and leaves the source unchanged when a pending change
+    /// has already removed the element the caller sees at the index. No element is left to translate the index to,
+    /// and removing another one would be wrong.
     /// </summary>
     [Fact]
     public void RemoveAtDuringPendingNotification_TargetIsAlreadyRemoved()
@@ -339,7 +349,8 @@ public class DeferredNotificationTest
 
         using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
 
-        _ = new NotifyCollectionChangedContractTracker<string>(notify);
+        // Subscribe, so that the changes are kept pending instead of being applied at once.
+        notify.CollectionChanged += (_, _) => { };
 
         Task.Run(() => list.RemoveAt(1)).Wait(); // 2 is removed
 
@@ -367,7 +378,8 @@ public class DeferredNotificationTest
 
         using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
 
-        _ = new NotifyCollectionChangedContractTracker<string>(notify);
+        // Subscribe, so that the changes are kept pending instead of being applied at once.
+        notify.CollectionChanged += (_, _) => { };
 
         Task.Run(() =>
         {
@@ -436,7 +448,8 @@ public class DeferredNotificationTest
 
         using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
 
-        _ = new NotifyCollectionChangedContractTracker<string>(notify);
+        // Subscribe, as a view bound to a UI would be.
+        notify.CollectionChanged += (_, _) => { };
 
         notify.Invoking(x => x.Insert(3, "$9")).Should().Throw<ArgumentOutOfRangeException>();
         notify.Invoking(x => x.Insert(-1, "$9")).Should().Throw<ArgumentOutOfRangeException>();
@@ -449,6 +462,11 @@ public class DeferredNotificationTest
         dispatcher.PendingCount.Should().Be(0);
     }
 
+    /// <summary>
+    /// Verifies that a Reset is deferred together with the changes around it. The visible content stays as it was
+    /// until the notifications are raised, and then becomes the content after the last change, built on the
+    /// snapshot that the Reset took when it was posted.
+    /// </summary>
     [Fact]
     public void ResetIsDeferred()
     {
@@ -485,6 +503,10 @@ public class DeferredNotificationTest
         notify.Should().Equal(new[] { "$4" });
     }
 
+    /// <summary>
+    /// Verifies that a Move is deferred. The visible content keeps the old order until the notification is raised,
+    /// and then shows the moved order.
+    /// </summary>
     [Fact]
     public void MoveIsDeferred()
     {
@@ -512,9 +534,9 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// When the same dispatcher mixes asynchronous and synchronous raising.
-    /// A change on the UI thread is raised synchronously, but it must not overtake the notifications
-    /// queued before it.
+    /// Verifies that a change on the UI thread, which the dispatcher raises synchronously, does not overtake the
+    /// notifications queued before it from another thread. The queued ones are raised first within the same call,
+    /// and are not raised again later.
     /// </summary>
     [Fact]
     public void SynchronousNotificationDoesNotOvertakePendingOne()
@@ -718,12 +740,13 @@ public class DeferredNotificationTest
     /// CopyTo must copy the content that the subscribers have been notified of, the same content as Count and the
     /// indexer return. If it copied the writer-side content, a destination sized by Count would be too short while an
     /// Add is pending, and a larger one would expose an element that no notification has announced yet.
-    /// Covers both the filtered view and the view without a filter.
+    /// Covers both implementations: the one created from a view (FiltableSynchronizedViewList) and the one created
+    /// from the list itself (NonFilteredSynchronizedViewList).
     /// </summary>
     [Theory]
-    [InlineData(true)]
     [InlineData(false)]
-    public void CopyToCopiesPublishedContent(bool filtered)
+    [InlineData(true)]
+    public void CopyToCopiesPublishedContent(bool viaNonFilteredList)
     {
         var list = new ObservableList<int>();
         list.Add(1);
@@ -731,9 +754,9 @@ public class DeferredNotificationTest
         var dispatcher = new QueuedCollectionEventDispatcher();
 
         using var view = list.CreateView(x => $"${x}");
-        using var notify = filtered
-            ? view.ToNotifyCollectionChanged(dispatcher)
-            : list.ToNotifyCollectionChanged(x => $"${x}", dispatcher);
+        using var notify = viaNonFilteredList
+            ? list.ToNotifyCollectionChanged(x => $"${x}", dispatcher)
+            : view.ToNotifyCollectionChanged(dispatcher);
 
         notify.CollectionChanged += (_, _) => { };
 
