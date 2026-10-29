@@ -33,7 +33,7 @@ public partial class ObservableList<T> : IList<T>, IReadOnlyObservableList<T>
     /// <remarks>
     /// This view shares the data with the source collection instead of holding its own list, so its content can not be
     /// deferred with the notification. When the collection is mutated from a thread other than the dispatcher thread,
-    /// a subscriber may observe a content that is ahead of the notification it receives(see: issue #115).
+    /// a subscriber may observe content that is ahead of the notification it receives.
     /// Mutate the collection on the dispatcher thread, or use ToNotifyCollectionChanged instead.
     /// </remarks>
     public NotifyCollectionChangedSynchronizedViewList<T> ToNotifyCollectionChangedSlim(ICollectionEventDispatcher? collectionEventDispatcher)

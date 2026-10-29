@@ -131,6 +131,9 @@ namespace ObservableCollections.Internal
         /// <param name="index">An index of the published list.</param>
         /// <param name="isInsertionPoint">
         /// true when the index means "before the element at this position" instead of the element itself.
+        /// An insertion point stays right before the element after it, so it goes after the items that a pending Add has
+        /// inserted at the same position. When a pending Move takes that element elsewhere, the insertion point does not
+        /// follow it and keeps its position among the other elements.
         /// </param>
         /// <param name="reason">Why it can not be tracked. None when it can.</param>
         public int ToWriterIndex(int index, bool isInsertionPoint, out UntrackableReason reason)

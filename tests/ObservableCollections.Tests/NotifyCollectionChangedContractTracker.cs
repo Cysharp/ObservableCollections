@@ -23,8 +23,6 @@ internal sealed class NotifyCollectionChangedContractTracker<T>
         this.target = target;
 
         // A snapshot at the time the subscription starts.
-        // ToList / AddRange cannot be used because they call ICollection<T>.CopyTo, which throws
-        // NotSupportedException.
         this.shadow = new List<T>();
         Resync();
 
@@ -96,6 +94,8 @@ internal sealed class NotifyCollectionChangedContractTracker<T>
 
     void Resync()
     {
+        // Read the target element by element, not with ToList / AddRange, which go through CopyTo, so that the
+        // tracker does not depend on the CopyTo of the view under test.
         shadow.Clear();
         foreach (var item in target)
         {

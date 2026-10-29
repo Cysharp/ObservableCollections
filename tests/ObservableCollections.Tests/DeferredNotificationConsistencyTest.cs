@@ -88,9 +88,9 @@ public class DeferredNotificationConsistencyTest
         var context = new QueuedSynchronizationContext();
         var previous = SynchronizationContext.Current;
 
-        // SynchronizationContextCollectionEventDispatcher requires SynchronizationContext.Current in its
-        // static initializer (the static readonly Current in ICollectionEventDispatcher.cs), so it has to
-        // be set before this type is touched.
+        // The dispatcher learns its bound thread in the constructor, by comparing SynchronizationContext.Current
+        // with the given context, so install the context before creating it. Otherwise even the changes on this
+        // thread would be posted.
         SynchronizationContext.SetSynchronizationContext(context);
         try
         {

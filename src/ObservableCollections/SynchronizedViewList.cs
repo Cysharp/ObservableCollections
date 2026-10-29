@@ -22,7 +22,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     readonly bool isSupportRangeFeature; // WPF, Avalonia etc does not support range notification
 
     readonly ICollectionEventDispatcher eventDispatcher;
-    readonly DeferredViewList<TView>? deferred; // null = notification is not deferred, listView is directly visible
+    readonly DeferredViewList<TView>? deferred; // null = no dispatcher is given, listView is directly visible
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
     // the lock of the source, held from translating an index to writing the source, so that no other writer can move
@@ -56,7 +56,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         lock (parent.SyncRoot)
         {
             listView = new AlternateIndexList<TView>(IterateFilteredIndexedViewsOfParent());
-            // when a dispatcher defers the notification, defer the visible list too(see: issue #115)
+            // a given dispatcher may defer the notification, so defer the visible list too
             deferred = eventDispatcher == null ? null : new DeferredViewList<TView>(listView);
             parent.ViewChanged += Parent_ViewChanged;
             parent.RejectedViewChanged += Parent_RejectedViewChanged;
@@ -400,7 +400,9 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
             try
             {
-                // do not raise inside gate, a subscriber may touch the source collection
+                // do not hold gate while raising. a subscriber may write the source, which takes the lock of the source
+                // and then gate, so holding gate here would invert the lock order. when the dispatcher raises
+                // synchronously, the caller already holds the lock of the source before gate, so the order is kept.
                 RaiseChangedEventCore(applied);
             }
             catch (Exception ex)
@@ -511,10 +513,11 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
                     if (setValue)
                     {
-                        // the Replace of the source updates the parent, listView and the visible list, with a notification.
+                        // the Replace of the source updates the parent and listView, and the visible list when its notification is raised.
+                        // the view then shows newOriginal through the transform of the parent, not the assigned value.
                         // do not touch listView here, it would be an unnotified change if the source write fails.
-                        // do not touch the parent either, it reads the old view from there, and a Replace that takes
-                        // the element out of the filter has to find the old view to remove it
+                        // do not touch the parent either: its Replace handler reads the old view from its own list, and a Replace that
+                        // takes the element out of the filter needs that old view to find the element and remove it
                         writableView.SetToSourceCollection(originalIndex, newOriginal);
                     }
                     else
@@ -775,7 +778,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     readonly bool isSupportRangeFeature; // WPF, Avalonia etc does not support range notification
 
     readonly ICollectionEventDispatcher eventDispatcher;
-    readonly DeferredViewList<TView>? deferred; // null = notification is not deferred, listView is directly visible
+    readonly DeferredViewList<TView>? deferred; // null = no dispatcher is given, listView is directly visible
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
     // the lock of the source, held from translating an index to writing the source, so that no other writer can move
@@ -809,7 +812,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         lock (parent.SyncRoot)
         {
             listView = parent.ToList(); // guranteed non-filtered
-            // when a dispatcher defers the notification, defer the visible list too(see: issue #115)
+            // a given dispatcher may defer the notification, so defer the visible list too
             deferred = eventDispatcher == null ? null : new DeferredViewList<TView>(listView);
             parent.ViewChanged += Parent_ViewChanged;
             // no register RejectedViewChanged(beacuse non filtered)
@@ -1146,7 +1149,9 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
             try
             {
-                // do not raise inside gate, a subscriber may touch the source collection
+                // do not hold gate while raising. a subscriber may write the source, which takes the lock of the source
+                // and then gate, so holding gate here would invert the lock order. when the dispatcher raises
+                // synchronously, the caller already holds the lock of the source before gate, so the order is kept.
                 RaiseChangedEventCore(applied);
             }
             catch (Exception ex)
@@ -1255,9 +1260,10 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
                     if (setValue)
                     {
-                        // the Replace of the source updates the parent, listView and the visible list, with a notification.
+                        // the Replace of the source updates the parent and listView, and the visible list when its notification is raised.
+                        // the view then shows newOriginal through the transform of the parent, not the assigned value.
                         // do not touch listView here, it would be an unnotified change if the source write fails.
-                        // do not touch the parent either, it reads the old view from there
+                        // do not touch the parent either: its Replace handler reads the old view from its own list
                         writableView.SetToSourceCollection(listViewIndex, newOriginal);
                     }
                     else

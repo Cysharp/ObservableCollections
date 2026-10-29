@@ -375,11 +375,11 @@ public class DeferredNotificationTest
             list.Add(3);
         }).Wait();
 
-        // Even an insertion position cannot be translated across a Reset.
         notify.Invoking(x => x.RemoveAt(0))
             .Should().Throw<InvalidOperationException>()
             .WithMessage("The collection has been reset*");
 
+        // Unlike across a Remove, even an insertion position cannot be translated across a Reset.
         notify.Invoking(x => x.Insert(0, "$9"))
             .Should().Throw<InvalidOperationException>()
             .WithMessage("The collection has been reset*");

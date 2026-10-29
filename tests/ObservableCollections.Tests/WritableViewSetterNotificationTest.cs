@@ -119,8 +119,8 @@ public class WritableViewSetterNotificationTest
     /// If the setter had rewritten the visible content beforehand, an unnotified change would be left behind.
     /// Here a subscriber registered before the view throws an exception, so that the source's notification
     /// never reaches the view.
-    /// (The source itself has already been rewritten at this point; its divergence from the view is a
-    /// separate, pre-existing issue.)
+    /// (The source itself has already been rewritten at this point; its divergence from the view is the separate
+    /// issue #142, where an exception from a subscriber stops the change from reaching the later subscribers.)
     /// </summary>
     [Fact]
     public void FailedSourceWriteDoesNotChangeVisibleContentSilently()
