@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ObservableCollections.Tests;
@@ -773,5 +776,587 @@ public class DeferredNotificationTest
         destination = new string[notify.Count];
         notify.CopyTo(destination.AsSpan());
         destination.Should().Equal(new[] { "$1", "$2" });
+    }
+
+    /// <summary>
+    /// Verifies that Insert succeeds when a pending Remove has removed the element right after the insertion point.
+    /// Unlike the element itself, the position between the elements survives the removal: the item goes where the
+    /// removed element was, and the notifications then rebuild that content.
+    /// </summary>
+    [Fact]
+    public void InsertAtPositionOfPendingRemove()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.RemoveAt(1)).Wait(); // 2 is removed
+
+        // Right before "$2" of the visible ["$1", "$2", "$3"], which is no longer in the source.
+        notify.Insert(1, "$9");
+
+        list.Should().Equal(new[] { 1, 9, 3 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$1", "$9", "$3" });
+    }
+
+    /// <summary>
+    /// Verifies that Insert succeeds when pending Removes have removed several elements around the insertion point.
+    /// The item goes where the removed elements were.
+    /// </summary>
+    [Fact]
+    public void InsertAtPositionOfPendingRemoveRange()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.RemoveRange(0, 2)).Wait(); // 1 and 2 are removed
+
+        // Right before "$2" of the visible ["$1", "$2", "$3", "$4"], that is, between two removed elements.
+        notify.Insert(1, "$9");
+
+        list.Should().Equal(new[] { 9, 3, 4 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$9", "$3", "$4" });
+    }
+
+    /// <summary>
+    /// Verifies that the setter on a filtered view while a notification is pending replaces the element the caller
+    /// sees at the index. The index is translated through the pending changes, and then from the view into the source.
+    /// </summary>
+    [Fact]
+    public void SetDuringPendingNotification_Filter()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
+
+        using var view = list.CreateWritableView(x => $"${x}");
+        view.AttachFilter(x => x % 2 == 0); // ["$2", "$4"]
+
+        using var notify = view.ToWritableNotifyCollectionChanged(ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Insert(0, 6)).Wait(); // Passes the filter, so it goes to the head of the view
+
+        notify[1] = "$40"; // "$4" of the visible ["$2", "$4"]
+
+        list.Should().Equal(new[] { 6, 1, 2, 3, 40 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$6", "$2", "$40" });
+    }
+
+    /// <summary>
+    /// Verifies that, on a filtered view while a notification is pending, a write that the converter rejects changes
+    /// the view of the element the caller sees at the index, and nothing else, and leaves the source unchanged.
+    /// </summary>
+    [Fact]
+    public void RejectedSetDuringPendingNotification_Filter()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
+
+        using var view = list.CreateWritableView(x => $"${x}");
+        view.AttachFilter(x => x % 2 == 0); // ["$2", "$4"]
+
+        using var notify = view.ToWritableNotifyCollectionChanged(RejectOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Insert(0, 6)).Wait();
+
+        notify[1] = "$40"; // "$4" of the visible ["$2", "$4"]
+
+        list.Should().Equal(new[] { 6, 1, 2, 3, 4 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$6", "$2", "$40" });
+    }
+
+    /// <summary>
+    /// Verifies that Insert on a filtered view while a notification is pending inserts right before the element the
+    /// caller sees at the index, and appends to the source when the index is the tail of the view.
+    /// </summary>
+    [Theory]
+    [InlineData(1, new[] { 6, 1, 2, 3, 8, 4 }, new[] { "$6", "$2", "$8", "$4" })]
+    [InlineData(2, new[] { 6, 1, 2, 3, 4, 8 }, new[] { "$6", "$2", "$4", "$8" })]
+    public void InsertDuringPendingNotification_Filter(int index, int[] expectedSource, string[] expectedView)
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
+
+        using var view = list.CreateWritableView(x => $"${x}");
+        view.AttachFilter(x => x % 2 == 0); // ["$2", "$4"]
+
+        using var notify = view.ToWritableNotifyCollectionChanged(ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Insert(0, 6)).Wait();
+
+        notify.Insert(index, "$8");
+
+        list.Should().Equal(expectedSource);
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(expectedView);
+    }
+
+    /// <summary>
+    /// Verifies that changing the filter while notifications are pending is deferred like any other change. The
+    /// filter change raises a Reset: until it is raised, the visible content stays as it was and no index can be
+    /// translated, and once it is raised, the visible content is the one that the filter selects.
+    /// </summary>
+    [Fact]
+    public void FilterChangeIsDeferred()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
+
+        using var view = list.CreateWritableView(x => $"${x}");
+        using var notify = view.ToWritableNotifyCollectionChanged(ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() =>
+        {
+            list.Add(5);
+            view.AttachFilter(x => x % 2 == 0);
+        }).Wait();
+
+        notify.Should().Equal(new[] { "$1", "$2", "$3", "$4" });
+        notify.Invoking(x => x.RemoveAt(0))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("The collection has been reset*");
+
+        dispatcher.Pump();
+
+        tracker.Actions.Should().Equal(new[] { NotifyCollectionChangedAction.Add, NotifyCollectionChangedAction.Reset });
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$2", "$4" });
+
+        Task.Run(() => view.ResetFilter()).Wait();
+
+        notify.Should().Equal(new[] { "$2", "$4" });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$1", "$2", "$3", "$4", "$5" });
+    }
+
+    /// <summary>
+    /// Verifies that RemoveAt while range changes are pending removes the element the caller sees at the index.
+    /// Without range notifications, a view with a dispatcher queues a range change as one change per element, and
+    /// the index is translated through all of them.
+    /// </summary>
+    [Fact]
+    public void RemoveAtDuringPendingRangeChanges()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() =>
+        {
+            list.InsertRange(1, new[] { 10, 11 });
+            list.RemoveRange(4, 1); // 3
+        }).Wait();
+
+        dispatcher.PendingCount.Should().Be(3);
+
+        notify.RemoveAt(1); // "$2" of the visible ["$1", "$2", "$3"]
+
+        list.Should().Equal(new[] { 1, 10, 11 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$1", "$10", "$11" });
+    }
+
+    /// <summary>
+    /// Verifies that the setter while a Move is pending replaces the element the caller sees at the index, following
+    /// the moved element to its new position in the source.
+    /// </summary>
+    [Fact]
+    public void SetDuringPendingMove()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Move(0, 2)).Wait(); // [2, 3, 1]
+
+        notify[0] = "$10"; // "$1" of the visible ["$1", "$2", "$3"]
+
+        list.Should().Equal(new[] { 2, 3, 10 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$2", "$3", "$10" });
+    }
+
+    /// <summary>
+    /// Verifies that RemoveAt while a Move is pending removes the element the caller sees at the index, which the
+    /// Move has shifted in the source.
+    /// </summary>
+    [Fact]
+    public void RemoveAtDuringPendingMove()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Move(0, 2)).Wait(); // [2, 3, 1]
+
+        notify.RemoveAt(1); // "$2" of the visible ["$1", "$2", "$3"]
+
+        list.Should().Equal(new[] { 3, 1 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$3", "$1" });
+    }
+
+    /// <summary>
+    /// Verifies that Insert right before an element that a pending Move takes elsewhere does not follow the moved
+    /// element, and keeps its position among the other elements, as documented on DeferredViewList.ToWriterIndex.
+    /// </summary>
+    [Fact]
+    public void InsertDuringPendingMove()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1, 2, 3 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", ToOriginal, dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Move(0, 2)).Wait(); // [2, 3, 1]
+
+        notify.Insert(0, "$9"); // right before "$1" of the visible ["$1", "$2", "$3"]
+
+        list.Should().Equal(new[] { 9, 2, 3, 1 });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$9", "$2", "$3", "$1" });
+    }
+
+    /// <summary>
+    /// Verifies that the visible content of a view over a dictionary is deferred too. A Replace from a dictionary
+    /// carries no index, so the view locates the element by its old value; the notifications must still rebuild the
+    /// content.
+    /// </summary>
+    [Fact]
+    public void DictionaryChangesAreDeferred()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var dictionary = new ObservableDictionary<int, string>();
+        dictionary.Add(1, "a");
+        dictionary.Add(2, "b");
+
+        using var view = dictionary.CreateView(x => $"{x.Key}={x.Value}");
+        using var notify = view.ToNotifyCollectionChanged(dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() =>
+        {
+            dictionary[1] = "c";
+            dictionary.Add(3, "d");
+            dictionary.Remove(2);
+        }).Wait();
+
+        notify.Should().Equal(new[] { "1=a", "2=b" });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "1=c", "3=d" });
+    }
+
+    /// <summary>
+    /// Verifies that the visible content of a view over a queue is deferred too, when elements are added at the tail
+    /// and removed from the head.
+    /// </summary>
+    [Fact]
+    public void QueueChangesAreDeferred()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var queue = new ObservableQueue<int>();
+        queue.Enqueue(1);
+        queue.Enqueue(2);
+
+        using var view = queue.CreateView(x => $"${x}");
+        using var notify = view.ToNotifyCollectionChanged(dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() =>
+        {
+            queue.Enqueue(3);
+            queue.Dequeue();
+        }).Wait();
+
+        notify.Should().Equal(new[] { "$1", "$2" });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$2", "$3" });
+    }
+
+    /// <summary>
+    /// Verifies that the visible content of a view over a stack is deferred too, when elements are pushed to and
+    /// popped from the head.
+    /// </summary>
+    [Fact]
+    public void StackChangesAreDeferred()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var stack = new ObservableStack<int>();
+        stack.Push(1);
+        stack.Push(2);
+
+        using var view = stack.CreateView(x => $"${x}");
+        using var notify = view.ToNotifyCollectionChanged(dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() =>
+        {
+            stack.Push(3);
+            stack.Pop();
+            stack.Push(4);
+        }).Wait();
+
+        notify.Should().Equal(new[] { "$2", "$1" });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$4", "$2", "$1" });
+    }
+
+    /// <summary>
+    /// Verifies that the visible content of a view over a ring buffer is deferred too, when elements are added and
+    /// removed at both ends.
+    /// </summary>
+    [Fact]
+    public void RingBufferChangesAreDeferred()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var buffer = new ObservableRingBuffer<int>(new[] { 1, 2 });
+
+        using var view = buffer.CreateView(x => $"${x}");
+        using var notify = view.ToNotifyCollectionChanged(dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() =>
+        {
+            buffer.AddFirst(0);
+            buffer.AddLast(3);
+            buffer.RemoveFirst();
+        }).Wait();
+
+        notify.Should().Equal(new[] { "$1", "$2" });
+
+        dispatcher.Pump();
+
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$1", "$2", "$3" });
+    }
+
+    /// <summary>
+    /// Verifies that a subscriber of PropertyChanged alone also makes the view defer its content, so that Count read
+    /// in the handler is the count of the content notified so far. Also verifies that a write that the converter
+    /// rejects raises no PropertyChanged, since it does not change the count.
+    /// </summary>
+    [Fact]
+    public void PropertyChangedOnlySubscriberSeesNotifiedCount()
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1 });
+        using var notify = list.ToWritableNotifyCollectionChanged(x => $"${x}", RejectOriginal, dispatcher);
+
+        var counts = new List<int>();
+        notify.PropertyChanged += (_, _) => counts.Add(notify.Count);
+
+        Task.Run(() =>
+        {
+            list.Add(2);
+            list.Add(3);
+        }).Wait();
+
+        notify.Count.Should().Be(1);
+
+        dispatcher.Pump();
+
+        counts.Should().Equal(new[] { 2, 3 });
+
+        notify[0] = "$9"; // Rejected by the converter, so only the view changes
+
+        dispatcher.Pump();
+
+        counts.Should().Equal(new[] { 2, 3 });
+        notify.Should().Equal(new[] { "$9", "$2", "$3" });
+    }
+
+    /// <summary>
+    /// Pins what Dispose does to the notifications that are still pending. A notification posted before Dispose is
+    /// still raised and applied when the dispatcher runs it, so that the content seen by a subscriber stays
+    /// consistent with what it has been told. A change of the source after Dispose no longer reaches the view.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DisposeKeepsPendingNotifications(bool viaNonFilteredList)
+    {
+        var dispatcher = new QueuedCollectionEventDispatcher();
+
+        var list = new ObservableList<int>(new[] { 1 });
+
+        using var view = list.CreateView(x => $"${x}");
+        var notify = viaNonFilteredList
+            ? list.ToNotifyCollectionChanged(x => $"${x}", dispatcher)
+            : view.ToNotifyCollectionChanged(dispatcher);
+
+        var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+
+        Task.Run(() => list.Add(2)).Wait();
+
+        notify.Dispose();
+
+        list.Add(3);
+
+        dispatcher.PendingCount.Should().Be(1);
+
+        dispatcher.Pump();
+
+        tracker.Actions.Should().Equal(new[] { NotifyCollectionChangedAction.Add });
+        tracker.Violations.Should().BeEmpty();
+        notify.Should().Equal(new[] { "$1", "$2" });
+    }
+
+    /// <summary>
+    /// A dispatcher that only records the posted events, so that a test can invoke them in any order and on any
+    /// thread, as a dispatcher outside the single-thread contract might.
+    /// </summary>
+    sealed class RecordingDispatcher : ICollectionEventDispatcher
+    {
+        public List<CollectionEventDispatcherEventArgs> Posted { get; } = new();
+
+        public void Post(CollectionEventDispatcherEventArgs ev)
+        {
+            lock (Posted)
+            {
+                Posted.Add(ev);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies that no subscriber exception is lost when a dispatcher outside the single-thread contract runs the
+    /// callbacks out of order on several threads. The callback of a newer event raises an older one ahead, and the
+    /// own callback of the older one completes on another thread meanwhile. Its exception then has no callback left
+    /// to be rethrown from, so it is thrown here together with the exception of the newer one, as an
+    /// AggregateException.
+    /// </summary>
+    [Fact]
+    public void ExceptionsAreNotLostWhenCallbacksRunOutOfOrder()
+    {
+        var dispatcher = new RecordingDispatcher();
+
+        var list = new ObservableList<int>();
+
+        using var view = list.CreateView(x => $"${x}");
+        using var notify = view.ToNotifyCollectionChanged(dispatcher);
+
+        CollectionEventDispatcherEventArgs older = null;
+        Exception olderCallbackError = null;
+
+        notify.CollectionChanged += (_, e) =>
+        {
+            if ((string)e.NewItems![0]! == "$1")
+            {
+                // The own callback of the older event runs on another thread while the event is raised ahead.
+                var thread = new Thread(() =>
+                {
+                    try
+                    {
+                        older.Invoke();
+                    }
+                    catch (Exception ex)
+                    {
+                        olderCallbackError = ex;
+                    }
+                });
+
+                thread.Start();
+                thread.Join(TimeSpan.FromSeconds(5)).Should().BeTrue();
+
+                throw new InvalidOperationException("older");
+            }
+
+            throw new InvalidOperationException("newer");
+        };
+
+        list.Add(1);
+        list.Add(2);
+
+        older = dispatcher.Posted[0];
+        var newer = dispatcher.Posted[1];
+
+        var error = Record.Exception(() => newer.Invoke());
+
+        olderCallbackError.Should().BeNull();
+        error.Should().BeOfType<AggregateException>()
+            .Which.InnerExceptions.Select(x => x.Message).Should().Equal(new[] { "older", "newer" });
+
+        notify.Should().Equal(new[] { "$1", "$2" });
     }
 }

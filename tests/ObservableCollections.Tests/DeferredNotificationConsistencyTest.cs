@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -126,6 +128,189 @@ public class DeferredNotificationConsistencyTest
         finally
         {
             SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+    const int WorkerChanges = 20000;
+    const int MinimumUiRounds = 2000;
+
+    /// <summary>
+    /// Makes one random change to the list. Holds the lock of the list, so that the index it picks is still valid
+    /// when another thread changes the list too.
+    /// </summary>
+    static void ChangeRandomly(ObservableList<int> list, Random random)
+    {
+        lock (list.SyncRoot)
+        {
+            var count = list.Count;
+            switch (random.Next(count == 0 ? 3 : 8))
+            {
+                case 0:
+                case 1:
+                    list.Add(random.Next(100));
+                    break;
+                case 2:
+                    list.Insert(random.Next(count + 1), random.Next(100));
+                    break;
+                case 3:
+                case 4:
+                    list.RemoveAt(random.Next(count));
+                    break;
+                case 5:
+                    list[random.Next(count)] = random.Next(100);
+                    break;
+                case 6:
+                    list.Move(random.Next(count), random.Next(count));
+                    break;
+                default:
+                    if (random.Next(10) == 0)
+                    {
+                        list.Clear();
+                    }
+                    else
+                    {
+                        list.Add(random.Next(100));
+                    }
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Runs the changes of a worker thread, while the UI thread keeps changing the list too, runs the extra action,
+    /// and raises the queued notifications. Rethrows an exception of the worker.
+    /// </summary>
+    static void RunConcurrently(TestUiThread ui, ObservableList<int> list, Action uiAction)
+    {
+        Exception workerError = null;
+
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                var random = new Random(1);
+                for (var i = 0; i < WorkerChanges; i++)
+                {
+                    ChangeRandomly(list, random);
+                }
+            }
+            catch (Exception ex)
+            {
+                workerError = ex;
+            }
+        })
+        {
+            IsBackground = true,
+        };
+
+        worker.Start();
+
+        var uiRandom = new Random(2);
+        for (var round = 0; round < MinimumUiRounds || worker.IsAlive; round++)
+        {
+            // A change on the UI thread is raised synchronously, and raises the queued ones ahead.
+            ui.Invoke(() =>
+            {
+                ChangeRandomly(list, uiRandom);
+                uiAction?.Invoke();
+            });
+
+            ui.Pump();
+        }
+
+        worker.Join();
+        workerError.Should().BeNull();
+
+        ui.Pump();
+    }
+
+    /// <summary>
+    /// Verifies that the visible content stays consistent with the notifications while a worker thread and the UI
+    /// thread keep changing the source at the same time, and the UI thread keeps raising the queued notifications.
+    /// This exercises the lock between the writer side and the visible side under contention, including the
+    /// notifications that a change on the UI thread raises ahead. Finally the visible content must match the source.
+    /// </summary>
+    [Fact]
+    public void ConcurrentChangesKeepContentConsistent()
+    {
+        using var ui = new TestUiThread("ui");
+
+        var list = new ObservableList<int>();
+        using var view = list.CreateView(x => $"${x}");
+
+        NotifyCollectionChangedSynchronizedViewList<string> notify = null!;
+        NotifyCollectionChangedContractTracker<string> tracker = null!;
+
+        ui.Invoke(() =>
+        {
+            notify = view.ToNotifyCollectionChanged(new SynchronizationContextCollectionEventDispatcher(ui.Context));
+            tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+        });
+
+        try
+        {
+            RunConcurrently(ui, list, null);
+
+            string[] violations = null;
+            string[] content = null;
+            ui.Invoke(() =>
+            {
+                violations = tracker.Violations.ToArray();
+                content = notify.ToArray();
+            });
+
+            violations.Should().BeEmpty();
+            content.Should().Equal(list.Select(x => $"${x}"));
+        }
+        finally
+        {
+            notify.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Verifies that the visible content converges to the source while a subscriber comes and goes during concurrent
+    /// changes. Without a subscriber, a change is applied at once; with one, it is queued. This exercises the switch
+    /// between the two while changes are pending.
+    /// </summary>
+    [Fact]
+    public void SubscribingAndUnsubscribingDuringChangesConverges()
+    {
+        using var ui = new TestUiThread("ui");
+
+        var list = new ObservableList<int>();
+        using var view = list.CreateView(x => $"${x}");
+
+        NotifyCollectionChangedSynchronizedViewList<string> notify = null!;
+        ui.Invoke(() => notify = view.ToNotifyCollectionChanged(new SynchronizationContextCollectionEventDispatcher(ui.Context)));
+
+        NotifyCollectionChangedEventHandler handler = (_, _) => { };
+        var subscribed = false;
+
+        try
+        {
+            RunConcurrently(ui, list, () =>
+            {
+                if (subscribed)
+                {
+                    notify.CollectionChanged -= handler;
+                }
+                else
+                {
+                    notify.CollectionChanged += handler;
+                }
+
+                subscribed = !subscribed;
+            });
+
+            string[] content = null;
+            ui.Invoke(() => content = notify.ToArray());
+
+            content.Should().Equal(list.Select(x => $"${x}"));
+        }
+        finally
+        {
+            notify.Dispose();
         }
     }
 }
