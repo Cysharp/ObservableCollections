@@ -68,6 +68,16 @@ namespace ObservableCollections
         NotifyCollectionChangedSynchronizedViewList<TView> ToWritableNotifyCollectionChanged(WritableViewChangedEventHandler<T, TView> converter, ICollectionEventDispatcher? collectionEventDispatcher);
     }
 
+    /// <summary>
+    /// Gives access to the lock of the source collection that a writable view writes to.
+    /// A view list holds it from translating an index to writing the source, so that no other writer can move the
+    /// elements in between.
+    /// </summary>
+    internal interface ISourceSyncRootProvider
+    {
+        object SourceSyncRoot { get; }
+    }
+
     public interface ISynchronizedViewList<out TView> : IReadOnlyList<TView>, IDisposable
     {
     }

@@ -25,6 +25,11 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
     readonly DeferredViewList<TView>? deferred; // null = notification is not deferred, listView is directly visible
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
+    // the lock of the source, held from translating an index to writing the source, so that no other writer can move
+    // the elements in between. take it before gate, a change of the source takes gate inside it.
+    // a writable view that does not provide it can not be protected, then a private object stands in
+    readonly object sourceSyncRoot;
+
     NotifyCollectionChangedEventHandler? collectionChanged;
     PropertyChangedEventHandler? propertyChanged;
 
@@ -47,6 +52,7 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         this.isSupportRangeFeature = isSupportRangeFeature;
         this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
         this.converter = converter;
+        this.sourceSyncRoot = (parent as ISourceSyncRootProvider)?.SourceSyncRoot ?? new object();
         lock (parent.SyncRoot)
         {
             listView = new AlternateIndexList<TView>(IterateFilteredIndexedViewsOfParent());
@@ -488,42 +494,45 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             {
                 var writableView = parent as IWritableSynchronizedView<T, TView>;
 
-                int listViewIndex;
-                int originalIndex;
-                lock (gate)
+                lock (sourceSyncRoot)
                 {
-                    listViewIndex = ToListViewIndex(index, isInsertionPoint: false);
-                    originalIndex = listView.GetAlternateIndex(listViewIndex);
-                }
-
-                var (originalValue, _) = writableView!.GetAt(originalIndex);
-
-                var setValue = true;
-                var newOriginal = converter!(value, originalValue, ref setValue);
-
-                if (setValue)
-                {
-                    // the Replace of the source updates the parent, listView and the visible list, with a notification.
-                    // do not touch listView here, it would be an unnotified change if the source write fails.
-                    // do not touch the parent either, it reads the old view from there, and a Replace that takes
-                    // the element out of the filter has to find the old view to remove it
-                    writableView.SetToSourceCollection(originalIndex, newOriginal);
-                }
-                else
-                {
-                    // the converter rejected the source write, so this is the only notification of the change
-                    writableView.SetViewAt(originalIndex, value);
+                    int listViewIndex;
+                    int originalIndex;
                     lock (gate)
                     {
-                        var oldView = listView[listViewIndex];
-                        listView[listViewIndex] = value;
-                        Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, value, oldView, listViewIndex)
+                        listViewIndex = ToListViewIndex(index, isInsertionPoint: false);
+                        originalIndex = listView.GetAlternateIndex(listViewIndex);
+                    }
+
+                    var (originalValue, _) = writableView!.GetAt(originalIndex);
+
+                    var setValue = true;
+                    var newOriginal = converter!(value, originalValue, ref setValue);
+
+                    if (setValue)
+                    {
+                        // the Replace of the source updates the parent, listView and the visible list, with a notification.
+                        // do not touch listView here, it would be an unnotified change if the source write fails.
+                        // do not touch the parent either, it reads the old view from there, and a Replace that takes
+                        // the element out of the filter has to find the old view to remove it
+                        writableView.SetToSourceCollection(originalIndex, newOriginal);
+                    }
+                    else
+                    {
+                        // the converter rejected the source write, so this is the only notification of the change
+                        writableView.SetViewAt(originalIndex, value);
+                        lock (gate)
                         {
-                            Collection = this,
-                            Invoker = raiseChangedEventInvoke,
-                            IsInvokeCollectionChanged = true,
-                            IsInvokePropertyChanged = false
-                        });
+                            var oldView = listView[listViewIndex];
+                            listView[listViewIndex] = value;
+                            Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, value, oldView, listViewIndex)
+                            {
+                                Collection = this,
+                                Invoker = raiseChangedEventInvoke,
+                                IsInvokeCollectionChanged = true,
+                                IsInvokePropertyChanged = false
+                            });
+                        }
                     }
                 }
             }
@@ -586,24 +595,27 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
 
-            int originalIndex;
-            lock (gate)
+            lock (sourceSyncRoot)
             {
-                var listViewIndex = ToListViewIndex(index, isInsertionPoint: true);
+                int originalIndex;
+                lock (gate)
+                {
+                    var listViewIndex = ToListViewIndex(index, isInsertionPoint: true);
 
-                // when the insertion point is the tail of the view, the source index is not determined, so append
-                originalIndex = listViewIndex < listView.Count ? listView.GetAlternateIndex(listViewIndex) : -1;
+                    // when the insertion point is the tail of the view, the source index is not determined, so append
+                    originalIndex = listViewIndex < listView.Count ? listView.GetAlternateIndex(listViewIndex) : -1;
+                }
+
+                if (typeof(T) == typeof(TView) && item is T tItem)
+                {
+                    InsertIntoSourceCollection(writableView!, originalIndex, tItem);
+                    return;
+                }
+                var setValue = false;
+                var newOriginal = converter!(item, default!, ref setValue);
+
+                InsertIntoSourceCollection(writableView!, originalIndex, newOriginal);
             }
-
-            if (typeof(T) == typeof(TView) && item is T tItem)
-            {
-                InsertIntoSourceCollection(writableView!, originalIndex, tItem);
-                return;
-            }
-            var setValue = false;
-            var newOriginal = converter!(item, default!, ref setValue);
-
-            InsertIntoSourceCollection(writableView!, originalIndex, newOriginal);
         }
     }
 
@@ -650,13 +662,16 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
 
-            int originalIndex;
-            lock (gate)
+            lock (sourceSyncRoot)
             {
-                originalIndex = listView.GetAlternateIndex(ToListViewIndex(index, isInsertionPoint: false));
-            }
+                int originalIndex;
+                lock (gate)
+                {
+                    originalIndex = listView.GetAlternateIndex(ToListViewIndex(index, isInsertionPoint: false));
+                }
 
-            writableView!.RemoveAtSourceCollection(originalIndex);
+                writableView!.RemoveAtSourceCollection(originalIndex);
+            }
         }
     }
 
@@ -763,6 +778,11 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
     readonly DeferredViewList<TView>? deferred; // null = notification is not deferred, listView is directly visible
     readonly WritableViewChangedEventHandler<T, TView>? converter; // null = readonly
 
+    // the lock of the source, held from translating an index to writing the source, so that no other writer can move
+    // the elements in between. take it before gate, a change of the source takes gate inside it.
+    // a writable view that does not provide it can not be protected, then a private object stands in
+    readonly object sourceSyncRoot;
+
     NotifyCollectionChangedEventHandler? collectionChanged;
     PropertyChangedEventHandler? propertyChanged;
 
@@ -785,6 +805,7 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         this.isSupportRangeFeature = isSupportRangeFeature;
         this.eventDispatcher = eventDispatcher ?? InlineCollectionEventDispatcher.Instance;
         this.converter = converter;
+        this.sourceSyncRoot = (parent as ISourceSyncRootProvider)?.SourceSyncRoot ?? new object();
         lock (parent.SyncRoot)
         {
             listView = parent.ToList(); // guranteed non-filtered
@@ -1219,39 +1240,42 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             {
                 var writableView = parent as IWritableSynchronizedView<T, TView>;
 
-                int listViewIndex;
-                lock (gate)
+                lock (sourceSyncRoot)
                 {
-                    listViewIndex = ToListViewIndex(index, isInsertionPoint: false);
-                }
-
-                var (originalValue, _) = writableView!.GetAt(listViewIndex);
-
-                var setValue = true;
-                var newOriginal = converter!(value, originalValue, ref setValue);
-
-                if (setValue)
-                {
-                    // the Replace of the source updates the parent, listView and the visible list, with a notification.
-                    // do not touch listView here, it would be an unnotified change if the source write fails.
-                    // do not touch the parent either, it reads the old view from there
-                    writableView.SetToSourceCollection(listViewIndex, newOriginal);
-                }
-                else
-                {
-                    // the converter rejected the source write, so this is the only notification of the change
-                    writableView.SetViewAt(listViewIndex, value);
+                    int listViewIndex;
                     lock (gate)
                     {
-                        var oldView = listView[listViewIndex];
-                        listView[listViewIndex] = value;
-                        Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, value, oldView, listViewIndex)
+                        listViewIndex = ToListViewIndex(index, isInsertionPoint: false);
+                    }
+
+                    var (originalValue, _) = writableView!.GetAt(listViewIndex);
+
+                    var setValue = true;
+                    var newOriginal = converter!(value, originalValue, ref setValue);
+
+                    if (setValue)
+                    {
+                        // the Replace of the source updates the parent, listView and the visible list, with a notification.
+                        // do not touch listView here, it would be an unnotified change if the source write fails.
+                        // do not touch the parent either, it reads the old view from there
+                        writableView.SetToSourceCollection(listViewIndex, newOriginal);
+                    }
+                    else
+                    {
+                        // the converter rejected the source write, so this is the only notification of the change
+                        writableView.SetViewAt(listViewIndex, value);
+                        lock (gate)
                         {
-                            Collection = this,
-                            Invoker = raiseChangedEventInvoke,
-                            IsInvokeCollectionChanged = true,
-                            IsInvokePropertyChanged = false
-                        });
+                            var oldView = listView[listViewIndex];
+                            listView[listViewIndex] = value;
+                            Publish(new CollectionEventDispatcherEventArgs(NotifyCollectionChangedAction.Replace, value, oldView, listViewIndex)
+                            {
+                                Collection = this,
+                                Invoker = raiseChangedEventInvoke,
+                                IsInvokeCollectionChanged = true,
+                                IsInvokePropertyChanged = false
+                            });
+                        }
                     }
                 }
             }
@@ -1314,21 +1338,24 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
 
-            int originalIndex;
-            lock (gate)
+            lock (sourceSyncRoot)
             {
-                originalIndex = ToListViewIndex(index, isInsertionPoint: true);
-            }
+                int originalIndex;
+                lock (gate)
+                {
+                    originalIndex = ToListViewIndex(index, isInsertionPoint: true);
+                }
 
-            if (typeof(T) == typeof(TView) && item is T tItem)
-            {
-                writableView!.InsertIntoSourceCollection(originalIndex, tItem);
-                return;
-            }
-            var setValue = false;
-            var newOriginal = converter!(item, default!, ref setValue);
+                if (typeof(T) == typeof(TView) && item is T tItem)
+                {
+                    writableView!.InsertIntoSourceCollection(originalIndex, tItem);
+                    return;
+                }
+                var setValue = false;
+                var newOriginal = converter!(item, default!, ref setValue);
 
-            writableView!.InsertIntoSourceCollection(originalIndex, newOriginal);
+                writableView!.InsertIntoSourceCollection(originalIndex, newOriginal);
+            }
         }
     }
 
@@ -1363,13 +1390,16 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         {
             var writableView = parent as IWritableSynchronizedView<T, TView>;
 
-            int originalIndex;
-            lock (gate)
+            lock (sourceSyncRoot)
             {
-                originalIndex = ToListViewIndex(index, isInsertionPoint: false);
-            }
+                int originalIndex;
+                lock (gate)
+                {
+                    originalIndex = ToListViewIndex(index, isInsertionPoint: false);
+                }
 
-            writableView!.RemoveAtSourceCollection(originalIndex);
+                writableView!.RemoveAtSourceCollection(originalIndex);
+            }
         }
     }
 
