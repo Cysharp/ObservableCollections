@@ -10,6 +10,9 @@ namespace ObservableCollections.Tests;
 /// </summary>
 internal sealed class TestUiThread : IDisposable
 {
+    // long enough for any test, short enough to fail instead of hanging the run when the thread deadlocks
+    static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+
     readonly QueuedSynchronizationContext context;
     readonly BlockingCollection<Action> work = new();
     readonly Thread thread;
@@ -48,10 +51,18 @@ internal sealed class TestUiThread : IDisposable
 
     /// <summary>
     /// Executes the action on this thread and waits for it to complete.
+    /// Throws TimeoutException when it does not complete in time, so that a deadlock fails the test instead of
+    /// hanging the whole run.
     /// </summary>
     public void Invoke(Action action)
     {
-        using var done = new ManualResetEventSlim();
+        if (Thread.CurrentThread == thread)
+        {
+            throw new InvalidOperationException($"Invoke is called on {thread.Name} itself, which would wait for itself forever.");
+        }
+
+        // not disposed when it times out, the stuck action may still set it later
+        var done = new ManualResetEventSlim();
         Exception error = null;
 
         work.Add(() =>
@@ -70,7 +81,12 @@ internal sealed class TestUiThread : IDisposable
             }
         });
 
-        done.Wait();
+        if (!done.Wait(Timeout))
+        {
+            throw new TimeoutException($"The action on {thread.Name} did not complete within {Timeout}.");
+        }
+
+        done.Dispose();
 
         if (error != null)
         {
@@ -89,7 +105,11 @@ internal sealed class TestUiThread : IDisposable
     public void Dispose()
     {
         work.CompleteAdding();
-        thread.Join();
-        work.Dispose();
+
+        // a deadlocked thread is a background thread, so leave it behind instead of hanging the run
+        if (thread.Join(Timeout))
+        {
+            work.Dispose();
+        }
     }
 }

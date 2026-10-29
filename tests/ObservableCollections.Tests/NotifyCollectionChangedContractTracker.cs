@@ -29,13 +29,16 @@ internal sealed class NotifyCollectionChangedContractTracker<T>
         target.CollectionChanged += OnCollectionChanged;
     }
 
-    public List<NotifyCollectionChangedAction> Actions { get; } = new();
+    readonly List<NotifyCollectionChangedAction> actions = new();
+    readonly List<string> violations = new();
 
-    public List<string> Violations { get; } = new();
+    public IReadOnlyList<NotifyCollectionChangedAction> Actions => actions;
+
+    public IReadOnlyList<string> Violations => violations;
 
     void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
     {
-        Actions.Add(e.Action);
+        actions.Add(e.Action);
 
         try
         {
@@ -43,13 +46,13 @@ internal sealed class NotifyCollectionChangedContractTracker<T>
         }
         catch (Exception ex)
         {
-            Violations.Add($"{e.Action}: failed to apply the notification: {ex.GetType().Name}: {ex.Message}");
+            violations.Add($"{e.Action}: failed to apply the notification: {ex.GetType().Name}: {ex.Message}");
             return;
         }
 
         if (!shadow.SequenceEqual(target))
         {
-            Violations.Add($"{e.Action}: the content reconstructed from the notifications [{Join(shadow)}] does not match the actual content [{Join(target)}]");
+            violations.Add($"{e.Action}: the content reconstructed from the notifications [{Join(shadow)}] does not match the actual content [{Join(target)}]");
         }
     }
 

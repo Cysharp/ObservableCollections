@@ -37,6 +37,12 @@ internal sealed class QueuedSynchronizationContext : SynchronizationContext
         d(state);
     }
 
+    // the base implementation returns a plain SynchronizationContext, which would post to the thread pool
+    public override SynchronizationContext CreateCopy()
+    {
+        return new QueuedSynchronizationContext(queue, renewPerOperation);
+    }
+
     public int PendingCount => queue.Count;
 
     /// <summary>
