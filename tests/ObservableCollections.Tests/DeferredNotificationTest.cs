@@ -564,9 +564,11 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// Even when a subscriber throws an exception, notifications that have not been raised yet must not be dropped.
     /// A change on the UI thread while changes from another thread are queued raises the older notifications
-    /// within the same call, so an exception there would leave the subsequent notifications unraised.
+    /// ahead, within the same call. Verifies that an exception thrown by a subscriber of such an older notification
+    /// drops neither that notification nor the change on the UI thread, that it does not surface at the
+    /// unrelated writer, and that it is thrown by the own callback of the older notification instead, where it
+    /// would have been thrown without being raised ahead.
     /// </summary>
     [Fact]
     public void SubscriberExceptionDoesNotDropRemainingNotifications()
@@ -608,23 +610,11 @@ public class DeferredNotificationTest
 
             ui.PendingCount.Should().Be(1);
 
-            Exception error = null;
+            // The UI thread, so raised synchronously. The queued Reset is raised ahead here, and its handler throws,
+            // but the exception must not surface at this unrelated Add.
+            ui.Invoke(() => list.Add(2));
 
-            ui.Invoke(() =>
-            {
-                try
-                {
-                    list.Add(2); // The UI thread, so raised synchronously. The queued Reset is also raised here
-                }
-                catch (Exception ex)
-                {
-                    error = ex;
-                }
-            });
-
-            // The exception thrown by the Reset handler surfaces at the caller of the unrelated Add.
             thrownCount.Should().Be(1);
-            error.Should().BeOfType<InvalidOperationException>();
 
             // Neither the notification nor the application of the Add may be lost.
             tracker.Actions.Should().Equal(new[]
@@ -636,9 +626,87 @@ public class DeferredNotificationTest
             tracker.Violations.Should().BeEmpty();
             notify.Should().Equal(new[] { "$2" });
 
-            ui.Pump(); // No notification is left behind
+            // The own callback of the Reset throws the exception of its handler, and raises nothing again.
+            ui.Invoking(x => x.Pump()).Should().Throw<InvalidOperationException>()
+                .WithInnerException<InvalidOperationException>().WithMessage("subscriber");
 
+            thrownCount.Should().Be(1);
             tracker.Actions.Should().HaveCount(2);
+            ui.PendingCount.Should().Be(0);
+        }
+        finally
+        {
+            notify.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Without range notifications, a range change is applied and raised element by element.
+    /// Verifies that an exception thrown by a subscriber of an older notification, which the first element raises
+    /// ahead, does not interrupt the range change, so that every element reaches the view and its subscribers.
+    /// If it were thrown there, the remaining elements would be missing from the view for good.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SubscriberExceptionDoesNotInterruptRangeChange(bool viaNonFilteredList)
+    {
+        using var ui = new TestUiThread("ui");
+
+        var list = new ObservableList<int>();
+        list.Add(1);
+
+        using var view = list.CreateView(x => $"${x}");
+
+        NotifyCollectionChangedSynchronizedViewList<string> notify = null!;
+        NotifyCollectionChangedContractTracker<string> tracker = null!;
+
+        // Mimics a handler that does not expect NewItems to be null on Reset.
+        static void Thrower(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                throw new InvalidOperationException("subscriber");
+            }
+        }
+
+        ui.Invoke(() =>
+        {
+            var dispatcher = new SynchronizationContextCollectionEventDispatcher(ui.Context);
+            notify = viaNonFilteredList
+                ? list.ToNotifyCollectionChanged(x => $"${x}", dispatcher)
+                : view.ToNotifyCollectionChanged(dispatcher);
+
+            tracker = new NotifyCollectionChangedContractTracker<string>(notify);
+            notify.CollectionChanged += Thrower;
+        });
+
+        try
+        {
+            Task.Run(() => list.Clear()).Wait(); // Another thread, so the Reset is queued
+
+            ui.PendingCount.Should().Be(1);
+
+            ui.Invoke(() => list.AddRange(new[] { 2, 3 }));
+
+            tracker.Actions.Should().Equal(new[]
+            {
+                NotifyCollectionChangedAction.Reset,
+                NotifyCollectionChangedAction.Add,
+                NotifyCollectionChangedAction.Add,
+            });
+
+            tracker.Violations.Should().BeEmpty();
+            notify.Should().Equal(new[] { "$2", "$3" });
+
+            ui.Invoking(x => x.Pump()).Should().Throw<InvalidOperationException>()
+                .WithInnerException<InvalidOperationException>().WithMessage("subscriber");
+
+            // The view keeps tracking the source after that.
+            ui.Invoke(() => list.RemoveAt(1));
+
+            tracker.Violations.Should().BeEmpty();
+            notify.Should().Equal(new[] { "$2" });
         }
         finally
         {

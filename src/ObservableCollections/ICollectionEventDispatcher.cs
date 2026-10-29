@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 
 namespace ObservableCollections
@@ -103,6 +104,37 @@ namespace ObservableCollections
 
         /// <summary>Set when the event is enqueued into DeferredViewList, to tell whether it is still pending.</summary>
         internal long DeferredSequence { get; set; }
+
+        // an exception thrown while a newer event raised this one ahead of its own callback.
+        // both are accessed inside the gate of the collection.
+        ExceptionDispatchInfo? catchUpException;
+        bool isOwnCallbackCompleted;
+
+        /// <summary>
+        /// Keeps the exception that a subscriber threw while a newer event raised this one, so that the own
+        /// callback of this event rethrows it, as it would have thrown without being raised ahead.
+        /// Returns false when the own callback has completed already, then the caller must throw it.
+        /// </summary>
+        internal bool TryDeferCatchUpException(Exception exception)
+        {
+            if (isOwnCallbackCompleted) return false;
+
+            catchUpException = ExceptionDispatchInfo.Capture(exception);
+            return true;
+        }
+
+        /// <summary>
+        /// Called by the own callback of this event when a newer event has raised it already.
+        /// Returns the exception to rethrow, if any.
+        /// </summary>
+        internal ExceptionDispatchInfo? CompleteOwnCallback()
+        {
+            isOwnCallbackCompleted = true;
+
+            var exception = catchUpException;
+            catchUpException = null;
+            return exception;
+        }
 
         public void Invoke()
         {

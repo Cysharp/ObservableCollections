@@ -374,10 +374,22 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
         while (true)
         {
             CollectionEventDispatcherEventArgs applied;
+            ExceptionDispatchInfo? catchUpException = null;
             lock (gate)
             {
                 // apply the change to the visible list at the same time as raising the notification
-                if (!deferred.TryApplyNext(e, out applied)) break; // already applied
+                if (!deferred.TryApplyNext(e, out applied))
+                {
+                    // a newer event has applied and raised e already
+                    catchUpException = e.CompleteOwnCallback();
+                }
+            }
+
+            if (applied == null)
+            {
+                // this is the own callback of e, so throw here what its subscriber threw while it was raised ahead
+                catchUpException?.Throw();
+                return;
             }
 
             try
@@ -388,8 +400,18 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             catch (Exception ex)
             {
                 // a subscriber must not stop the changes up to e from being applied and raised.
-                // newer changes are left to their own callbacks, which the dispatcher runs in order
-                (exceptions ??= new()).Add(ex);
+                // an exception of an older event is left to its own callback, the caller of e may be a writer
+                // in the middle of a change, which must not be interrupted by an unrelated subscriber.
+                bool deferredToOwnCallback;
+                lock (gate)
+                {
+                    deferredToOwnCallback = !ReferenceEquals(applied, e) && applied.TryDeferCatchUpException(ex);
+                }
+
+                if (!deferredToOwnCallback)
+                {
+                    (exceptions ??= new()).Add(ex);
+                }
             }
 
             if (ReferenceEquals(applied, e)) break;
@@ -1083,10 +1105,22 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
         while (true)
         {
             CollectionEventDispatcherEventArgs applied;
+            ExceptionDispatchInfo? catchUpException = null;
             lock (gate)
             {
                 // apply the change to the visible list at the same time as raising the notification
-                if (!deferred.TryApplyNext(e, out applied)) break; // already applied
+                if (!deferred.TryApplyNext(e, out applied))
+                {
+                    // a newer event has applied and raised e already
+                    catchUpException = e.CompleteOwnCallback();
+                }
+            }
+
+            if (applied == null)
+            {
+                // this is the own callback of e, so throw here what its subscriber threw while it was raised ahead
+                catchUpException?.Throw();
+                return;
             }
 
             try
@@ -1097,8 +1131,18 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             catch (Exception ex)
             {
                 // a subscriber must not stop the changes up to e from being applied and raised.
-                // newer changes are left to their own callbacks, which the dispatcher runs in order
-                (exceptions ??= new()).Add(ex);
+                // an exception of an older event is left to its own callback, the caller of e may be a writer
+                // in the middle of a change, which must not be interrupted by an unrelated subscriber.
+                bool deferredToOwnCallback;
+                lock (gate)
+                {
+                    deferredToOwnCallback = !ReferenceEquals(applied, e) && applied.TryDeferCatchUpException(ex);
+                }
+
+                if (!deferredToOwnCallback)
+                {
+                    (exceptions ??= new()).Add(ex);
+                }
             }
 
             if (ReferenceEquals(applied, e)) break;
