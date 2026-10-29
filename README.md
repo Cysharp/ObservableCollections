@@ -373,6 +373,8 @@ There is one more limitation on `ToNotifyCollectionChangedSlim()`. Because it sh
 
 Views and ToNotifyCollectionChanged are internally connected by events, so they need to be `Dispose` to release those connections.
 
+When `ToNotifyCollectionChanged` is given an `ICollectionEventDispatcher`, the view keeps each change until the dispatcher raises its notification. The dispatcher must eventually raise every notification that is posted to it. If it stops, for example because the window that owns the UI thread has been closed and its dispatcher has shut down, the view keeps every later change of the source for as long as it is alive. Dispose the view before its dispatcher stops.
+
 Standard Views are readonly. If you want to reflect the results of binding back to the original collection, use `CreateWritableView` to generate an `IWritableSynchronizedView`, and then use `ToWritableNotifyCollectionChanged` to create an `INotifyCollectionChanged` collection from it.
 
 ```csharp

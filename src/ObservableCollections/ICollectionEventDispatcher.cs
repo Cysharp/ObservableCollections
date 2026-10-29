@@ -6,8 +6,24 @@ using System.Threading;
 
 namespace ObservableCollections
 {
+    /// <summary>
+    /// Decides where and when the change notifications of a view are raised.
+    /// </summary>
+    /// <remarks>
+    /// A view that is given a dispatcher defers its visible content together with the notifications: a change becomes
+    /// visible when its event is invoked, so that a subscriber always sees the content that matches the notification.
+    /// </remarks>
     public interface ICollectionEventDispatcher
     {
+        /// <summary>
+        /// Invokes <paramref name="ev"/>, either synchronously or later on another thread.
+        /// </summary>
+        /// <remarks>
+        /// Every posted event must eventually be invoked exactly once. Until then, the view keeps the change and its
+        /// visible content lags behind the source. An event that is never invoked, for example because the dispatcher
+        /// has been shut down, is kept for as long as the view is alive, and so are all the changes after it. Dispose
+        /// the view before its dispatcher stops.
+        /// </remarks>
         void Post(CollectionEventDispatcherEventArgs ev);
     }
 
