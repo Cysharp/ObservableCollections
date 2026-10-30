@@ -341,7 +341,7 @@ protected override void OnClosed(EventArgs e)
 }
 ```
 
-`SynchronizationContextCollectionEventDispatcher.Current` is the default implementation of `ICollectionEventDispatcher`; it dispatches the notifications to the UI thread through `SynchronizationContext.Current`. You can implement `ICollectionEventDispatcher` yourself to use another dispatcher object, for example the WPF `Dispatcher`:
+`SynchronizationContextCollectionEventDispatcher` is the default implementation of `ICollectionEventDispatcher`, and its `Current` dispatches the notifications to the UI thread through `SynchronizationContext.Current`. You can implement `ICollectionEventDispatcher` yourself to use another dispatcher object, for example the WPF `Dispatcher`:
 
 ```csharp
 public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDispatcher
@@ -365,7 +365,7 @@ public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDi
 }
 ```
 
-`SynchronizationContextCollectionEventDispatcher` notifies synchronously when the change is made on the thread that the context dispatches to, and posts the notification otherwise. It assumes that the context runs every posted callback on one dedicated thread, as the contexts of WPF, WinForms, WinUI, Avalonia, MAUI and Unity do. A context that runs callbacks on pool threads, such as the one of Blazor Server, does not satisfy this, so implement `ICollectionEventDispatcher` with the dispatcher of that framework instead, as above. The thread is known only when the dispatcher is created on that thread, so create it on the UI thread. Otherwise, a change made on the UI thread may also be posted and become visible a little later.
+`SynchronizationContextCollectionEventDispatcher` notifies synchronously when the change is made on the thread that the context dispatches to, and posts the notification otherwise. It assumes that the context runs every posted callback on one dedicated thread, and that no other thread has it as its `SynchronizationContext.Current`, as the contexts of WPF, WinForms, WinUI, Avalonia, MAUI and Unity do. A context that runs callbacks on pool threads, such as the one of Blazor Server, does not satisfy this, so implement `ICollectionEventDispatcher` with the dispatcher of that framework instead, as above. The thread is known only when the dispatcher is created on that thread, so create it on the UI thread. Otherwise, a change made on the UI thread may also be posted and become visible a little later.
 
 `SynchronizationContextCollectionEventDispatcher.Current` is created only once for the whole process, from the `SynchronizationContext.Current` of the thread that gets it first, so get it first on the UI thread. If that thread has no `SynchronizationContext`, it throws `InvalidOperationException`, and keeps throwing it on every later get, on any thread. If the application has more than one UI thread, `Current` serves only the first one; for each of the others, create a `new SynchronizationContextCollectionEventDispatcher(SynchronizationContext.Current!)` on that thread.
 
@@ -375,7 +375,7 @@ There is one more limitation on `ToNotifyCollectionChangedSlim()`. Because it sh
 
 Views and ToNotifyCollectionChanged are internally connected by events, so they need to be `Dispose` to release those connections.
 
-When `ToNotifyCollectionChanged` is given an `ICollectionEventDispatcher`, the view keeps each change until the dispatcher raises its notification. The dispatcher must eventually raise every notification that is posted to it. If it stops, for example because the window that owns the UI thread has been closed and its dispatcher has shut down, the view keeps every later change of the source for as long as it is alive. Dispose the view before its dispatcher stops.
+When `ToNotifyCollectionChanged` is given an `ICollectionEventDispatcher`, the view keeps each change until the dispatcher raises its notification. The dispatcher must eventually raise every notification that is posted to it, and raise each of them only once. If it stops, for example because the window that owns the UI thread has been closed and its dispatcher has shut down, the view keeps every later change of the source for as long as it is alive. Dispose the view before its dispatcher stops.
 
 Standard Views are readonly. If you want to reflect the results of binding back to the original collection, use `CreateWritableView` to generate an `IWritableSynchronizedView`, and then use `ToWritableNotifyCollectionChanged` to create an `INotifyCollectionChanged` collection from it.
 
