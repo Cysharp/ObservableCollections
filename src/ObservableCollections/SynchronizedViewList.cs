@@ -27,7 +27,8 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
 
     // the lock of the source, held from translating an index to writing the source, so that no other writer can move
     // the elements in between. take it before gate, a change of the source takes gate inside it.
-    // a writable view that does not provide it can not be protected, then a private object stands in
+    // when the parent does not provide it, the translation is not protected against other writers, and a private
+    // object stands in so that the code path stays the same
     readonly object sourceSyncRoot;
 
     NotifyCollectionChangedEventHandler? collectionChanged;
@@ -413,7 +414,10 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             {
                 // do not hold gate while raising. a subscriber may write the source, which takes the lock of the source
                 // and then gate, so holding gate here would invert the lock order. when the dispatcher raises
-                // synchronously, the caller already holds the lock of the source before gate, so the order is kept.
+                // synchronously, gate is held already, and the order is kept only when the caller has taken the lock of
+                // the source first, as a change of the source and a write of this list do. a filter change takes only the
+                // lock of the parent, so a subscriber that touches the source from it can deadlock with another thread
+                // that writes the source.
                 RaiseChangedEventCore(applied);
             }
             catch (Exception ex)
@@ -794,7 +798,8 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
 
     // the lock of the source, held from translating an index to writing the source, so that no other writer can move
     // the elements in between. take it before gate, a change of the source takes gate inside it.
-    // a writable view that does not provide it can not be protected, then a private object stands in
+    // when the parent does not provide it, the translation is not protected against other writers, and a private
+    // object stands in so that the code path stays the same
     readonly object sourceSyncRoot;
 
     NotifyCollectionChangedEventHandler? collectionChanged;
@@ -1173,7 +1178,10 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             {
                 // do not hold gate while raising. a subscriber may write the source, which takes the lock of the source
                 // and then gate, so holding gate here would invert the lock order. when the dispatcher raises
-                // synchronously, the caller already holds the lock of the source before gate, so the order is kept.
+                // synchronously, gate is held already, and the order is kept only when the caller has taken the lock of
+                // the source first, as a change of the source and a write of this list do. a filter change takes only the
+                // lock of the parent, so a subscriber that touches the source from it can deadlock with another thread
+                // that writes the source.
                 RaiseChangedEventCore(applied);
             }
             catch (Exception ex)
