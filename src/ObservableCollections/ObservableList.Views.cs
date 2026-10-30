@@ -364,9 +364,9 @@ namespace ObservableCollections
 
             public object SourceSyncRoot => source.SyncRoot;
 
-            // the writes to the source do not take SyncRoot. the source raises the change inside its own lock, and
-            // SourceCollectionChanged takes SyncRoot inside it, so taking SyncRoot first would invert the lock order
-            // and deadlock with another thread that writes the source.
+            // the writes to the source do not take the SyncRoot of this view. the source raises the change inside its own
+            // lock, and SourceCollectionChanged takes SyncRoot inside it, so taking SyncRoot first would invert the lock
+            // order and deadlock with another thread that writes the source.
 
             public void SetToSourceCollection(int index, T value)
             {

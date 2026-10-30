@@ -599,7 +599,7 @@ public class DeferredNotificationTest
 
         var thrownCount = 0;
 
-        // Mimics a handler that does not expect NewItems to be null on Reset.
+        // Stands in for a handler that fails on a Reset, such as one that does not expect NewItems to be null.
         void Thrower(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -675,7 +675,7 @@ public class DeferredNotificationTest
         NotifyCollectionChangedSynchronizedViewList<string> notify = null!;
         NotifyCollectionChangedContractTracker<string> tracker = null!;
 
-        // Mimics a handler that does not expect NewItems to be null on Reset.
+        // Stands in for a handler that fails on a Reset, such as one that does not expect NewItems to be null.
         static void Thrower(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.Action == NotifyCollectionChangedAction.Reset)

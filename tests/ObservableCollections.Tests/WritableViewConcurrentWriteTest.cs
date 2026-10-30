@@ -89,8 +89,9 @@ public class WritableViewConcurrentWriteTest
     }
 
     /// <summary>
-    /// Verifies that the setter replaces the element the caller saw at the index, even when another thread inserts
-    /// into the source between the index translation and the source write.
+    /// Verifies that the setter replaces the element the caller saw at the index, even when another thread tries to
+    /// insert into the source between the index translation and the source write; that insert has to wait until the
+    /// write completes.
     /// Without holding the source lock in between, the stale source index would replace the neighbor instead.
     /// </summary>
     [Theory]
@@ -126,7 +127,8 @@ public class WritableViewConcurrentWriteTest
 
     /// <summary>
     /// Verifies that, when the converter rejects the source write, the setter changes the view of the element the
-    /// caller saw at the index and nothing else, even when another thread inserts into the source in between.
+    /// caller saw at the index and nothing else, even when another thread tries to insert into the source in between;
+    /// that insert has to wait until the write completes.
     /// The view of the element is changed in the parent and in the view list using the indexes translated before,
     /// so a stale index would change the view of the neighbor and notify a Replace of the wrong element.
     /// </summary>
@@ -164,7 +166,8 @@ public class WritableViewConcurrentWriteTest
 
     /// <summary>
     /// Verifies that Insert inserts right before the element the caller saw at the index, even when another thread
-    /// inserts into the source between the index translation and the source write.
+    /// tries to insert into the source between the index translation and the source write; that insert has to wait
+    /// until the write completes.
     /// </summary>
     [Theory]
     [InlineData(false)]

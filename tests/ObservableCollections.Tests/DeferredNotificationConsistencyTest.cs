@@ -90,9 +90,7 @@ public class DeferredNotificationConsistencyTest
         var context = new QueuedSynchronizationContext();
         var previous = SynchronizationContext.Current;
 
-        // The dispatcher learns its bound thread in the constructor, by comparing SynchronizationContext.Current
-        // with the given context, so install the context before creating it. Otherwise even the changes on this
-        // thread would be posted.
+        // Install the context, so that the changes on this thread are made within it and raised synchronously.
         SynchronizationContext.SetSynchronizationContext(context);
         try
         {
