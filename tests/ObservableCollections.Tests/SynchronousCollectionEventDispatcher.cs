@@ -1,4 +1,4 @@
-namespace ObservableCollections.Tests;
+﻿namespace ObservableCollections.Tests;
 
 /// <summary>
 /// A dispatcher that raises every notification immediately, like a UI thread dispatcher on its own thread.
