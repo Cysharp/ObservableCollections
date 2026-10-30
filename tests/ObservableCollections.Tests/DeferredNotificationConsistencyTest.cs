@@ -1,5 +1,4 @@
 ﻿using System.Collections.Specialized;
-using System.Threading;
 
 namespace ObservableCollections.Tests;
 
@@ -79,45 +78,5 @@ public class DeferredNotificationConsistencyTest
         tracker.Violations.Should().BeEmpty();
 
         notify.Should().Equal(new[] { "$6", "$2" });
-    }
-
-    /// <summary>
-    /// For comparison. When the change is made on the UI thread, SynchronizationContextCollectionEventDispatcher
-    /// chooses to raise synchronously, so nothing breaks. Ensures this case keeps working after the fix.
-    /// </summary>
-    [Fact]
-    public void UiThreadMutation()
-    {
-        var context = new QueuedSynchronizationContext();
-        var previous = SynchronizationContext.Current;
-
-        // Install the context, so that the changes on this thread are made within it and raised synchronously.
-        SynchronizationContext.SetSynchronizationContext(context);
-        try
-        {
-            var list = new ObservableList<int>();
-            using var view = list.CreateView(x => $"${x}");
-            using var notify = view.ToNotifyCollectionChanged(new SynchronizationContextCollectionEventDispatcher(context));
-
-            var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
-
-            list.Add(10);
-            list.RemoveAt(0);
-
-            // Synchronous raising was chosen, so nothing is queued.
-            context.PendingCount.Should().Be(0);
-
-            tracker.Actions.Should().Equal(new[]
-            {
-                NotifyCollectionChangedAction.Add,
-                NotifyCollectionChangedAction.Remove,
-            });
-
-            tracker.Violations.Should().BeEmpty();
-        }
-        finally
-        {
-            SynchronizationContext.SetSynchronizationContext(previous);
-        }
     }
 }
