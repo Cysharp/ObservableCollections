@@ -58,6 +58,16 @@ namespace ObservableCollections
             return new SynchronizationContextCollectionEventDispatcher(current);
         });
 
+        /// <summary>
+        /// The dispatcher for the <see cref="SynchronizationContext.Current"/> of the thread that gets this property
+        /// first.
+        /// </summary>
+        /// <remarks>
+        /// It is created only once for the whole process, so get it first on the UI thread. When the thread that gets
+        /// it first has no <see cref="SynchronizationContext"/>, it throws <see cref="InvalidOperationException"/>,
+        /// and keeps throwing it on every later get, on any thread. When the application has more than one UI thread,
+        /// it serves only the first one; for each of the others, create a dispatcher on that thread.
+        /// </remarks>
         public static ICollectionEventDispatcher Current => current.Value;
 
         readonly SynchronizationContext synchronizationContext;

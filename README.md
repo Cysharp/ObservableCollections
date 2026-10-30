@@ -341,7 +341,7 @@ protected override void OnClosed(EventArgs e)
 }
 ```
 
-`SynchronizationContextCollectionEventDispatcher.Current` is default implementation of `IColllectionEventDispatcher`, it is used `SynchronizationContext.Current` for dispatche ui thread. You can create custom `ICollectionEventDispatcher` to use custom dispatcher object. For example use WPF Dispatcher:
+`SynchronizationContextCollectionEventDispatcher.Current` is the default implementation of `ICollectionEventDispatcher`; it dispatches the notifications to the UI thread through `SynchronizationContext.Current`. You can implement `ICollectionEventDispatcher` yourself to use another dispatcher object, for example the WPF `Dispatcher`:
 
 ```csharp
 public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDispatcher
@@ -366,6 +366,8 @@ public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDi
 ```
 
 `SynchronizationContextCollectionEventDispatcher` notifies synchronously when the change is made on the thread that the context dispatches to, and posts the notification otherwise. It assumes that the context runs every posted callback on one dedicated thread, as the contexts of WPF, WinForms, WinUI, Avalonia, MAUI and Unity do. A context that runs callbacks on pool threads, such as the one of Blazor Server, does not satisfy this, so implement `ICollectionEventDispatcher` with the dispatcher of that framework instead, as above. The thread is known only when the dispatcher is created on that thread, so create it on the UI thread. Otherwise, a change made on the UI thread may also be posted and become visible a little later.
+
+`SynchronizationContextCollectionEventDispatcher.Current` is created only once for the whole process, from the `SynchronizationContext.Current` of the thread that gets it first, so get it first on the UI thread. If that thread has no `SynchronizationContext`, it throws `InvalidOperationException`, and keeps throwing it on every later get, on any thread. If the application has more than one UI thread, `Current` serves only the first one; for each of the others, create a `new SynchronizationContextCollectionEventDispatcher(SynchronizationContext.Current!)` on that thread.
 
 `ToNotifyCollectionChanged()` can also be called without going through a View. In this case, it's guaranteed that no filters will be applied, making it faster. If you want to apply filters, please generate a View before calling it. Additionally, `ObservableList` has a variation called `ToNotifyCollectionChangedSlim()`. This option doesn't generate a list for the View and shares the actual data, making it the fastest and most memory-efficient option. However, range operations such as `AddRange`, `InsertRange` and `RemoveRange` are not supported by WPF (or Avalonia), so they will throw runtime exceptions.
 
