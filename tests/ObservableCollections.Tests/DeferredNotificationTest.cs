@@ -64,9 +64,9 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// Verifies that changes made on a worker thread to a view without a filter (NonFilteredSynchronizedViewList)
-    /// are deferred, and that whenever a notification is raised, the visible content matches the content rebuilt
-    /// from the notifications so far.
+    /// Verifies that changes to a view without a filter (NonFilteredSynchronizedViewList) are deferred when the
+    /// dispatcher posts them, as it does for a change on a worker thread, and that whenever a notification is raised,
+    /// the visible content matches the content rebuilt from the notifications so far.
     /// </summary>
     [Fact]
     public void NonFiltered_WorkerThreadMutation()
@@ -1251,8 +1251,9 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// A dispatcher that only records the posted events, so that a test can invoke them in any order, as a nested
-    /// message loop in a subscriber might.
+    /// A dispatcher that only records the posted events, so that a test can invoke them in any order. With a UI thread
+    /// dispatcher, the callbacks run out of order when a change on the UI thread is raised synchronously ahead of the
+    /// queued ones, and a nested message loop in a subscriber runs the queued ones meanwhile.
     /// </summary>
     sealed class RecordingDispatcher : ICollectionEventDispatcher
     {
@@ -1315,9 +1316,12 @@ public class DeferredNotificationTest
 
     /// <summary>
     /// Verifies that the exception of an older event is not lost when, while it is raised ahead, a nested message
-    /// loop in its subscriber runs the own callback of the older event and a newer callback that applies the event
-    /// whose callback raised it ahead. That callback then finds its own event applied already, and still throws the
+    /// loop in its subscriber runs the own callback of the older event, and a newer event applies the event whose
+    /// callback raised it ahead. That callback then finds its own event applied already, and still throws the
     /// exception of the older event, after the one deferred to its own event if there is one.
+    /// With a UI thread dispatcher, the callback that raises ahead is the synchronous one of a change on the UI thread,
+    /// which holds the lock of the source meanwhile, so no other thread can make a change. The newer event can only
+    /// come from another change that the UI thread makes in the nested loop, and is raised synchronously within it.
     /// </summary>
     [Theory]
     [InlineData(false, false)]
@@ -1343,7 +1347,8 @@ public class DeferredNotificationTest
             switch ((string)e.NewItems![0]!)
             {
                 case "$1":
-                    // Stands in for a nested message loop, which runs the callbacks posted meanwhile on this thread.
+                    // Stands in for a nested message loop, which runs the own callback of the first event, and for a
+                    // change that the UI thread makes in that loop, which raises the third event synchronously.
                     first.Invoke();
                     third.Invoke();
                     throw new InvalidOperationException("first");

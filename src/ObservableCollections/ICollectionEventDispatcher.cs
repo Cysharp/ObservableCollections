@@ -111,7 +111,8 @@ namespace ObservableCollections
         }
 
         /// <summary>
-        /// Called by the own callback of this event when a newer event has raised it already.
+        /// Called by the own callback of this event when a newer event has applied it already, and raises or has raised
+        /// it. When the newer event is still raising it, an exception thrown after this call can not be deferred anymore.
         /// Returns the exception to rethrow, if any.
         /// </summary>
         internal ExceptionDispatchInfo? CompleteOwnCallback()
