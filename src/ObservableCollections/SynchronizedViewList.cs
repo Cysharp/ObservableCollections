@@ -386,16 +386,27 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
                 // apply the change to the visible list at the same time as raising the notification
                 if (!deferred.TryApplyNext(e, out applied))
                 {
-                    // a newer event has applied and raised e already
+                    // a newer event has applied e already, and raises or has raised it
                     catchUpException = e.CompleteOwnCallback();
                 }
             }
 
             if (applied == null)
             {
-                // this is the own callback of e, so throw here what its subscriber threw while it was raised ahead
-                catchUpException?.Throw();
-                return;
+                // this is the own callback of e, so throw here what its subscriber threw while it was raised ahead,
+                // after what the subscribers of the older events raised in this callback threw
+                if (exceptions == null)
+                {
+                    catchUpException?.Throw();
+                    return;
+                }
+
+                if (catchUpException != null)
+                {
+                    exceptions.Add(catchUpException.SourceException);
+                }
+
+                break;
             }
 
             try
@@ -1135,16 +1146,27 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
                 // apply the change to the visible list at the same time as raising the notification
                 if (!deferred.TryApplyNext(e, out applied))
                 {
-                    // a newer event has applied and raised e already
+                    // a newer event has applied e already, and raises or has raised it
                     catchUpException = e.CompleteOwnCallback();
                 }
             }
 
             if (applied == null)
             {
-                // this is the own callback of e, so throw here what its subscriber threw while it was raised ahead
-                catchUpException?.Throw();
-                return;
+                // this is the own callback of e, so throw here what its subscriber threw while it was raised ahead,
+                // after what the subscribers of the older events raised in this callback threw
+                if (exceptions == null)
+                {
+                    catchUpException?.Throw();
+                    return;
+                }
+
+                if (catchUpException != null)
+                {
+                    exceptions.Add(catchUpException.SourceException);
+                }
+
+                break;
             }
 
             try

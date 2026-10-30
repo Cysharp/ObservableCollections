@@ -1359,4 +1359,68 @@ public class DeferredNotificationTest
 
         notify.Should().Equal(new[] { "$1", "$2" });
     }
+
+    /// <summary>
+    /// Verifies that the exception of an older event is not lost when, while it is raised ahead, a nested message
+    /// loop in its subscriber runs the own callback of the older event and a newer callback that applies the event
+    /// whose callback raised it ahead. That callback then finds its own event applied already, and still throws the
+    /// exception of the older event, after the one deferred to its own event if there is one.
+    /// </summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void OlderExceptionIsNotLostWhenNestedLoopAppliesOwnEvent(bool viaNonFilteredList, bool middleThrows)
+    {
+        var dispatcher = new RecordingDispatcher();
+
+        var list = new ObservableList<int>();
+
+        using var view = list.CreateView(x => $"${x}");
+        using var notify = viaNonFilteredList
+            ? list.ToNotifyCollectionChanged(x => $"${x}", dispatcher)
+            : view.ToNotifyCollectionChanged(dispatcher);
+
+        CollectionEventDispatcherEventArgs first = null;
+        CollectionEventDispatcherEventArgs third = null;
+
+        notify.CollectionChanged += (_, e) =>
+        {
+            switch ((string)e.NewItems![0]!)
+            {
+                case "$1":
+                    // Stands in for a nested message loop, which runs the callbacks posted meanwhile on this thread.
+                    first.Invoke();
+                    third.Invoke();
+                    throw new InvalidOperationException("first");
+
+                case "$2" when middleThrows:
+                    throw new InvalidOperationException("second");
+            }
+        };
+
+        list.Add(1);
+        list.Add(2);
+        list.Add(3);
+
+        first = dispatcher.Posted[0];
+        var second = dispatcher.Posted[1];
+        third = dispatcher.Posted[2];
+
+        var error = Record.Exception(() => second.Invoke());
+
+        if (middleThrows)
+        {
+            error.Should().BeOfType<AggregateException>()
+                .Which.InnerExceptions.Select(x => x.Message).Should().Equal(new[] { "first", "second" });
+        }
+        else
+        {
+            error.Should().BeOfType<InvalidOperationException>()
+                .Which.Message.Should().Be("first");
+        }
+
+        notify.Should().Equal(new[] { "$1", "$2", "$3" });
+    }
 }
