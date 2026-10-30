@@ -384,7 +384,6 @@ internal sealed class FiltableSynchronizedViewList<T, TView> : NotifyCollectionC
             ExceptionDispatchInfo? catchUpException = null;
             lock (gate)
             {
-                // apply the change to the visible list at the same time as raising the notification
                 if (!deferred.TryApplyNext(e, out applied))
                 {
                     // a newer event has applied e already, and raises or has raised it
@@ -1148,7 +1147,6 @@ internal sealed class NonFilteredSynchronizedViewList<T, TView> : NotifyCollecti
             ExceptionDispatchInfo? catchUpException = null;
             lock (gate)
             {
-                // apply the change to the visible list at the same time as raising the notification
                 if (!deferred.TryApplyNext(e, out applied))
                 {
                     // a newer event has applied e already, and raises or has raised it

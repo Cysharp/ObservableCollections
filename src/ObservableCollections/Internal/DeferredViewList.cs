@@ -5,15 +5,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ObservableCollections.Internal
 {
-    /// <summary>The reason why an index of the published list can not be translated.</summary>
     internal enum UntrackableReason
     {
         None,
-
-        /// <summary>A pending change has removed the element itself.</summary>
         Removed,
-
-        /// <summary>A pending reset has replaced the whole content, so no index can be translated.</summary>
         Reset,
     }
 
@@ -25,7 +20,6 @@ namespace ObservableCollections.Internal
     /// </summary>
     internal sealed class DeferredViewList<TView>
     {
-        /// <summary>Returned by ToWriterIndex when the index can not be tracked.</summary>
         public const int UntrackableIndex = -1;
 
         // a RefList, not a List, so that a Replace does not break an enumeration of the published content,
@@ -91,10 +85,7 @@ namespace ObservableCollections.Internal
             pending.Enqueue(new PendingChange(ev, resetSnapshot));
         }
 
-        /// <summary>
-        /// Applies the change without raising a notification.
-        /// Only allowed when there is no subscriber and no pending change.
-        /// </summary>
+        /// <summary>Only allowed when there is no subscriber and no pending change.</summary>
         public void ApplyWithoutNotification(CollectionEventDispatcherEventArgs ev, TView[]? resetSnapshot)
         {
             Apply(new PendingChange(ev, resetSnapshot));

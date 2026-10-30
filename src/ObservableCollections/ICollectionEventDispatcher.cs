@@ -6,45 +6,11 @@ using System.Threading;
 
 namespace ObservableCollections
 {
-    /// <summary>
-    /// Decides where and when the change notifications of a view are raised.
-    /// </summary>
-    /// <remarks>
-    /// A view that is given a dispatcher defers its visible content together with the notifications: a change becomes
-    /// visible when its event is invoked, so that a subscriber always sees the content that matches the notification.
-    /// </remarks>
     public interface ICollectionEventDispatcher
     {
-        /// <summary>
-        /// Invokes <paramref name="ev"/>, either synchronously or later on another thread.
-        /// </summary>
-        /// <remarks>
-        /// Every posted event must eventually be invoked exactly once. Until then, the view keeps the change and its
-        /// visible content lags behind the source. An event that is never invoked, for example because the dispatcher
-        /// has been shut down, is kept for as long as the view is alive, and so are all the changes after it. Dispose
-        /// the view before its dispatcher stops.
-        /// </remarks>
         void Post(CollectionEventDispatcherEventArgs ev);
     }
 
-    /// <summary>
-    /// Raises the events through a <see cref="SynchronizationContext"/>.
-    /// An event is raised synchronously when it occurs within the context, and is posted to the context otherwise.
-    /// </summary>
-    /// <remarks>
-    /// The context must run every posted callback on one dedicated thread, such as a UI thread, and only that thread
-    /// may have it as <see cref="SynchronizationContext.Current"/>. Being on that thread is taken as being within the
-    /// context, as the UI frameworks themselves tell thread access. A context that runs callbacks on pool threads,
-    /// such as the one of Blazor Server, does not satisfy this; an event may then be raised synchronously outside the
-    /// context. For such a context, implement <see cref="ICollectionEventDispatcher"/> with the dispatcher of the
-    /// framework.
-    /// <para>
-    /// The thread is known only when the dispatcher is created within the context. When it is created on another
-    /// thread, only an event that occurs while the very same context instance is current is raised synchronously.
-    /// Some frameworks, WPF for example, install a new context instance for every operation, so create the dispatcher
-    /// on the UI thread to raise the changes made on the UI thread synchronously.
-    /// </para>
-    /// </remarks>
     public class SynchronizationContextCollectionEventDispatcher : ICollectionEventDispatcher
     {
         static readonly Lazy<ICollectionEventDispatcher> current = new(() =>
@@ -58,23 +24,13 @@ namespace ObservableCollections
             return new SynchronizationContextCollectionEventDispatcher(current);
         });
 
-        /// <summary>
-        /// The dispatcher for the <see cref="SynchronizationContext.Current"/> of the thread that gets this property
-        /// first.
-        /// </summary>
-        /// <remarks>
-        /// It is created only once for the whole process, so get it first on the UI thread. When the thread that gets
-        /// it first has no <see cref="SynchronizationContext"/>, it throws <see cref="InvalidOperationException"/>,
-        /// and keeps throwing it on every later get, on any thread. When the application has more than one UI thread,
-        /// it serves only the first one; for each of the others, create a dispatcher on that thread.
-        /// </remarks>
         public static ICollectionEventDispatcher Current => current.Value;
 
         readonly SynchronizationContext synchronizationContext;
         static readonly SendOrPostCallback invokeCallback = InvokeEvent;
 
         // The thread that synchronizationContext dispatches to, or 0 when the dispatcher was created on another thread.
-        // Managed thread IDs are always positive. It relies on the context running on one dedicated thread, see remarks.
+        // Managed thread IDs are always positive. It relies on the context running on one dedicated thread, see README.
         readonly int boundThreadId;
 
         public SynchronizationContextCollectionEventDispatcher(SynchronizationContext synchronizationContext)
