@@ -1,7 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Diagnostics;
-using ObservableCollections;
 
 namespace ObservableCollections.Tests;
 
@@ -67,9 +65,14 @@ public class ToNotifyCollectionChangedTest
     /// This guarantees that doing so on the same thread while the filtered view is being enumerated does not break the enumeration,
     /// that the enumeration observes the replaced value, and that the alternate indexes were actually shifted,
     /// so that a later replacement still reaches the right element.
+    /// The same must hold with a dispatcher, which makes the view enumerate the deferred visible content instead.
+    /// The dispatcher raises the notifications synchronously, so the replacement is applied to that content during
+    /// the enumeration.
     /// </summary>
-    [Fact]
-    public void ToNotifyCollectionChanged_Filter_NonStructuralChangeDuringEnumeration()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ToNotifyCollectionChanged_Filter_NonStructuralChangeDuringEnumeration(bool withDispatcher)
     {
         var list = new ObservableList<int>();
 
@@ -78,7 +81,12 @@ public class ToNotifyCollectionChangedTest
         list.Add(6);
 
         var view = list.CreateView(x => $"${x}");
-        var notify = view.ToNotifyCollectionChanged();
+        var notify = withDispatcher
+            ? view.ToNotifyCollectionChanged(SynchronousCollectionEventDispatcher.Instance)
+            : view.ToNotifyCollectionChanged();
+
+        // a subscriber, as a UI binding would have, so that the notifications are actually raised
+        notify.CollectionChanged += (_, _) => { };
 
         view.AttachFilter((value) => value % 2 == 0);
 
@@ -98,6 +106,38 @@ public class ToNotifyCollectionChangedTest
 
         list[3] = 8; // replaces 6, whose alternate index is now 3
         notify.Should().Equal("$2", "$10", "$8");
+    }
+
+    /// <summary>
+    /// Replacing an element that the filter accepts with a value that it rejects takes the element out of the filtered view.
+    /// The Remove has to carry the old element, which is the one in the view; if it carried the new one, the view would
+    /// not find it and the old element would stay visible.
+    /// </summary>
+    [Fact]
+    public void ToNotifyCollectionChanged_Filter_ReplaceTakesElementOutOfFilter()
+    {
+        var list = new ObservableList<int>();
+
+        list.Add(2);
+        list.Add(4);
+        list.Add(6);
+
+        var view = list.CreateView(x => $"${x}");
+        view.AttachFilter((value) => value % 2 == 0);
+
+        var notify = view.ToNotifyCollectionChanged();
+
+        var events = new List<NotifyCollectionChangedEventArgs>();
+        notify.CollectionChanged += (_, e) => events.Add(e);
+
+        list[0] = 3; // rejected by the filter
+
+        notify.Should().Equal("$4", "$6");
+
+        events.Should().HaveCount(1);
+        events[0].Action.Should().Be(NotifyCollectionChangedAction.Remove);
+        events[0].OldStartingIndex.Should().Be(0);
+        events[0].OldItems![0].Should().Be("$2");
     }
 
     /// <summary>

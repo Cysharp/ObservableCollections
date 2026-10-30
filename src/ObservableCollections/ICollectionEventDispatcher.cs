@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 
 namespace ObservableCollections
@@ -12,7 +13,7 @@ namespace ObservableCollections
 
     public class SynchronizationContextCollectionEventDispatcher : ICollectionEventDispatcher
     {
-        static readonly Lazy<ICollectionEventDispatcher> current = new Lazy<ICollectionEventDispatcher>(() =>
+        static readonly Lazy<ICollectionEventDispatcher> current = new(() =>
         {
             var current = SynchronizationContext.Current;
             if (current == null)
@@ -23,31 +24,43 @@ namespace ObservableCollections
             return new SynchronizationContextCollectionEventDispatcher(current);
         });
 
-        public static readonly ICollectionEventDispatcher Current = current.Value;
+        public static ICollectionEventDispatcher Current => current.Value;
 
         readonly SynchronizationContext synchronizationContext;
-        static readonly SendOrPostCallback callback = SendOrPostCallback;
+        static readonly SendOrPostCallback invokeCallback = InvokeEvent;
+
+        // The thread that synchronizationContext dispatches to, or 0 when the dispatcher was created on another thread.
+        // Managed thread IDs are always positive. It relies on the context running on one dedicated thread, see README.
+        readonly int boundThreadId;
 
         public SynchronizationContextCollectionEventDispatcher(SynchronizationContext synchronizationContext)
         {
             this.synchronizationContext = synchronizationContext;
+
+            if (SynchronizationContext.Current == synchronizationContext)
+            {
+                boundThreadId = Environment.CurrentManagedThreadId;
+            }
         }
 
         public void Post(CollectionEventDispatcherEventArgs ev)
         {
-            if (SynchronizationContext.Current == null)
+            // compare threads, not only instances. WPF installs a new DispatcherSynchronizationContext for every
+            // dispatcher operation, so SynchronizationContext.Current on the bound thread is usually another instance.
+            if (Environment.CurrentManagedThreadId == boundThreadId
+                || SynchronizationContext.Current == synchronizationContext)
             {
-                // non-UI thread, post the event asynchronously
-                synchronizationContext.Post(callback, ev);
+                // on the bound thread, send the event synchronously
+                invokeCallback(ev);
             }
             else
             {
-                // UI thread, send the event synchronously
-                callback(ev);
+                // another thread(it may have its own SynchronizationContext), post the event asynchronously
+                synchronizationContext.Post(invokeCallback, ev);
             }
         }
 
-        static void SendOrPostCallback(object? state)
+        static void InvokeEvent(object? state)
         {
             var ev = (CollectionEventDispatcherEventArgs)state!;
             ev.Invoke();
@@ -75,6 +88,41 @@ namespace ObservableCollections
         public bool IsInvokeCollectionChanged { get; set; }
         public bool IsInvokePropertyChanged { get; set; }
         internal Action<CollectionEventDispatcherEventArgs> Invoker { get; set; } = default!;
+
+        /// <summary>Set when the event is enqueued into DeferredViewList, to tell whether it is still pending.</summary>
+        internal long DeferredSequence { get; set; }
+
+        // an exception thrown while a newer event raised this one ahead of its own callback.
+        // both are accessed inside the gate of the collection.
+        ExceptionDispatchInfo? catchUpException;
+        bool isOwnCallbackCompleted;
+
+        /// <summary>
+        /// Keeps the exception that a subscriber threw while a newer event raised this one, so that the own
+        /// callback of this event rethrows it, as it would have thrown without being raised ahead.
+        /// Returns false when the own callback has completed already, then the caller must throw it.
+        /// </summary>
+        internal bool TryDeferCatchUpException(Exception exception)
+        {
+            if (isOwnCallbackCompleted) return false;
+
+            catchUpException = ExceptionDispatchInfo.Capture(exception);
+            return true;
+        }
+
+        /// <summary>
+        /// Called by the own callback of this event when a newer event has applied it already, and raises or has raised
+        /// it. When the newer event is still raising it, an exception thrown after this call can not be deferred anymore.
+        /// Returns the exception to rethrow, if any.
+        /// </summary>
+        internal ExceptionDispatchInfo? CompleteOwnCallback()
+        {
+            isOwnCallbackCompleted = true;
+
+            var exception = catchUpException;
+            catchUpException = null;
+            return exception;
+        }
 
         public void Invoke()
         {

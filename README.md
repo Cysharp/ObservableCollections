@@ -34,7 +34,7 @@ public interface IObservableCollection<T> : IReadOnlyCollection<T>
     ISynchronizedView<T, TView> CreateView<TView>(Func<T, TView> transform);
 }
 ```
- 
+
 SynchronizedView helps to separate between Model and View (ViewModel). We will use ObservableCollections as the Model and generate SynchronizedView as the View (ViewModel). This architecture can be applied not only to WPF, but also to Blazor, Unity, etc.
 
 ![image](https://user-images.githubusercontent.com/46207/131979264-2463403b-0fba-474b-8f49-277c2abe1b05.png)
@@ -53,8 +53,8 @@ If you want to handle each change event with Rx, you can monitor it with the fol
 Observable<CollectionChangedEvent<T>> IObservableCollection<T>.ObserveChanged()
 Observable<CollectionAddEvent<T>> IObservableCollection<T>.ObserveAdd()
 Observable<CollectionRemoveEvent<T>> IObservableCollection<T>.ObserveRemove()
-Observable<CollectionReplaceEvent<T>> IObservableCollection<T>.ObserveReplace() 
-Observable<CollectionMoveEvent<T>> IObservableCollection<T>.ObserveMove() 
+Observable<CollectionReplaceEvent<T>> IObservableCollection<T>.ObserveReplace()
+Observable<CollectionMoveEvent<T>> IObservableCollection<T>.ObserveMove()
 Observable<CollectionResetEvent<T>> IObservableCollection<T>.ObserveReset()
 Observable<Unit> IObservableCollection<T>.ObserveClear<T>()
 Observable<(int Index, int Count)> IObservableCollection<T>.ObserveReverse<T>()
@@ -210,7 +210,7 @@ foreach (var v in view)
     Console.WriteLine(v);
 }
 
-// also affect Sort Operations    
+// also affect Sort Operations
 list.Sort();
 foreach (var v in view)
 {
@@ -341,25 +341,41 @@ protected override void OnClosed(EventArgs e)
 }
 ```
 
-`SynchronizationContextCollectionEventDispatcher.Current` is default implementation of `IColllectionEventDispatcher`, it is used `SynchronizationContext.Current` for dispatche ui thread. You can create custom `ICollectionEventDispatcher` to use custom dispatcher object. For example use WPF Dispatcher:
+`SynchronizationContextCollectionEventDispatcher` is the default implementation of `ICollectionEventDispatcher`, and its `Current` dispatches the notifications to the UI thread through `SynchronizationContext.Current`. You can implement `ICollectionEventDispatcher` yourself to use another dispatcher object, for example the WPF `Dispatcher`:
 
 ```csharp
 public class WpfDispatcherCollection(Dispatcher dispatcher) : ICollectionEventDispatcher
 {
     public void Post(CollectionEventDispatcherEventArgs ev)
     {
-        dispatcher.InvokeAsync(() =>
+        if (dispatcher.CheckAccess())
         {
-            // notify in dispatcher
+            // already on the dispatcher thread, notify synchronously so that the change is visible right away
             ev.Invoke();
-        });
+        }
+        else
+        {
+            dispatcher.InvokeAsync(() =>
+            {
+                // notify in dispatcher
+                ev.Invoke();
+            });
+        }
     }
 }
 ```
 
+`SynchronizationContextCollectionEventDispatcher` notifies synchronously when the change is made on the thread that the context dispatches to, and posts the notification otherwise. It assumes that the context runs every posted callback on one dedicated thread, and that no other thread has it as its `SynchronizationContext.Current`, as the contexts of WPF, WinForms, WinUI, Avalonia, MAUI and Unity do. A context that runs callbacks on pool threads, such as the one of Blazor Server, does not satisfy this, so implement `ICollectionEventDispatcher` with the dispatcher of that framework instead, as above. The thread is known only when the dispatcher is created on that thread, so create it on the UI thread. Otherwise, a change made on the UI thread may also be posted and become visible a little later.
+
+`SynchronizationContextCollectionEventDispatcher.Current` is created only once for the whole process, from the `SynchronizationContext.Current` of the thread that gets it first, so get it first on the UI thread. If that thread has no `SynchronizationContext`, it throws `InvalidOperationException`, and keeps throwing it on every later get, on any thread. If the application has more than one UI thread, `Current` serves only the first one; for each of the others, create a `new SynchronizationContextCollectionEventDispatcher(SynchronizationContext.Current!)` on that thread.
+
 `ToNotifyCollectionChanged()` can also be called without going through a View. In this case, it's guaranteed that no filters will be applied, making it faster. If you want to apply filters, please generate a View before calling it. Additionally, `ObservableList` has a variation called `ToNotifyCollectionChangedSlim()`. This option doesn't generate a list for the View and shares the actual data, making it the fastest and most memory-efficient option. However, range operations such as `AddRange`, `InsertRange` and `RemoveRange` are not supported by WPF (or Avalonia), so they will throw runtime exceptions.
 
+There is one more limitation on `ToNotifyCollectionChangedSlim()`. Because it shares the actual data instead of holding its own list, its content always reflects the source collection immediately, even while notifications are still queued in the `ICollectionEventDispatcher`. When you mutate the collection from a thread other than the dispatcher thread, a subscriber that receives a notification later may observe a state that has already moved on, so the index in the notification may not match the content. `ToNotifyCollectionChanged()` does not have this problem; it defers the visible content together with the notification. If you combine `ToNotifyCollectionChangedSlim()` with a dispatcher, mutate the collection on the dispatcher thread.
+
 Views and ToNotifyCollectionChanged are internally connected by events, so they need to be `Dispose` to release those connections.
+
+When `ToNotifyCollectionChanged` is given an `ICollectionEventDispatcher`, the view keeps each change until the dispatcher raises its notification. The dispatcher must eventually raise every notification that is posted to it, and raise each of them only once. If it stops, for example because the window that owns the UI thread has been closed and its dispatcher has shut down, the view keeps every later change of the source for as long as it is alive. Dispose the view before its dispatcher stops.
 
 Standard Views are readonly. If you want to reflect the results of binding back to the original collection, use `CreateWritableView` to generate an `IWritableSynchronizedView`, and then use `ToWritableNotifyCollectionChanged` to create an `INotifyCollectionChanged` collection from it.
 
@@ -622,7 +638,7 @@ public static class SynchronizedViewExtensions
     public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, bool> filter)
     {
     }
-    
+
     public static void AttachFilter<T, TView>(this ISynchronizedView<T, TView> source, Func<T, TView, bool> filter)
     {
     }

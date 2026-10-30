@@ -226,9 +226,9 @@ namespace ObservableCollections
             }
             else if (oldMatched)
             {
-                // only-old is remove
+                // only-old is remove. carry the old element, it is the one that leaves the view
                 filteredCount--;
-                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (value, view), oldStartingIndex: oldIndex));
+                ev?.Invoke(new SynchronizedViewChangedEventArgs<T, TView>(NotifyCollectionChangedAction.Remove, true, oldItem: (oldValue, oldView), oldStartingIndex: oldIndex));
             }
             else if (newMatched)
             {

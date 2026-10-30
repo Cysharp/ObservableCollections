@@ -46,7 +46,7 @@ namespace ObservableCollections
             return new NonFilteredSynchronizedViewList<T, TView>(CreateView(transform), isSupportRangeFeature: false, collectionEventDispatcher, converter);
         }
 
-        internal sealed class View<TView> : ISynchronizedView<T, TView>, IWritableSynchronizedView<T, TView>
+        internal sealed class View<TView> : ISynchronizedView<T, TView>, IWritableSynchronizedView<T, TView>, ISourceSyncRootProvider
         {
             public ISynchronizedViewFilter<T, TView> Filter
             {
@@ -362,51 +362,40 @@ namespace ObservableCollections
                 }
             }
 
+            public object SourceSyncRoot => source.SyncRoot;
+
+            // the writes to the source do not take the SyncRoot of this view. the source raises the change inside its own
+            // lock, and SourceCollectionChanged takes SyncRoot inside it, so taking SyncRoot first would invert the lock
+            // order and deadlock with another thread that writes the source.
+
             public void SetToSourceCollection(int index, T value)
             {
-                lock (SyncRoot)
-                {
-                    source[index] = value;
-                }
+                source[index] = value;
             }
 
             public void AddToSourceCollection(T value)
             {
-                lock (SyncRoot)
-                {
-                    source.Add(value);
-                }
+                source.Add(value);
             }
+
             public void InsertIntoSourceCollection(int index, T value)
             {
-                lock (SyncRoot)
-                {
-                    source.Insert(index, value);
-                }
+                source.Insert(index, value);
             }
 
             public bool RemoveFromSourceCollection(T value)
             {
-                lock (SyncRoot)
-                {
-                    return source.Remove(value);
-                }
+                return source.Remove(value);
             }
 
             public void RemoveAtSourceCollection(int index)
             {
-                lock (SyncRoot)
-                {
-                    source.RemoveAt(index);
-                }
+                source.RemoveAt(index);
             }
 
             public void ClearSourceCollection()
             {
-                lock (SyncRoot)
-                {
-                    source.Clear();
-                }
+                source.Clear();
             }
 
             public IWritableSynchronizedViewList<TView> ToWritableViewList(WritableViewChangedEventHandler<T, TView> converter)
