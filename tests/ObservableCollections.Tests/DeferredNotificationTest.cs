@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ObservableCollections.Tests;
 
@@ -80,12 +78,9 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            list.Add(10);
-            list.Insert(0, 20);
-            list.RemoveAt(1);
-        }).Wait();
+        list.Add(10);
+        list.Insert(0, 20);
+        list.RemoveAt(1);
 
         dispatcher.PendingCount.Should().Be(3);
         notify.Should().BeEmpty();
@@ -110,7 +105,7 @@ public class DeferredNotificationTest
         using var view = list.CreateView(x => $"${x}");
         using var notify = view.ToNotifyCollectionChanged(dispatcher);
 
-        Task.Run(() => list.Add(10)).Wait();
+        list.Add(10);
 
         dispatcher.PendingCount.Should().Be(0);
         notify.Should().Equal(new[] { "$10" });
@@ -118,7 +113,7 @@ public class DeferredNotificationTest
         // Changes after the subscription starts are deferred.
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Add(20)).Wait();
+        list.Add(20);
 
         dispatcher.PendingCount.Should().Be(1);
         notify.Should().Equal(new[] { "$10" });
@@ -148,13 +143,13 @@ public class DeferredNotificationTest
         void Handler(object sender, NotifyCollectionChangedEventArgs e) { }
         notify.CollectionChanged += Handler;
 
-        Task.Run(() => list.Insert(0, 2)).Wait();
+        list.Insert(0, 2);
 
         dispatcher.PendingCount.Should().Be(1);
 
         notify.CollectionChanged -= Handler;
 
-        Task.Run(() => list.Insert(0, 3)).Wait();
+        list.Insert(0, 3);
 
         // There is no subscriber, but the earlier notification is still pending, so this is queued to keep the order.
         dispatcher.PendingCount.Should().Be(2);
@@ -185,7 +180,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 0)).Wait();
+        list.Insert(0, 0);
 
         dispatcher.PendingCount.Should().Be(1);
 
@@ -220,7 +215,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 0)).Wait();
+        list.Insert(0, 0);
 
         // At [1] of the visible ["$1", "$2", "$3"], that is, right before "$2".
         notify.Insert(1, "$9");
@@ -251,7 +246,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 0)).Wait();
+        list.Insert(0, 0);
 
         // Replaces [1] of the visible ["$1", "$2", "$3"], that is, "$2".
         notify[1] = "$9";
@@ -285,7 +280,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 0)).Wait();
+        list.Insert(0, 0);
 
         notify[1] = "$9";
 
@@ -320,7 +315,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 6)).Wait(); // Passes the filter, so it goes to the head of the view
+        list.Insert(0, 6); // Passes the filter, so it goes to the head of the view
 
         dispatcher.PendingCount.Should().Be(1);
 
@@ -355,7 +350,7 @@ public class DeferredNotificationTest
         // Subscribe, so that the changes are kept pending instead of being applied at once.
         notify.CollectionChanged += (_, _) => { };
 
-        Task.Run(() => list.RemoveAt(1)).Wait(); // 2 is removed
+        list.RemoveAt(1); // 2 is removed
 
         // [1] of the visible ["$1", "$2", "$3"] no longer exists.
         notify.Invoking(x => x.RemoveAt(1))
@@ -384,11 +379,8 @@ public class DeferredNotificationTest
         // Subscribe, so that the changes are kept pending instead of being applied at once.
         notify.CollectionChanged += (_, _) => { };
 
-        Task.Run(() =>
-        {
-            list.Clear();
-            list.Add(3);
-        }).Wait();
+        list.Clear();
+        list.Add(3);
 
         notify.Invoking(x => x.RemoveAt(0))
             .Should().Throw<InvalidOperationException>()
@@ -422,7 +414,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 0)).Wait();
+        list.Insert(0, 0);
 
         // The visible content is ["$1", "$2"], so [2] is the tail.
         notify.Insert(2, "$9");
@@ -484,12 +476,9 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            list.Add(3);
-            list.Clear();
-            list.Add(4);
-        }).Wait();
+        list.Add(3);
+        list.Clear();
+        list.Add(4);
 
         notify.Should().Equal(new[] { "$1", "$2" });
 
@@ -525,7 +514,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Move(0, 2)).Wait();
+        list.Move(0, 2);
 
         notify.Should().Equal(new[] { "$1", "$2", "$3" });
 
@@ -562,7 +551,7 @@ public class DeferredNotificationTest
 
         try
         {
-            Task.Run(() => list.Insert(0, 2)).Wait(); // Another thread, so deferred
+            list.Insert(0, 2); // The test thread is not the UI thread, so deferred
 
             ui.PendingCount.Should().Be(1);
 
@@ -631,7 +620,7 @@ public class DeferredNotificationTest
 
         try
         {
-            Task.Run(() => list.Clear()).Wait(); // Another thread, so the Reset is queued
+            list.Clear(); // The test thread is not the UI thread, so the Reset is queued
 
             ui.PendingCount.Should().Be(1);
 
@@ -708,7 +697,7 @@ public class DeferredNotificationTest
 
         try
         {
-            Task.Run(() => list.Clear()).Wait(); // Another thread, so the Reset is queued
+            list.Clear(); // The test thread is not the UI thread, so the Reset is queued
 
             ui.PendingCount.Should().Be(1);
 
@@ -793,7 +782,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.RemoveAt(1)).Wait(); // 2 is removed
+        list.RemoveAt(1); // 2 is removed
 
         // Right before "$2" of the visible ["$1", "$2", "$3"], which is no longer in the source.
         notify.Insert(1, "$9");
@@ -820,7 +809,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.RemoveRange(0, 2)).Wait(); // 1 and 2 are removed
+        list.RemoveRange(0, 2); // 1 and 2 are removed
 
         // Right before "$2" of the visible ["$1", "$2", "$3", "$4"], that is, between two removed elements.
         notify.Insert(1, "$9");
@@ -851,7 +840,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 6)).Wait(); // Passes the filter, so it goes to the head of the view
+        list.Insert(0, 6); // Passes the filter, so it goes to the head of the view
 
         notify[1] = "$40"; // "$4" of the visible ["$2", "$4"]
 
@@ -881,7 +870,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 6)).Wait();
+        list.Insert(0, 6);
 
         notify[1] = "$40"; // "$4" of the visible ["$2", "$4"]
 
@@ -913,7 +902,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Insert(0, 6)).Wait();
+        list.Insert(0, 6);
 
         notify.Insert(index, "$8");
 
@@ -942,11 +931,8 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            list.Add(5);
-            view.AttachFilter(x => x % 2 == 0);
-        }).Wait();
+        list.Add(5);
+        view.AttachFilter(x => x % 2 == 0);
 
         notify.Should().Equal(new[] { "$1", "$2", "$3", "$4" });
         notify.Invoking(x => x.RemoveAt(0))
@@ -959,7 +945,7 @@ public class DeferredNotificationTest
         tracker.Violations.Should().BeEmpty();
         notify.Should().Equal(new[] { "$2", "$4" });
 
-        Task.Run(() => view.ResetFilter()).Wait();
+        view.ResetFilter();
 
         notify.Should().Equal(new[] { "$2", "$4" });
 
@@ -984,11 +970,8 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            list.InsertRange(1, new[] { 10, 11 });
-            list.RemoveRange(4, 1); // 3
-        }).Wait();
+        list.InsertRange(1, new[] { 10, 11 });
+        list.RemoveRange(4, 1); // 3
 
         dispatcher.PendingCount.Should().Be(3);
 
@@ -1016,7 +999,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Move(0, 2)).Wait(); // [2, 3, 1]
+        list.Move(0, 2); // [2, 3, 1]
 
         notify[0] = "$10"; // "$1" of the visible ["$1", "$2", "$3"]
 
@@ -1042,7 +1025,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Move(0, 2)).Wait(); // [2, 3, 1]
+        list.Move(0, 2); // [2, 3, 1]
 
         notify.RemoveAt(1); // "$2" of the visible ["$1", "$2", "$3"]
 
@@ -1068,7 +1051,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Move(0, 2)).Wait(); // [2, 3, 1]
+        list.Move(0, 2); // [2, 3, 1]
 
         notify.Insert(0, "$9"); // right before "$1" of the visible ["$1", "$2", "$3"]
 
@@ -1099,12 +1082,9 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            dictionary[1] = "c";
-            dictionary.Add(3, "d");
-            dictionary.Remove(2);
-        }).Wait();
+        dictionary[1] = "c";
+        dictionary.Add(3, "d");
+        dictionary.Remove(2);
 
         notify.Should().Equal(new[] { "1=a", "2=b" });
 
@@ -1132,11 +1112,8 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            queue.Enqueue(3);
-            queue.Dequeue();
-        }).Wait();
+        queue.Enqueue(3);
+        queue.Dequeue();
 
         notify.Should().Equal(new[] { "$1", "$2" });
 
@@ -1164,12 +1141,9 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            stack.Push(3);
-            stack.Pop();
-            stack.Push(4);
-        }).Wait();
+        stack.Push(3);
+        stack.Pop();
+        stack.Push(4);
 
         notify.Should().Equal(new[] { "$2", "$1" });
 
@@ -1195,12 +1169,9 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() =>
-        {
-            buffer.AddFirst(0);
-            buffer.AddLast(3);
-            buffer.RemoveFirst();
-        }).Wait();
+        buffer.AddFirst(0);
+        buffer.AddLast(3);
+        buffer.RemoveFirst();
 
         notify.Should().Equal(new[] { "$1", "$2" });
 
@@ -1226,11 +1197,8 @@ public class DeferredNotificationTest
         var counts = new List<int>();
         notify.PropertyChanged += (_, _) => counts.Add(notify.Count);
 
-        Task.Run(() =>
-        {
-            list.Add(2);
-            list.Add(3);
-        }).Wait();
+        list.Add(2);
+        list.Add(3);
 
         notify.Count.Should().Be(1);
 
@@ -1267,7 +1235,7 @@ public class DeferredNotificationTest
 
         var tracker = new NotifyCollectionChangedContractTracker<string>(notify);
 
-        Task.Run(() => list.Add(2)).Wait();
+        list.Add(2);
 
         notify.Dispose();
 
@@ -1283,8 +1251,8 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// A dispatcher that only records the posted events, so that a test can invoke them in any order and on any
-    /// thread, as a dispatcher outside the single-thread contract might.
+    /// A dispatcher that only records the posted events, so that a test can invoke them in any order, as a nested
+    /// message loop in a subscriber might.
     /// </summary>
     sealed class RecordingDispatcher : ICollectionEventDispatcher
     {
@@ -1300,11 +1268,10 @@ public class DeferredNotificationTest
     }
 
     /// <summary>
-    /// Verifies that no subscriber exception is lost when a dispatcher outside the single-thread contract runs the
-    /// callbacks out of order on several threads. The callback of a newer event raises an older one ahead, and the
-    /// own callback of the older one completes on another thread meanwhile. Its exception then has no callback left
-    /// to be rethrown from, so it is thrown here together with the exception of the newer one, as an
-    /// AggregateException.
+    /// Verifies that no subscriber exception is lost when the callbacks run out of order. The callback of a newer
+    /// event raises an older one ahead, and a nested message loop in the subscriber of the older one runs the own
+    /// callback of the older one meanwhile. The exception of the older one then has no callback left to be rethrown
+    /// from, so it is thrown here together with the exception of the newer one, as an AggregateException.
     /// </summary>
     [Fact]
     public void ExceptionsAreNotLostWhenCallbacksRunOutOfOrder()
@@ -1323,22 +1290,8 @@ public class DeferredNotificationTest
         {
             if ((string)e.NewItems![0]! == "$1")
             {
-                // The own callback of the older event runs on another thread while the event is raised ahead.
-                var thread = new Thread(() =>
-                {
-                    try
-                    {
-                        older.Invoke();
-                    }
-                    catch (Exception ex)
-                    {
-                        olderCallbackError = ex;
-                    }
-                });
-
-                thread.Start();
-                thread.Join(TimeSpan.FromSeconds(5)).Should().BeTrue();
-
+                // Stands in for a nested message loop, which runs the own callback of the older event meanwhile.
+                olderCallbackError = Record.Exception(() => older.Invoke());
                 throw new InvalidOperationException("older");
             }
 
