@@ -16,9 +16,6 @@ public class WritableViewConcurrentWriteTest
 {
     static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
-    // long enough for the other thread to finish its write, unless it has to wait for the caller
-    static readonly TimeSpan GracePeriod = TimeSpan.FromMilliseconds(200);
-
     static int ToOriginal(string newView, int original, ref bool setValue)
     {
         return int.Parse(newView.Substring(1));
@@ -53,7 +50,18 @@ public class WritableViewConcurrentWriteTest
             thread.Start();
         }
 
-        public bool Join(TimeSpan timeout) => thread.Join(timeout);
+        /// <summary>
+        /// Waits until the thread has either completed or is blocked, for example on a lock that the caller holds,
+        /// and returns true in the latter case. Unlike waiting for a fixed time, this tells the two apart however
+        /// slow the machine is.
+        /// </summary>
+        public bool WaitUntilBlocked()
+        {
+            SpinWait.SpinUntil(() => (thread.ThreadState & (ThreadState.WaitSleepJoin | ThreadState.Stopped)) != 0, Timeout)
+                .Should().BeTrue("the worker must either complete or be blocked");
+
+            return (thread.ThreadState & ThreadState.Stopped) == 0;
+        }
 
         public void Complete()
         {
@@ -93,11 +101,12 @@ public class WritableViewConcurrentWriteTest
         var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
 
         Worker worker = null;
+        var blocked = false;
 
         int Converter(string newView, int original, ref bool setValue)
         {
             worker = new Worker(() => list.Insert(0, 0));
-            worker.Join(GracePeriod);
+            blocked = worker.WaitUntilBlocked();
             return ToOriginal(newView, original, ref setValue);
         }
 
@@ -108,6 +117,7 @@ public class WritableViewConcurrentWriteTest
 
         worker.Complete();
 
+        blocked.Should().BeTrue("the other writer must wait until the write completes");
         list.Should().Equal(new[] { 0, 1, 2, 3, 40 });
         notify.Should().Equal(filtered
             ? new[] { "$0", "$2", "$40" }
@@ -128,11 +138,12 @@ public class WritableViewConcurrentWriteTest
         var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
 
         Worker worker = null;
+        var blocked = false;
 
         int Converter(string newView, int original, ref bool setValue)
         {
             worker = new Worker(() => list.Insert(0, 0));
-            worker.Join(GracePeriod);
+            blocked = worker.WaitUntilBlocked();
             setValue = false;
             return original;
         }
@@ -144,6 +155,7 @@ public class WritableViewConcurrentWriteTest
 
         worker.Complete();
 
+        blocked.Should().BeTrue("the other writer must wait until the write completes");
         list.Should().Equal(new[] { 0, 1, 2, 3, 4 });
         notify.Should().Equal(filtered
             ? new[] { "$0", "$2", "$40" }
@@ -162,29 +174,27 @@ public class WritableViewConcurrentWriteTest
         var list = new ObservableList<int>(new[] { 1, 2, 3, 4 });
 
         Worker worker = null;
-        var armed = false;
+        var blocked = false;
 
         int Converter(string newView, int original, ref bool setValue)
         {
-            if (armed)
-            {
-                armed = false;
-                worker = new Worker(() => list.Insert(0, 0));
-                worker.Join(GracePeriod);
-            }
-
+            worker = new Worker(() => list.Insert(0, 0));
+            blocked = worker.WaitUntilBlocked();
             return ToOriginal(newView, original, ref setValue);
         }
 
         var (notify, owner) = CreateView(list, filtered, Converter);
         using var _ = owner;
 
-        armed = true;
         notify.Insert(notify.Count - 1, "$10"); // right before 4, the last element
 
         worker.Complete();
 
+        blocked.Should().BeTrue("the other writer must wait until the write completes");
         list.Should().Equal(new[] { 0, 1, 2, 3, 10, 4 });
+        notify.Should().Equal(filtered
+            ? new[] { "$0", "$2", "$10", "$4" }
+            : new[] { "$0", "$1", "$2", "$3", "$10", "$4" });
     }
 
     /// <summary>
@@ -201,6 +211,10 @@ public class WritableViewConcurrentWriteTest
         var list = new ObservableList<int>(new[] { 1, 2, 3 });
 
         using var entered = new ManualResetEventSlim();
+        using var viewWriterStarted = new ManualResetEventSlim();
+
+        Worker viewWriter = null;
+        var blocked = false;
 
         // Subscribes before the view, so that it runs inside the lock of the source before the view takes its own.
         list.CollectionChanged += (in NotifyCollectionChangedEventArgs<int> e) =>
@@ -208,7 +222,10 @@ public class WritableViewConcurrentWriteTest
             if (e.Action == NotifyCollectionChangedAction.Add)
             {
                 entered.Set();
-                Thread.Sleep(GracePeriod); // let the other writer run meanwhile
+
+                // let the other writer go as far as it can, and take the locks it takes before the lock of the source
+                viewWriterStarted.Wait(Timeout).Should().BeTrue();
+                blocked = viewWriter.WaitUntilBlocked();
             }
         };
 
@@ -218,7 +235,7 @@ public class WritableViewConcurrentWriteTest
         var sourceWriter = new Worker(() => list.Add(4));
         entered.Wait(Timeout).Should().BeTrue();
 
-        var viewWriter = new Worker(() =>
+        viewWriter = new Worker(() =>
         {
             if (viaViewList)
             {
@@ -230,9 +247,12 @@ public class WritableViewConcurrentWriteTest
             }
         });
 
+        viewWriterStarted.Set();
+
         sourceWriter.Complete();
         viewWriter.Complete();
 
+        blocked.Should().BeTrue("the write through the view must wait for the lock of the source");
         list.Should().Equal(new[] { 10, 2, 3, 4 });
         notify.Should().Equal(new[] { "$10", "$2", "$3", "$4" });
     }
